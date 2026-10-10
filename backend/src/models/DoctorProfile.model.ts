@@ -15,10 +15,10 @@ export interface IDoctorProfile extends Document {
   specialization: string[];
   qualifications: string[];
   medicalCouncilRegistrationNumber: string;
-  licenseDocumentUrl: string;
+  licenseDocumentUrl?: string;
   experienceYears: number;
   consultationFee: number;
-  bio: string;
+  bio?: string;
   scheduleRules: IDoctorScheduleRule[];
   verificationStatus: VerificationStatus;
   verifiedBy?: mongoose.Types.ObjectId;
@@ -54,12 +54,10 @@ const DoctorProfileSchema = new Schema<IDoctorProfile>(
     },
     specialization: {
       type: [String],
-      required: [true, "At least one specialization is required"],
       default: [],
     },
     qualifications: {
       type: [String],
-      required: [true, "At least one qualification is required"],
       default: [],
     },
     medicalCouncilRegistrationNumber: {
@@ -71,18 +69,17 @@ const DoctorProfileSchema = new Schema<IDoctorProfile>(
     },
     licenseDocumentUrl: {
       type: String,
-      required: [true, "License document proof is required"],
+      default: "",
     },
     experienceYears: {
       type: Number,
-      required: [true, "Years of experience is required"],
       min: [0, "Experience cannot be negative"],
       default: 0,
     },
     consultationFee: {
       type: Number,
-      required: [true, "Consultation fee is required"],
       min: [0, "Consultation fee cannot be negative"],
+      default: 0,
     },
     bio: {
       type: String,
