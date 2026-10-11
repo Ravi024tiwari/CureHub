@@ -2,8 +2,8 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 import { VerificationStatus } from "../constants/index.js";
 
 export interface IHospitalImages {
-  coverImage: string;
-  gallery: string[];
+  coverImage?: string;
+  gallery?: string[];
 }
 
 export interface IHospitalAddress {
@@ -25,6 +25,13 @@ export interface IHospital extends Document {
   contactEmail: string;
   contactPhone: string;
   departments: string[];
+  establishmentYear?: number;
+  totalBeds?: number;
+  website?: string;
+  openingTime?: string;
+  closingTime?: string;
+  isEmergency24x7?: boolean;
+  description?: string;
   verificationStatus: VerificationStatus;
   verifiedBy?: mongoose.Types.ObjectId;
   verifiedAt?: Date;
@@ -41,6 +48,7 @@ const HospitalSchema = new Schema<IHospital>(
       required: [true, "Hospital name is required"],
       trim: true,
       maxlength: [150, "Hospital name cannot exceed 150 characters"],
+      index: true,
     },
     slug: {
       type: String,
@@ -66,6 +74,7 @@ const HospitalSchema = new Schema<IHospital>(
     licenseDocumentUrl: {
       type: String,
       required: [true, "License document proof is required"],
+      default: "",
     },
     images: {
       coverImage: {
@@ -99,6 +108,40 @@ const HospitalSchema = new Schema<IHospital>(
     departments: {
       type: [String],
       default: ["General Medicine"],
+    },
+    establishmentYear: {
+      type: Number,
+      min: [1800, "Establishment year cannot be before 1800"],
+      max: [new Date().getFullYear() + 1, "Establishment year cannot be in the future"],
+    },
+    totalBeds: {
+      type: Number,
+      min: [1, "Number of beds must be at least 1"],
+      default: 10,
+    },
+    website: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    openingTime: {
+      type: String,
+      trim: true,
+      default: "09:00",
+    },
+    closingTime: {
+      type: String,
+      trim: true,
+      default: "23:59",
+    },
+    isEmergency24x7: {
+      type: Boolean,
+      default: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+      default: "",
     },
     verificationStatus: {
       type: String,
@@ -134,6 +177,19 @@ const HospitalSchema = new Schema<IHospital>(
     },
   }
 );
+
+// Pre-validate hook to generate slug if not provided
+HospitalSchema.pre("validate", function (next) {
+  if (this.name && !this.slug) {
+    this.slug = this.name
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, "")
+      .replace(/[\s_-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+  next();
+});
 
 export const Hospital: Model<IHospital> = mongoose.model<IHospital>(
   "Hospital",
