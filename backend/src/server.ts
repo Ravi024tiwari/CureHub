@@ -6,6 +6,7 @@ import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import { connectDB } from "./config/db.js";
 import authRouter from "./routes/auth.routes.js";
+import adminRouter from "./routes/admin.routes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 
 dotenv.config();
@@ -35,6 +36,7 @@ app.get("/api/health", (_req: Request, res: Response) => {
 });
 
 app.use("/api/auth", authRouter);
+app.use("/api/admin", adminRouter);
 
 
 app.use(errorHandler);

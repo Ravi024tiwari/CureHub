@@ -3,6 +3,7 @@ import { User } from "../models/User.model.js";
 import { PatientProfile } from "../models/PatientProfile.model.js";
 import { DoctorProfile } from "../models/DoctorProfile.model.js";
 import { Hospital } from "../models/Hospital.model.js";
+import { HospitalAdminProfile } from "../models/HospitalAdminProfile.model.js";
 import { UserRole, VerificationStatus } from "../constants/index.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
@@ -32,7 +33,7 @@ export const registerPatient = asyncHandler(async (req: Request, res: Response) 
 
   await checkDuplicateUser(email, phoneNumber);
 
-  // 1. Create Base User
+  // Register a new patient
   const user = await User.create({
     name: name.trim(),
     email: email.toLowerCase().trim(),
@@ -160,13 +161,55 @@ export const registerDoctor = asyncHandler(async (req: Request, res: Response) =
 
 
 export const registerHospitalAdmin = asyncHandler(async (req: Request, res: Response) => {
-  const { name, email, password, phoneNumber, avatar } = req.body;
+  const {
+    name,
+    email,
+    password,
+    phoneNumber,
+    avatar,
+    hospitalName,
+    designation,
+    hospitalRegistrationNumber,
+    governmentIdType,
+    governmentIdNumber,
+    identityProofUrl,
+    authorizationLetterUrl,
+    phone,
+    qualifications,
+    hospitalId,
+  } = req.body;
 
   if (!name || !email || !password || !phoneNumber) {
     throw new ApiError(400, "Name, email, password, and phone number are required.");
   }
 
+  if (!hospitalName || !designation || !hospitalRegistrationNumber) {
+    throw new ApiError(
+      400,
+      "Hospital Admin onboarding requires: hospitalName, designation, and hospitalRegistrationNumber."
+    );
+  }
+
   await checkDuplicateUser(email, phoneNumber);
+
+  // Check if hospital registration number is unique
+  const existingHospitalReg = await HospitalAdminProfile.findOne({
+    hospitalRegistrationNumber: hospitalRegistrationNumber.trim(),
+  });
+  if (existingHospitalReg) {
+    throw new ApiError(
+      409,
+      "A hospital admin with this Hospital Registration Number already exists."
+    );
+  }
+
+  // If affiliating with an existing hospital, verify it exists
+  if (hospitalId) {
+    const existingHospital = await Hospital.findById(hospitalId);
+    if (!existingHospital) {
+      throw new ApiError(404, "The specified affiliated hospital was not found.");
+    }
+  }
 
   const user = await User.create({
     name: name.trim(),
@@ -178,7 +221,33 @@ export const registerHospitalAdmin = asyncHandler(async (req: Request, res: Resp
     isAccountApproved: false, // Requires Super Admin approval
   });
 
-  // 2. Issue Token & Cookie
+  let profile;
+  try {
+    profile = await HospitalAdminProfile.create({
+      userId: user._id,
+      hospitalId: hospitalId || null,
+      hospitalName: hospitalName.trim(),
+      designation: designation.trim(),
+      hospitalRegistrationNumber: hospitalRegistrationNumber.trim(),
+      governmentIdType: governmentIdType?.trim() || "",
+      governmentIdNumber: governmentIdNumber?.trim() || "",
+      identityProofUrl: identityProofUrl || "",
+      authorizationLetterUrl: authorizationLetterUrl || "",
+      email: email.toLowerCase().trim(),
+      phone: phone?.trim() || phoneNumber.trim(),
+      qualifications: Array.isArray(qualifications)
+        ? qualifications
+        : qualifications
+        ? [qualifications]
+        : [],
+      verificationStatus: VerificationStatus.PENDING,
+    });
+  } catch (error) {
+    await User.findByIdAndDelete(user._id);
+    throw error;
+  }
+
+  // Issue Token & Cookie
   const token = generateToken({
     userId: user._id.toString(),
     role: user.role,
@@ -190,7 +259,7 @@ export const registerHospitalAdmin = asyncHandler(async (req: Request, res: Resp
   return res.status(201).json(
     new ApiResponse(
       201,
-      { user, profile: null, token },
+      { user, profile, token },
       "Hospital Admin registered successfully. Account is pending Super Admin verification."
     )
   );
@@ -225,7 +294,10 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   } else if (user.role === UserRole.DOCTOR) {
     profileData = await DoctorProfile.findOne({ userId: user._id }).populate("hospitalId", "name slug address");
   } else if (user.role === UserRole.HOSPITAL_ADMIN) {
-    profileData = await Hospital.findOne({ hospitalAdminId: user._id });
+    profileData = await HospitalAdminProfile.findOne({ userId: user._id }).populate("hospitalId");
+    if (!profileData) {
+      profileData = await Hospital.findOne({ hospitalAdminId: user._id });
+    }
   }
 
   const token = generateToken({
@@ -269,7 +341,10 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
       "name slug address verificationStatus"
     );
   } else if (user.role === UserRole.HOSPITAL_ADMIN) {
-    profileData = await Hospital.findOne({ hospitalAdminId: user._id });
+    profileData = await HospitalAdminProfile.findOne({ userId: user._id }).populate("hospitalId");
+    if (!profileData) {
+      profileData = await Hospital.findOne({ hospitalAdminId: user._id });
+    }
   }
 
   return res.status(200).json(
