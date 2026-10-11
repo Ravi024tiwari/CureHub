@@ -8,6 +8,8 @@ import { connectDB } from "./config/db.js";
 import authRouter from "./routes/auth.routes.js";
 import adminRouter from "./routes/admin.routes.js";
 import hospitalRouter from "./routes/hospital.routes.js";
+import profileRouter from "./routes/profile.routes.js";
+import userRouter from "./routes/user.routes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 
 dotenv.config();
@@ -18,7 +20,7 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: process.env.CLIENT_URL,
     credentials: true, 
   })
 );
@@ -39,6 +41,8 @@ app.get("/api/health", (_req: Request, res: Response) => {
 app.use("/api/auth", authRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/hospitals", hospitalRouter);
+app.use("/api/profile", profileRouter);
+app.use("/api/users", userRouter);
 
 
 app.use(errorHandler);

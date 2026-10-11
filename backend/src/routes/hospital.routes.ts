@@ -11,7 +11,6 @@ import { UserRole } from "../constants/index.js";
 
 const hospitalRouter = Router();
 
-// Hospital Admin specific routes (creating & managing their affiliated hospital)
 hospitalRouter.post(
   "/",
   authenticateToken,
