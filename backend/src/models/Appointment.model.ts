@@ -71,7 +71,6 @@ const AppointmentSchema = new Schema<IAppointment>(
       type: Schema.Types.ObjectId,
       ref: "TimeSlot",
       required: [true, "TimeSlot ID is required"],
-      unique: true, // GUARANTEE 1: Exactly ONE appointment per slot!
       index: true,
     },
     date: {
@@ -140,25 +139,9 @@ const AppointmentSchema = new Schema<IAppointment>(
   }
 );
 
-// GUARANTEE 2: Prevents the same patient from double-booking overlapping active appointments!
-// If an appointment is cancelled, the patient is freed to book again for that time.
-AppointmentSchema.index(
-  { patientId: 1, date: 1, startTime: 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      status: {
-        $nin: [
-          AppointmentStatus.CANCELLED_BY_PATIENT,
-          AppointmentStatus.CANCELLED_BY_DOCTOR,
-        ],
-      },
-    },
-  }
-);
-
 // Fast query index for doctor daily schedule
 AppointmentSchema.index({ doctorId: 1, date: 1, status: 1 });
+AppointmentSchema.index({ patientId: 1, date: 1, status: 1 });
 
 export const Appointment: Model<IAppointment> = mongoose.model<IAppointment>(
   "Appointment",
