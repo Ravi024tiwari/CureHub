@@ -84,6 +84,12 @@ export const bookAppointment = asyncHandler(async (req: Request, res: Response) 
     throw new ApiError(404, "The requested doctor is currently not accepting appointments.");
   }
 
+  // Check if doctor is on leave on this date
+  const isOnLeave = doctor.leaves?.some((leave) => leave.date === slot.date);
+  if (isOnLeave) {
+    throw new ApiError(400, "The doctor is on leave on this date. Please select another date.");
+  }
+
   // 5. Concurrency Protection: Atomically lock and book the slot
   const lockedSlot = await TimeSlot.findOneAndUpdate(
     { _id: slot._id, status: SlotStatus.AVAILABLE },

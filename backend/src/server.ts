@@ -13,6 +13,7 @@ import userRouter from "./routes/user.routes.js";
 import appointmentRouter from "./routes/appointment.routes.js";
 import patientRouter from "./routes/patient.routes.js";
 import reviewRouter from "./routes/review.routes.js";
+import doctorRouter from "./routes/doctor.routes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 
 dotenv.config();
@@ -49,6 +50,7 @@ app.use("/api/users", userRouter);
 app.use("/api/appointments", appointmentRouter);
 app.use("/api/patients", patientRouter);
 app.use("/api/reviews", reviewRouter);
+app.use("/api/doctors", doctorRouter);
 
 
 app.use(errorHandler);

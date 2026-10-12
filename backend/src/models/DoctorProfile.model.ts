@@ -8,9 +8,16 @@ export interface IDoctorScheduleRule {
   slotDurationMinutes: number;
 }
 
+export interface IDoctorLeave {
+  date: string; // YYYY-MM-DD
+  reason?: string;
+  createdAt: Date;
+}
+
 export interface IDoctorProfile extends Document {
   userId: mongoose.Types.ObjectId;
-  hospitalId: mongoose.Types.ObjectId;
+  hospitalId?: mongoose.Types.ObjectId;
+  hospitalAffiliationStatus: "NOT_AFFILIATED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
   department: string;
   specialization: string[];
   qualifications: string[];
@@ -20,6 +27,7 @@ export interface IDoctorProfile extends Document {
   consultationFee: number;
   bio?: string;
   scheduleRules: IDoctorScheduleRule[];
+  leaves: IDoctorLeave[];
   verificationStatus: VerificationStatus;
   verifiedBy?: mongoose.Types.ObjectId;
   verifiedAt?: Date;
@@ -43,9 +51,32 @@ const DoctorProfileSchema = new Schema<IDoctorProfile>(
     hospitalId: {
       type: Schema.Types.ObjectId,
       ref: "Hospital",
-      required: [true, "Hospital affiliation is required"],
+      default: null,
       index: true,
     },
+    hospitalAffiliationStatus: {
+      type: String,
+      enum: ["NOT_AFFILIATED", "PENDING_APPROVAL", "APPROVED", "REJECTED"],
+      default: "NOT_AFFILIATED",
+      index: true,
+    },
+    leaves: [
+      {
+        date: {
+          type: String,
+          required: true,
+          match: [/^\d{4}-\d{2}-\d{2}$/, "Date must follow YYYY-MM-DD format"],
+        },
+        reason: {
+          type: String,
+          default: "Personal Leave",
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     department: {
       type: String,
       required: [true, "Department is required"],
