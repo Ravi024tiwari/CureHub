@@ -2,7 +2,7 @@ import rateLimit from "express-rate-limit";
 
 /**
  * Rate Limiter Configurations
-
+ *
  * For multi-instance deployments, swap to Redis store (rate-limit-redis).
  */
 
@@ -12,12 +12,14 @@ import rateLimit from "express-rate-limit";
  * Limit: 10 requests per 15 minutes per IP
  */
 export const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
+  windowMs: 15 * 60 * 1000,
   max: 10,
-  standardHeaders: true, 
-  legacyHeaders: false, 
+  statusCode: 429,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: {
     success: false,
+    statusCode: 429,
     message:
       "Too many authentication attempts from this IP. Please try again after 15 minutes.",
   },
@@ -32,10 +34,12 @@ export const authRateLimiter = rateLimit({
 export const bookingRateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
   max: 5,
+  statusCode: 429,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     success: false,
+    statusCode: 429,
     message:
       "Too many booking attempts. Please wait 10 minutes before trying again.",
   },
@@ -50,10 +54,12 @@ export const bookingRateLimiter = rateLimit({
 export const paymentVerifyRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10,
+  statusCode: 429,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     success: false,
+    statusCode: 429,
     message:
       "Too many payment verification attempts. Please try again after 15 minutes.",
   },
@@ -68,10 +74,12 @@ export const paymentVerifyRateLimiter = rateLimit({
 export const globalRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
+  statusCode: 429,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     success: false,
+    statusCode: 429,
     message:
       "Too many requests from this IP. Please slow down and try again later.",
   },

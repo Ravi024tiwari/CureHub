@@ -16,6 +16,7 @@ import reviewRouter from "./routes/review.routes.js";
 import doctorRouter from "./routes/doctor.routes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import { globalRateLimiter } from "./middleware/rateLimiter.middleware.js";
+import { initCronJobs } from "./services/cron.service.js";
 
 dotenv.config();
 
@@ -63,6 +64,9 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     await connectDB();
+
+    // Start background cron workers
+    initCronJobs();
 
     app.listen(PORT, () => {
       console.log(`Server is listening on PORT :${PORT}`);

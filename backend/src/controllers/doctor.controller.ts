@@ -627,15 +627,24 @@ export const applyDoctorLeave = asyncHandler(async (req: Request, res: Response)
     status: { $in: [AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS] },
   });
 
-  // Automatically cancel conflicting appointments with doctor-leave reason
+  // Priority 7-day reschedule window for affected patients
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const rescheduleDeadline = new Date(Date.now() + SEVEN_DAYS_MS);
+
   if (activeAppointments.length > 0) {
     for (const appt of activeAppointments) {
-      appt.status = AppointmentStatus.CANCELLED_BY_DOCTOR;
-      appt.cancellation = {
-        cancelledBy: new mongoose.Types.ObjectId(userId),
-        reason: reason?.trim() || "Doctor on approved medical/personal leave",
-        cancelledAt: new Date(),
-      };
+      // Release slot and mark as UNAVAILABLE since doctor is on leave
+      await TimeSlot.findByIdAndUpdate(appt.slotId, {
+        status: SlotStatus.UNAVAILABLE,
+        lockedByPatientId: null,
+        lockedAt: null,
+        lockExpiresAt: null,
+      });
+
+      // Move appointment to RESCHEDULE_REQUIRED with 7-day window
+      appt.status = AppointmentStatus.RESCHEDULE_REQUIRED;
+      appt.rescheduleDeadline = rescheduleDeadline;
+      appt.doctorLeaveReason = reason?.trim() || "Doctor on approved medical/personal leave";
       await appt.save();
     }
   }
@@ -660,10 +669,11 @@ export const applyDoctorLeave = asyncHandler(async (req: Request, res: Response)
       {
         date,
         reason: reason?.trim() || "Personal Leave",
-        cancelledAppointmentsCount: activeAppointments.length,
+        affectedAppointmentsCount: activeAppointments.length,
+        rescheduleDeadline,
         leaves: doctor.leaves,
       },
-      `Leave applied for ${date}. ${activeAppointments.length} conflicting appointments were automatically cancelled.`
+      `Leave applied for ${date}. ${activeAppointments.length} appointments moved to a 7-day priority reschedule window (deadline: ${rescheduleDeadline.toISOString().split("T")[0]}).`
     )
   );
 });

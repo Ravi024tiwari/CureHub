@@ -8,9 +8,9 @@ export interface ITimeSlot extends Document {
   startTime: string; // "09:00" (24-hour format)
   endTime: string; // "09:30" (24-hour format)
   status: SlotStatus;
-  lockedAt?: Date;
-  lockExpiresAt?: Date; // Auto-releases lock after checkout timeout (e.g., 5-10 minutes)
-  lockedByPatientId?: mongoose.Types.ObjectId;
+  lockedAt?: Date | null;
+  lockExpiresAt?: Date | null; // Auto-releases lock after checkout timeout (e.g., 5-10 minutes)
+  lockedByPatientId?: mongoose.Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -179,35 +179,48 @@ export const cancelAppointment = asyncHandler(async (req: Request, res: Response
     );
   }
 
-  // 2-DAY (48-HOUR) CANCELLATION RULE
-  const appointmentDateTime = parseAppointmentDateTime(appointment.date, appointment.startTime);
-  const diffMilliseconds = appointmentDateTime.getTime() - Date.now();
-  const diffHours = diffMilliseconds / (1000 * 60 * 60);
+  // Check if this cancellation is due to doctor leave (RESCHEDULE_REQUIRED)
+  const isDoctorLeaveCancellation = appointment.status === AppointmentStatus.RESCHEDULE_REQUIRED;
 
-  if (diffHours < 48) {
-    throw new ApiError(
-      400,
-      "Cancellation policy violation: Appointments can only be cancelled at least 2 days (48 hours) prior to the scheduled appointment time."
-    );
+  // 2-DAY (48-HOUR) CANCELLATION RULE (WAIVED if doctor is on leave)
+  if (!isDoctorLeaveCancellation) {
+    const appointmentDateTime = parseAppointmentDateTime(appointment.date, appointment.startTime);
+    const diffMilliseconds = appointmentDateTime.getTime() - Date.now();
+    const diffHours = diffMilliseconds / (1000 * 60 * 60);
+
+    if (diffHours < 48) {
+      throw new ApiError(
+        400,
+        "Cancellation policy violation: Appointments can only be cancelled at least 2 days (48 hours) prior to the scheduled appointment time."
+      );
+    }
   }
 
-  // Update appointment status to CANCELLED_BY_PATIENT
-  appointment.status = AppointmentStatus.CANCELLED_BY_PATIENT;
+  // Update appointment status: if doctor leave, mark as CANCELLED_BY_DOCTOR so refund is 100% justified
+  appointment.status = isDoctorLeaveCancellation
+    ? AppointmentStatus.CANCELLED_BY_DOCTOR
+    : AppointmentStatus.CANCELLED_BY_PATIENT;
+
   appointment.cancellation = {
     cancelledBy: new mongoose.Types.ObjectId(patientId),
-    reason: reason?.trim() || "Cancelled by patient",
+    reason: isDoctorLeaveCancellation
+      ? `Patient requested refund due to doctor leave: ${appointment.doctorLeaveReason || "Doctor unavailable"}`
+      : reason?.trim() || "Cancelled by patient",
     cancelledAt: new Date(),
   };
 
+  appointment.rescheduleDeadline = null;
   await appointment.save();
 
-  // Release the booked time slot back to AVAILABLE for other patients
-  await TimeSlot.findByIdAndUpdate(appointment.slotId, {
-    status: SlotStatus.AVAILABLE,
-    lockedByPatientId: null,
-    lockedAt: null,
-    lockExpiresAt: null,
-  });
+  // Release the booked time slot back to AVAILABLE for other patients (if not already unavailable)
+  const slot = await TimeSlot.findById(appointment.slotId);
+  if (slot && slot.status !== SlotStatus.UNAVAILABLE) {
+    slot.status = SlotStatus.AVAILABLE;
+    slot.lockedByPatientId = null;
+    slot.lockedAt = null;
+    slot.lockExpiresAt = null;
+    await slot.save();
+  }
 
   // ── Process Razorpay Refund ────────────────────────────────────────────
   const payment = await Payment.findOne({
@@ -221,7 +234,9 @@ export const cancelAppointment = asyncHandler(async (req: Request, res: Response
       const refund = await razorpayInstance.payments.refund(payment.transactionId, {
         speed: "normal", // "normal" = 5-7 business days, "optimum" = instant if eligible
         notes: {
-          reason: reason?.trim() || "Patient cancelled appointment",
+          reason: isDoctorLeaveCancellation
+            ? "Doctor on leave - 100% refund initiated"
+            : reason?.trim() || "Patient cancelled appointment",
           appointmentNumber: appointment.appointmentNumber,
         },
       });
@@ -243,7 +258,6 @@ export const cancelAppointment = asyncHandler(async (req: Request, res: Response
       await payment.save();
     }
   } else if (payment) {
-    // Payment exists but no transactionId (edge case: payment was pending)
     payment.status = PaymentStatus.FAILED;
     await payment.save();
   }
@@ -252,13 +266,17 @@ export const cancelAppointment = asyncHandler(async (req: Request, res: Response
     new ApiResponse(
       200,
       appointment,
-      "Appointment cancelled successfully. Time slot has been released and refund has been initiated."
+      isDoctorLeaveCancellation
+        ? "Appointment cancelled due to doctor leave. 100% full refund has been initiated to your original payment method."
+        : "Appointment cancelled successfully. Time slot has been released and refund has been initiated."
     )
   );
 });
 
 /**
- * Patient: Reschedule appointment (Must be 2 days prior & new slot with same doctor must be available)
+ * Patient: Reschedule appointment
+ * - Normal: Must be 2 days (48 hrs) prior & new slot with same doctor must be available
+ * - Doctor Leave (RESCHEDULE_REQUIRED): 48-hr rule is WAIVED. Patient can pick any slot with same doctor within the 7-day priority window for FREE.
  */
 export const rescheduleAppointment = asyncHandler(async (req: Request, res: Response) => {
   const patientId = req.user?.userId;
@@ -276,23 +294,36 @@ export const rescheduleAppointment = asyncHandler(async (req: Request, res: Resp
 
   if (
     appointment.status !== AppointmentStatus.CONFIRMED &&
-    appointment.status !== AppointmentStatus.PENDING_PAYMENT
+    appointment.status !== AppointmentStatus.PENDING_PAYMENT &&
+    appointment.status !== AppointmentStatus.RESCHEDULE_REQUIRED
   ) {
     throw new ApiError(
       400,
-      `Cannot reschedule an appointment with status: ${appointment.status}. Only active confirmed appointments can be rescheduled.`
+      `Cannot reschedule an appointment with status: ${appointment.status}. Only confirmed or leave-affected appointments can be rescheduled.`
     );
   }
 
-  // 2-DAY (48-HOUR) RESCHEDULE RULE
-  const currentApptDateTime = parseAppointmentDateTime(appointment.date, appointment.startTime);
-  const diffHours = (currentApptDateTime.getTime() - Date.now()) / (1000 * 60 * 60);
+  const isLeaveReschedule = appointment.status === AppointmentStatus.RESCHEDULE_REQUIRED;
 
-  if (diffHours < 48) {
-    throw new ApiError(
-      400,
-      "Reschedule policy violation: Appointments can only be rescheduled at least 2 days (48 hours) prior to the scheduled appointment time."
-    );
+  // 1. If Doctor Leave: Check that the 7-day priority window has not expired
+  if (isLeaveReschedule) {
+    if (appointment.rescheduleDeadline && new Date() > appointment.rescheduleDeadline) {
+      throw new ApiError(
+        400,
+        "The 7-day free priority reschedule window for this appointment has expired. Please cancel the appointment to claim your full refund."
+      );
+    }
+  } else {
+    // 2. Standard reschedule: Enforce 2-DAY (48-HOUR) RULE
+    const currentApptDateTime = parseAppointmentDateTime(appointment.date, appointment.startTime);
+    const diffHours = (currentApptDateTime.getTime() - Date.now()) / (1000 * 60 * 60);
+
+    if (diffHours < 48) {
+      throw new ApiError(
+        400,
+        "Reschedule policy violation: Standard appointments can only be rescheduled at least 2 days (48 hours) prior to the scheduled appointment time."
+      );
+    }
   }
 
   // Find and validate the requested new slot
@@ -334,11 +365,28 @@ export const rescheduleAppointment = asyncHandler(async (req: Request, res: Resp
     throw new ApiError(409, "The selected new slot was just booked. Please pick another slot.");
   }
 
-  // Release the old slot
-  await TimeSlot.findByIdAndUpdate(appointment.slotId, {
-    status: SlotStatus.AVAILABLE,
-    lockedByPatientId: null,
-    lockedAt: null,
+  // Release the old slot back to AVAILABLE (unless it was marked UNAVAILABLE because of doctor leave)
+  const oldSlot = await TimeSlot.findById(appointment.slotId);
+  if (oldSlot && oldSlot.status !== SlotStatus.UNAVAILABLE) {
+    oldSlot.status = SlotStatus.AVAILABLE;
+    oldSlot.lockedByPatientId = null;
+    oldSlot.lockedAt = null;
+    await oldSlot.save();
+  }
+
+  // Record audit history
+  if (!appointment.rescheduleHistory) {
+    appointment.rescheduleHistory = [];
+  }
+  appointment.rescheduleHistory.push({
+    previousSlotId: appointment.slotId,
+    previousDate: appointment.date,
+    previousStartTime: appointment.startTime,
+    previousEndTime: appointment.endTime,
+    reason: isLeaveReschedule
+      ? `Rescheduled for free due to doctor leave: ${appointment.doctorLeaveReason || "Personal Leave"}`
+      : "Patient requested reschedule",
+    rescheduledAt: new Date(),
   });
 
   // Update appointment with new schedule
@@ -346,6 +394,9 @@ export const rescheduleAppointment = asyncHandler(async (req: Request, res: Resp
   appointment.date = newSlot.date;
   appointment.startTime = newSlot.startTime;
   appointment.endTime = newSlot.endTime;
+  appointment.status = AppointmentStatus.CONFIRMED; // Restored to CONFIRMED!
+  appointment.rescheduleDeadline = null;
+  appointment.doctorLeaveReason = null;
 
   await appointment.save();
 
@@ -362,7 +413,9 @@ export const rescheduleAppointment = asyncHandler(async (req: Request, res: Resp
     new ApiResponse(
       200,
       populatedAppointment,
-      "Appointment rescheduled successfully to the new time slot."
+      isLeaveReschedule
+        ? "Appointment rescheduled successfully to the new time slot at zero additional charge."
+        : "Appointment rescheduled successfully to the new time slot."
     )
   );
 });

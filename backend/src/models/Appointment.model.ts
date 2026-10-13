@@ -22,6 +22,15 @@ export interface ICancellationDetails {
   cancelledAt: Date;
 }
 
+export interface IRescheduleHistory {
+  previousSlotId?: mongoose.Types.ObjectId;
+  previousDate: string;
+  previousStartTime: string;
+  previousEndTime?: string;
+  reason?: string;
+  rescheduledAt: Date;
+}
+
 export interface IAppointment extends Document {
   appointmentNumber: string; // e.g., "APT-20261010-8472"
   patientId: mongoose.Types.ObjectId; // Ref: User
@@ -37,6 +46,9 @@ export interface IAppointment extends Document {
   consultationFee: number; // Stored snapshot of fee at booking time
   prescription?: IPrescription;
   cancellation?: ICancellationDetails;
+  rescheduleDeadline?: Date | null;
+  doctorLeaveReason?: string | null;
+  rescheduleHistory?: IRescheduleHistory[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -127,6 +139,25 @@ const AppointmentSchema = new Schema<IAppointment>(
       reason: { type: String, default: "" },
       cancelledAt: { type: Date, default: null },
     },
+    rescheduleDeadline: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    doctorLeaveReason: {
+      type: String,
+      default: null,
+    },
+    rescheduleHistory: [
+      {
+        previousSlotId: { type: Schema.Types.ObjectId, ref: "TimeSlot" },
+        previousDate: { type: String, required: true },
+        previousStartTime: { type: String, required: true },
+        previousEndTime: { type: String, default: "" },
+        reason: { type: String, default: "" },
+        rescheduledAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,

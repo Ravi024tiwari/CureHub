@@ -46,7 +46,7 @@ const parseAppointmentDateTime = (date: string, startTime: string): Date => {
  *
  * Called before every initiation to garbage-collect stale locks.
  */
-const releaseExpiredSlotLocks = async (): Promise<void> => {
+export const releaseExpiredSlotLocks = async (): Promise<void> => {
   const now = new Date();
 
   // Find and release all expired locked slots
