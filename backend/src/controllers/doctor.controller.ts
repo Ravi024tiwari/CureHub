@@ -726,8 +726,195 @@ export const cancelDoctorLeave = asyncHandler(async (req: Request, res: Response
 });
 
 // ==========================================
-// 5. TIME SLOT CREATION & MANAGEMENT
+// 5. TIME SLOT CREATION & AVAILABILITY
 // ==========================================
+
+/**
+ * Patient: Get Available Slots for Doctor On-Demand
+ *
+ * Industrial On-Demand virtual slot calculation:
+ * - Doctor does NOT need to generate slots daily.
+ * - Dynamically computes slots from doctor's scheduleRules for the requested date.
+ * - Excludes dates where doctor is on approved leave.
+ * - Excludes slots that are already BOOKED, actively LOCKED, or UNAVAILABLE in TimeSlot collection.
+ * - If requested date is today, excludes slots whose startTime has already passed.
+ */
+export const getAvailableSlotsForDoctor = asyncHandler(async (req: Request, res: Response) => {
+  const { doctorId } = req.params;
+  const { date } = req.query;
+
+  if (!mongoose.Types.ObjectId.isValid(doctorId)) {
+    throw new ApiError(400, "Invalid doctor ID.");
+  }
+
+  if (!date || typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new ApiError(400, "Valid date in YYYY-MM-DD format is required in query params.");
+  }
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  if (date < todayStr) {
+    throw new ApiError(400, "Cannot view or book slots for past dates.");
+  }
+
+  const doctor = await DoctorProfile.findById(doctorId)
+    .populate("userId", "name avatar phoneNumber")
+    .populate("hospitalId", "name slug address contactPhone");
+
+  if (!doctor) {
+    throw new ApiError(404, "Doctor profile not found.");
+  }
+
+  // 1. Check if doctor is on leave
+  const leave = doctor.leaves?.find((l) => l.date === date);
+  if (leave) {
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          doctor: {
+            id: doctor._id,
+            name: (doctor.userId as any)?.name,
+            consultationFee: doctor.consultationFee,
+            hospital: doctor.hospitalId,
+          },
+          date,
+          onLeave: true,
+          leaveReason: leave.reason || "Doctor is on leave",
+          isWorkingDay: false,
+          totalSlots: 0,
+          availableSlotsCount: 0,
+          slots: [],
+        },
+        "Doctor is on approved leave on this date."
+      )
+    );
+  }
+
+  // 2. Determine dayOfWeek for the date (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+  const [year, month, day] = date.split("-").map(Number);
+  const targetDateObj = new Date(year, month - 1, day);
+  const dayOfWeek = targetDateObj.getDay();
+
+  // 3. Find matching schedule rules (supports multiple shifts on the same day!)
+  const rules = doctor.scheduleRules?.filter((r) => r.dayOfWeek === dayOfWeek) || [];
+  if (rules.length === 0) {
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          doctor: {
+            id: doctor._id,
+            name: (doctor.userId as any)?.name,
+            consultationFee: doctor.consultationFee,
+            hospital: doctor.hospitalId,
+          },
+          date,
+          dayOfWeek,
+          onLeave: false,
+          isWorkingDay: false,
+          totalSlots: 0,
+          availableSlotsCount: 0,
+          slots: [],
+        },
+        "Doctor does not have consultation hours on this day of the week."
+      )
+    );
+  }
+
+  // Helper conversions
+  const toMinutes = (timeStr: string) => {
+    const [h, m] = timeStr.split(":").map(Number);
+    return h * 60 + m;
+  };
+
+  const toTimeString = (totalMinutes: number) => {
+    const h = Math.floor(totalMinutes / 60)
+      .toString()
+      .padStart(2, "0");
+    const m = (totalMinutes % 60).toString().padStart(2, "0");
+    return `${h}:${m}`;
+  };
+
+  // 4. Generate all virtual slots from matching rules
+  const allVirtualSlots: { startTime: string; endTime: string }[] = [];
+  for (const rule of rules) {
+    const startMin = toMinutes(rule.startTime);
+    const endMin = toMinutes(rule.endTime);
+    const duration = rule.slotDurationMinutes || 30;
+
+    let current = startMin;
+    while (current + duration <= endMin) {
+      allVirtualSlots.push({
+        startTime: toTimeString(current),
+        endTime: toTimeString(current + duration),
+      });
+      current += duration;
+    }
+  }
+
+  // 5. Query DB for existing occupied TimeSlots for this doctor & date
+  const now = new Date();
+  const occupiedSlots = await TimeSlot.find({
+    doctorId: doctor._id,
+    date,
+    $or: [
+      { status: SlotStatus.BOOKED },
+      { status: SlotStatus.UNAVAILABLE },
+      {
+        status: SlotStatus.LOCKED,
+        lockExpiresAt: { $gt: now }, // Active 5-minute lock
+      },
+    ],
+  }).select("startTime status");
+
+  const occupiedSet = new Set(occupiedSlots.map((s) => s.startTime));
+
+  // Current time in minutes if date is today
+  let currentMinutesNow = -1;
+  if (date === todayStr) {
+    const nowHour = now.getHours();
+    const nowMinute = now.getMinutes();
+    currentMinutesNow = nowHour * 60 + nowMinute;
+  }
+
+  // 6. Filter and label availability
+  const slots = allVirtualSlots.map((vSlot) => {
+    const slotStartMin = toMinutes(vSlot.startTime);
+    const isPast = date === todayStr && slotStartMin <= currentMinutesNow;
+    const isOccupied = occupiedSet.has(vSlot.startTime);
+    const isAvailable = !isPast && !isOccupied;
+
+    return {
+      date,
+      startTime: vSlot.startTime,
+      endTime: vSlot.endTime,
+      isAvailable,
+      status: isOccupied ? SlotStatus.BOOKED : isPast ? SlotStatus.UNAVAILABLE : SlotStatus.AVAILABLE,
+    };
+  });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        doctor: {
+          id: doctor._id,
+          name: (doctor.userId as any)?.name,
+          consultationFee: doctor.consultationFee,
+          hospital: doctor.hospitalId,
+        },
+        date,
+        dayOfWeek,
+        onLeave: false,
+        isWorkingDay: true,
+        totalSlots: slots.length,
+        availableSlotsCount: slots.filter((s) => s.isAvailable).length,
+        slots,
+      },
+      "Available slots retrieved successfully."
+    )
+  );
+});
 
 /**
  * Get doctor's slots for a specific date or date range

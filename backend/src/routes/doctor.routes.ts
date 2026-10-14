@@ -11,6 +11,7 @@ import {
   getDoctorLeaves,
   cancelDoctorLeave,
   getDoctorSlots,
+  getAvailableSlotsForDoctor,
   generateDoctorSlots,
   toggleSlotAvailability,
   getAvailableHospitals,
@@ -156,5 +157,10 @@ doctorRouter.patch(
   authorizeRoles(UserRole.HOSPITAL_ADMIN),
   respondToDoctorRequest
 );
+
+// ==========================================
+// PUBLIC / PATIENT ON-DEMAND SLOTS ROUTE
+// ==========================================
+doctorRouter.get("/:doctorId/available-slots", getAvailableSlotsForDoctor);
 
 export default doctorRouter;

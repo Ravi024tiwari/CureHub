@@ -102,82 +102,194 @@ export const releaseExpiredSlotLocks = async (): Promise<void> => {
 
 export const initiateBooking = asyncHandler(async (req: Request, res: Response) => {
   const patientId = req.user?.userId;
-  const { slotId, symptoms, type } = req.body;
+  const { slotId, doctorId, date, startTime, symptoms, type } = req.body;
 
-  if (!slotId || !symptoms || !symptoms.trim()) {
-    throw new ApiError(400, "Time slot and symptoms/reason for consultation are required.");
-  }
-
-  if (!mongoose.Types.ObjectId.isValid(slotId)) {
-    throw new ApiError(400, "Invalid slot ID format.");
+  if (!symptoms || !symptoms.trim()) {
+    throw new ApiError(400, "Symptoms or reason for consultation is required.");
   }
 
   // ── Garbage-collect expired locks before proceeding ─────────────────────
   await releaseExpiredSlotLocks();
 
-  const slot = await TimeSlot.findById(slotId);
-  if (!slot) {
-    throw new ApiError(404, "Requested time slot not found.");
-  }
+  let lockedSlot: any = null;
+  let doctor: any = null;
+  let targetDate = date;
+  let targetStartTime = startTime;
 
-  if (slot.status !== SlotStatus.AVAILABLE) {
-    throw new ApiError(
-      409,
-      "This time slot is no longer available. Please select another slot."
-    );
-  }
-
-  // ── 2. Prevent past slots from being booked ────────────────────────────
-  const slotDateTime = parseAppointmentDateTime(slot.date, slot.startTime);
-  if (slotDateTime.getTime() <= Date.now()) {
-    throw new ApiError(400, "Cannot book an appointment for a past date or time.");
-  }
-
-  // ── 3. Double Booking Guard ────────────────────────────────────────────
-  const existingActiveAppointment = await Appointment.findOne({
-    patientId,
-    date: slot.date,
-    startTime: slot.startTime,
-    status: {
-      $nin: [
-        AppointmentStatus.CANCELLED_BY_PATIENT,
-        AppointmentStatus.CANCELLED_BY_DOCTOR,
-      ],
-    },
-  });
-
-  if (existingActiveAppointment) {
-    throw new ApiError(
-      409,
-      "You already have an active appointment scheduled at this exact date and time."
-    );
-  }
-
-  // ── 4. Verify doctor is active and not on leave ────────────────────────
-  const doctor = await DoctorProfile.findById(slot.doctorId);
-  if (!doctor || !doctor.isActive) {
-    throw new ApiError(404, "The requested doctor is currently not accepting appointments.");
-  }
-
-  const isOnLeave = doctor.leaves?.some((leave) => leave.date === slot.date);
-  if (isOnLeave) {
-    throw new ApiError(400, "The doctor is on leave on this date. Please select another date.");
-  }
-
-  // ── 5. Atomically lock the slot (AVAILABLE → LOCKED) with 5-min TTL ───
   const now = new Date();
   const lockExpiresAt = new Date(now.getTime() + SLOT_LOCK_DURATION_MS);
 
-  const lockedSlot = await TimeSlot.findOneAndUpdate(
-    { _id: slot._id, status: SlotStatus.AVAILABLE },
-    {
-      status: SlotStatus.LOCKED,
-      lockedByPatientId: new mongoose.Types.ObjectId(patientId),
-      lockedAt: now,
-      lockExpiresAt,
-    },
-    { new: true }
-  );
+  // Helper conversions for timing
+  const toMinutes = (timeStr: string) => {
+    const [h, m] = timeStr.split(":").map(Number);
+    return h * 60 + m;
+  };
+
+  const toTimeString = (totalMinutes: number) => {
+    const h = Math.floor(totalMinutes / 60)
+      .toString()
+      .padStart(2, "0");
+    const m = (totalMinutes % 60).toString().padStart(2, "0");
+    return `${h}:${m}`;
+  };
+
+  // =========================================================================
+  // APPROACH 1: On-Demand Virtual Booking (doctorId, date, startTime provided)
+  // =========================================================================
+  if (doctorId && date && startTime) {
+    if (!mongoose.Types.ObjectId.isValid(doctorId)) {
+      throw new ApiError(400, "Invalid doctor ID format.");
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new ApiError(400, "Date must be in YYYY-MM-DD format.");
+    }
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(startTime)) {
+      throw new ApiError(400, "Start time must be in HH:mm 24-hour format.");
+    }
+
+    const slotDateTime = parseAppointmentDateTime(date, startTime);
+    if (slotDateTime.getTime() <= Date.now()) {
+      throw new ApiError(400, "Cannot book an appointment for a past date or time.");
+    }
+
+    doctor = await DoctorProfile.findById(doctorId);
+    if (!doctor || !doctor.isActive) {
+      throw new ApiError(404, "The requested doctor is currently not accepting appointments.");
+    }
+    if (!doctor.hospitalId) {
+      throw new ApiError(400, "The requested doctor is currently not affiliated with an active hospital.");
+    }
+
+    // Verify doctor is not on leave
+    const isOnLeave = doctor.leaves?.some((leave: any) => leave.date === date);
+    if (isOnLeave) {
+      throw new ApiError(400, "The doctor is on leave on this date. Please select another date.");
+    }
+
+    // Verify startTime matches doctor's schedule rules and compute endTime
+    const [y, m, d] = date.split("-").map(Number);
+    const dayOfWeek = new Date(y, m - 1, d).getDay();
+
+    const matchingRule = doctor.scheduleRules?.find((r: any) => {
+      if (r.dayOfWeek !== dayOfWeek) return false;
+      const startMin = toMinutes(r.startTime);
+      const endMin = toMinutes(r.endTime);
+      const slotMin = toMinutes(startTime);
+      return slotMin >= startMin && slotMin < endMin;
+    });
+
+    if (!matchingRule) {
+      throw new ApiError(
+        400,
+        "The selected time does not fall within the doctor's active consultation hours for this day."
+      );
+    }
+
+    const duration = matchingRule.slotDurationMinutes || 30;
+    const computedEndTime = toTimeString(toMinutes(startTime) + duration);
+
+    // Guard: Check if already booked or actively locked
+    const existingSlot = await TimeSlot.findOne({ doctorId: doctor._id, date, startTime });
+    if (existingSlot) {
+      if (existingSlot.status === SlotStatus.BOOKED || existingSlot.status === SlotStatus.UNAVAILABLE) {
+        throw new ApiError(409, "This time slot is no longer available. Please select another slot.");
+      }
+      if (
+        existingSlot.status === SlotStatus.LOCKED &&
+        existingSlot.lockExpiresAt &&
+        existingSlot.lockExpiresAt > now
+      ) {
+        throw new ApiError(
+          409,
+          "This time slot is currently being booked by another patient. Please wait or select another slot."
+        );
+      }
+    }
+
+    // Atomic Lock & Upsert with concurrency guard
+    try {
+      lockedSlot = await TimeSlot.findOneAndUpdate(
+        {
+          doctorId: doctor._id,
+          date,
+          startTime,
+          $or: [
+            { status: SlotStatus.AVAILABLE },
+            { status: SlotStatus.LOCKED, lockExpiresAt: { $lte: now } },
+          ],
+        },
+        {
+          $set: {
+            hospitalId: doctor.hospitalId,
+            endTime: computedEndTime,
+            status: SlotStatus.LOCKED,
+            lockedByPatientId: new mongoose.Types.ObjectId(patientId),
+            lockedAt: now,
+            lockExpiresAt,
+          },
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
+    } catch (err: any) {
+      if (err.code === 11000) {
+        throw new ApiError(
+          409,
+          "This slot was just selected by another patient. Please choose another slot."
+        );
+      }
+      throw err;
+    }
+  } else if (slotId) {
+    // =========================================================================
+    // APPROACH 2: Legacy Pre-Existing Slot (slotId provided)
+    // =========================================================================
+    if (!mongoose.Types.ObjectId.isValid(slotId)) {
+      throw new ApiError(400, "Invalid slot ID format.");
+    }
+
+    const slot = await TimeSlot.findById(slotId);
+    if (!slot) {
+      throw new ApiError(404, "Requested time slot not found.");
+    }
+
+    if (slot.status !== SlotStatus.AVAILABLE) {
+      throw new ApiError(409, "This time slot is no longer available. Please select another slot.");
+    }
+
+    const slotDateTime = parseAppointmentDateTime(slot.date, slot.startTime);
+    if (slotDateTime.getTime() <= Date.now()) {
+      throw new ApiError(400, "Cannot book an appointment for a past date or time.");
+    }
+
+    doctor = await DoctorProfile.findById(slot.doctorId);
+    if (!doctor || !doctor.isActive) {
+      throw new ApiError(404, "The requested doctor is currently not accepting appointments.");
+    }
+
+    const isOnLeave = doctor.leaves?.some((leave: any) => leave.date === slot.date);
+    if (isOnLeave) {
+      throw new ApiError(400, "The doctor is on leave on this date. Please select another date.");
+    }
+
+    targetDate = slot.date;
+    targetStartTime = slot.startTime;
+
+    lockedSlot = await TimeSlot.findOneAndUpdate(
+      { _id: slot._id, status: SlotStatus.AVAILABLE },
+      {
+        status: SlotStatus.LOCKED,
+        lockedByPatientId: new mongoose.Types.ObjectId(patientId),
+        lockedAt: now,
+        lockExpiresAt,
+      },
+      { new: true }
+    );
+  } else {
+    throw new ApiError(
+      400,
+      "Please provide either (doctorId, date, startTime) for on-demand booking, or a valid slotId."
+    );
+  }
 
   if (!lockedSlot) {
     throw new ApiError(
@@ -187,7 +299,7 @@ export const initiateBooking = asyncHandler(async (req: Request, res: Response) 
   }
 
   // ── 6. Create Appointment in PENDING_PAYMENT status ────────────────────
-  const appointmentNumber = generateAppointmentNumber(slot.date);
+  const appointmentNumber = generateAppointmentNumber(lockedSlot.date);
   const consultationFee = doctor.consultationFee || 200;
 
   let appointment;
@@ -196,11 +308,11 @@ export const initiateBooking = asyncHandler(async (req: Request, res: Response) 
       appointmentNumber,
       patientId: new mongoose.Types.ObjectId(patientId),
       doctorId: doctor._id,
-      hospitalId: slot.hospitalId || doctor.hospitalId,
-      slotId: slot._id,
-      date: slot.date,
-      startTime: slot.startTime,
-      endTime: slot.endTime,
+      hospitalId: lockedSlot.hospitalId || doctor.hospitalId,
+      slotId: lockedSlot._id,
+      date: lockedSlot.date,
+      startTime: lockedSlot.startTime,
+      endTime: lockedSlot.endTime,
       type: type || ConsultationType.IN_PERSON,
       status: AppointmentStatus.PENDING_PAYMENT,
       symptoms: symptoms.trim(),
@@ -208,7 +320,7 @@ export const initiateBooking = asyncHandler(async (req: Request, res: Response) 
     });
   } catch (error) {
     // Rollback: Release the locked slot on failure
-    await TimeSlot.findByIdAndUpdate(slot._id, {
+    await TimeSlot.findByIdAndUpdate(lockedSlot._id, {
       status: SlotStatus.AVAILABLE,
       lockedByPatientId: null,
       lockedAt: null,
@@ -233,7 +345,7 @@ export const initiateBooking = asyncHandler(async (req: Request, res: Response) 
     });
   } catch (error) {
     // Rollback: Release slot and delete appointment if Razorpay fails
-    await TimeSlot.findByIdAndUpdate(slot._id, {
+    await TimeSlot.findByIdAndUpdate(lockedSlot._id, {
       status: SlotStatus.AVAILABLE,
       lockedByPatientId: null,
       lockedAt: null,
