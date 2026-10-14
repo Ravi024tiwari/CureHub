@@ -2,7 +2,18 @@ import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { Hospital } from "../models/Hospital.model.js";
 import { HospitalAdminProfile } from "../models/HospitalAdminProfile.model.js";
-import { VerificationStatus } from "../constants/index.js";
+import { DoctorProfile } from "../models/DoctorProfile.model.js";
+import { Appointment } from "../models/Appointment.model.js";
+import { Payment } from "../models/Payment.model.js";
+import {
+  HospitalJoinRequest,
+  JoinRequestStatus,
+} from "../models/HospitalJoinRequest.model.js";
+import {
+  VerificationStatus,
+  AppointmentStatus,
+  PaymentStatus,
+} from "../constants/index.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -160,7 +171,6 @@ export const createHospital = asyncHandler(async (req: Request, res: Response) =
 
 
 export const getMyHospital = asyncHandler(async (req: Request, res: Response) => {
-
   const adminUserId = req.user?.userId;
 
   const hospital = await Hospital.findOne({ hospitalAdminId: adminUserId })
@@ -175,6 +185,382 @@ export const getMyHospital = asyncHandler(async (req: Request, res: Response) =>
 
   return res.status(200).json(
     new ApiResponse(200, hospital, "Hospital profile retrieved successfully.")
+  );
+});
+
+
+export const getHospitalDashboard = asyncHandler(async (req: Request, res: Response) => {
+  const adminUserId = req.user?.userId;
+  const currentYear = parseInt(req.query.year as string) || new Date().getFullYear();
+
+  const startOfYear = new Date(currentYear, 0, 1);
+  const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const monthNames = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+
+  // 1. Fetch Affiliated Hospital
+  const hospital = await Hospital.findOne({ hospitalAdminId: adminUserId })
+    .populate("hospitalAdminId", "name email phoneNumber avatar")
+    .populate("verifiedBy", "name email");
+
+  if (!hospital) {
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        { hasHospital: false, hospital: null },
+        "No hospital profile found for this administrator account."
+      )
+    );
+  }
+
+  // 2. Parallel Aggregations & Query Execution
+  const [
+    // Doctors Count
+    approvedDoctorsCount,
+    pendingJoinRequestsCount,
+
+    // Appointment Metrics
+    totalAppointments,
+    completedAppointments,
+    upcomingAppointments,
+    cancelledAppointments,
+    rescheduleRequiredAppointments,
+
+    // Patient Metrics
+    uniquePatientsList,
+    newPatientsThisMonthList,
+
+    // Financial / Revenue Metrics
+    revenueTotalAgg,
+    revenueMonthAgg,
+    refundTotalAgg,
+
+    // Monthly Financial Trends (Jan - Dec)
+    monthlyFinancialAgg,
+
+    // Monthly Appointment & Patient Trends (Jan - Dec)
+    monthlyAppointmentsAgg,
+
+    // Department Performance Breakdown
+    departmentStatsAgg,
+
+    // Top Rated Doctors in this Hospital
+    topDoctors,
+
+    // Urgent Queues: Pending Doctor Join Requests
+    pendingDoctorRequests,
+
+    // Recent 5 Hospital Appointments
+    recentAppointments,
+  ] = await Promise.all([
+    // Doctors
+    DoctorProfile.countDocuments({
+      hospitalId: hospital._id,
+      hospitalAffiliationStatus: "APPROVED",
+    }),
+    HospitalJoinRequest.countDocuments({
+      hospitalId: hospital._id,
+      status: JoinRequestStatus.PENDING,
+    }),
+
+    // Appointments
+    Appointment.countDocuments({ hospitalId: hospital._id }),
+    Appointment.countDocuments({
+      hospitalId: hospital._id,
+      status: AppointmentStatus.COMPLETED,
+    }),
+    Appointment.countDocuments({
+      hospitalId: hospital._id,
+      status: AppointmentStatus.CONFIRMED,
+    }),
+    Appointment.countDocuments({
+      hospitalId: hospital._id,
+      status: {
+        $in: [
+          AppointmentStatus.CANCELLED_BY_PATIENT,
+          AppointmentStatus.CANCELLED_BY_DOCTOR,
+        ],
+      },
+    }),
+    Appointment.countDocuments({
+      hospitalId: hospital._id,
+      status: AppointmentStatus.RESCHEDULE_REQUIRED,
+    }),
+
+    // Patient Metrics (Distinct patient IDs)
+    Appointment.distinct("patientId", { hospitalId: hospital._id }),
+    Appointment.distinct("patientId", {
+      hospitalId: hospital._id,
+      createdAt: { $gte: startOfMonth },
+    }),
+
+    // Total Completed Revenue (All Time)
+    Payment.aggregate([
+      { $match: { hospitalId: hospital._id, status: PaymentStatus.COMPLETED } },
+      { $group: { _id: null, totalRevenue: { $sum: "$amount" } } },
+    ]),
+
+    // Revenue for Current Month
+    Payment.aggregate([
+      {
+        $match: {
+          hospitalId: hospital._id,
+          status: PaymentStatus.COMPLETED,
+          createdAt: { $gte: startOfMonth },
+        },
+      },
+      { $group: { _id: null, monthRevenue: { $sum: "$amount" } } },
+    ]),
+
+    // Total Refunded
+    Payment.aggregate([
+      { $match: { hospitalId: hospital._id, status: PaymentStatus.REFUNDED } },
+      { $group: { _id: null, totalRefunded: { $sum: "$amount" } } },
+    ]),
+
+    // 12-Month Financial Aggregation (Revenue & Refunds by Month)
+    Payment.aggregate([
+      {
+        $match: {
+          hospitalId: hospital._id,
+          createdAt: { $gte: startOfYear, $lte: endOfYear },
+          status: { $in: [PaymentStatus.COMPLETED, PaymentStatus.REFUNDED] },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            month: { $month: "$createdAt" },
+            status: "$status",
+          },
+          totalAmount: { $sum: "$amount" },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+
+    // 12-Month Appointment Activity Aggregation
+    Appointment.aggregate([
+      {
+        $match: {
+          hospitalId: hospital._id,
+          createdAt: { $gte: startOfYear, $lte: endOfYear },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            month: { $month: "$createdAt" },
+            status: "$status",
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+
+    // Department Distribution
+    DoctorProfile.aggregate([
+      {
+        $match: {
+          hospitalId: hospital._id,
+          hospitalAffiliationStatus: "APPROVED",
+        },
+      },
+      {
+        $group: {
+          _id: "$department",
+          doctorCount: { $sum: 1 },
+          averageFee: { $avg: "$consultationFee" },
+          averageRating: { $avg: "$ratingAverage" },
+        },
+      },
+      { $sort: { doctorCount: -1 } },
+    ]),
+
+    // Top 5 Doctors in Hospital
+    DoctorProfile.find({
+      hospitalId: hospital._id,
+      hospitalAffiliationStatus: "APPROVED",
+    })
+      .populate("userId", "name email phoneNumber avatar")
+      .select("department specialization consultationFee ratingAverage")
+      .sort({ ratingAverage: -1 })
+      .limit(5),
+
+    // Urgent: Latest 5 Pending Join Requests
+    HospitalJoinRequest.find({
+      hospitalId: hospital._id,
+      status: JoinRequestStatus.PENDING,
+    })
+      .populate({
+        path: "doctorId",
+        select:
+          "department specialization qualifications experienceYears medicalCouncilRegistrationNumber consultationFee",
+        populate: { path: "userId", select: "name email phoneNumber avatar" },
+      })
+      .sort({ createdAt: -1 })
+      .limit(5),
+
+    // Recent 5 Appointments
+    Appointment.find({ hospitalId: hospital._id })
+      .populate({
+        path: "doctorId",
+        select: "department",
+        populate: { path: "userId", select: "name avatar" },
+      })
+      .populate("patientId", "name email phoneNumber avatar")
+      .select("appointmentNumber date startTime endTime status symptoms consultationFee createdAt")
+      .sort({ createdAt: -1 })
+      .limit(5),
+  ]);
+
+  // 3. Financial Totals Calculations
+  const totalRevenue = revenueTotalAgg[0]?.totalRevenue || 0;
+  const revenueThisMonth = revenueMonthAgg[0]?.monthRevenue || 0;
+  const totalRefunded = refundTotalAgg[0]?.totalRefunded || 0;
+  const netRevenue = Math.max(0, totalRevenue - totalRefunded);
+
+  // 4. Format 12-Month Financial Trends (Jan - Dec)
+  const monthlyRevenueTrends = monthNames.map((name, index) => {
+    const monthNum = index + 1;
+    const completedPayments = monthlyFinancialAgg.find(
+      (p) => p._id.month === monthNum && p._id.status === PaymentStatus.COMPLETED
+    );
+    const refundedPayments = monthlyFinancialAgg.find(
+      (p) => p._id.month === monthNum && p._id.status === PaymentStatus.REFUNDED
+    );
+
+    const grossRevenue = completedPayments?.totalAmount || 0;
+    const refunded = refundedPayments?.totalAmount || 0;
+    const net = Math.max(0, grossRevenue - refunded);
+
+    return {
+      month: name,
+      monthNumber: monthNum,
+      grossRevenue,
+      refunded,
+      netRevenue: net,
+      transactionsCount: completedPayments?.count || 0,
+    };
+  });
+
+  // 5. Format 12-Month Patient & Appointment Activity (Jan - Dec)
+  const monthlyPatientTrends = monthNames.map((name, index) => {
+    const monthNum = index + 1;
+    const monthAppts = monthlyAppointmentsAgg.filter((a) => a._id.month === monthNum);
+
+    const booked = monthAppts.reduce((sum, item) => sum + item.count, 0);
+    const completed =
+      monthAppts.find((a) => a._id.status === AppointmentStatus.COMPLETED)?.count || 0;
+    const cancelled = monthAppts
+      .filter((a) =>
+        [
+          AppointmentStatus.CANCELLED_BY_PATIENT,
+          AppointmentStatus.CANCELLED_BY_DOCTOR,
+        ].includes(a._id.status)
+      )
+      .reduce((sum, item) => sum + item.count, 0);
+    const rescheduled =
+      monthAppts.find((a) => a._id.status === AppointmentStatus.RESCHEDULE_REQUIRED)?.count || 0;
+
+    return {
+      month: name,
+      monthNumber: monthNum,
+      bookedAppointments: booked,
+      completedConsultations: completed,
+      cancelledAppointments: cancelled,
+      rescheduledAppointments: rescheduled,
+    };
+  });
+
+  // 6. Format Department Stats
+  const departmentsData = departmentStatsAgg.map((dept) => ({
+    name: dept._id || "General Medicine",
+    doctorCount: dept.doctorCount,
+    averageConsultationFee: Math.round(dept.averageFee || 0),
+    averageRating: Math.round((dept.averageRating || 0) * 10) / 10,
+  }));
+
+  // 7. Resolution Rate
+  const totalResolved = completedAppointments + cancelledAppointments;
+  const completionRate =
+    totalResolved > 0 ? Math.round((completedAppointments / totalResolved) * 100) : 100;
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        hasHospital: true,
+        year: currentYear,
+
+        // Hospital Profile Overview
+        hospital: {
+          id: hospital._id,
+          name: hospital.name,
+          slug: hospital.slug,
+          verificationStatus: hospital.verificationStatus,
+          address: hospital.address,
+          totalBeds: hospital.totalBeds,
+          departments: hospital.departments,
+          contactPhone: hospital.contactPhone,
+          contactEmail: hospital.contactEmail,
+          isEmergency24x7: hospital.isEmergency24x7,
+          verified: hospital.verificationStatus === VerificationStatus.APPROVED,
+        },
+
+        // 1. Executive Summary Cards (KPIs)
+        kpis: {
+          doctors: {
+            totalAffiliated: approvedDoctorsCount,
+            pendingJoinRequests: pendingJoinRequestsCount,
+          },
+          patients: {
+            totalTreatedUnique: uniquePatientsList.length,
+            newPatientsThisMonth: newPatientsThisMonthList.length,
+          },
+          appointments: {
+            totalBooked: totalAppointments,
+            completed: completedAppointments,
+            upcomingConfirmed: upcomingAppointments,
+            totalCancelled: cancelledAppointments,
+            rescheduleRequired: rescheduleRequiredAppointments,
+            completionRate: `${completionRate}%`,
+          },
+          financials: {
+            totalGrossRevenue: totalRevenue,
+            netRevenue,
+            revenueThisMonth,
+            totalRefunded,
+            currency: "INR",
+          },
+        },
+
+        // 2. Time-Series Visual Graphs (12 Months Jan - Dec)
+        charts: {
+          monthlyRevenue: monthlyRevenueTrends,
+          monthlyPatientsAndAppointments: monthlyPatientTrends,
+        },
+
+        // 3. Departmental Distribution (For Bar / Pie Charts)
+        departments: departmentsData,
+
+        // 4. Top Performing Doctors in Hospital
+        topDoctors,
+
+        // 5. Actionable Review Queues & Recent Consultations
+        queues: {
+          pendingDoctorRequests,
+          recentAppointments,
+        },
+      },
+      "Hospital admin dashboard retrieved successfully."
+    )
   );
 });
 

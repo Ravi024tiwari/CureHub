@@ -4,7 +4,8 @@ import { User } from "../models/User.model.js";
 import { DoctorProfile } from "../models/DoctorProfile.model.js";
 import { HospitalAdminProfile } from "../models/HospitalAdminProfile.model.js";
 import { Hospital } from "../models/Hospital.model.js";
-import { VerificationStatus, UserRole } from "../constants/index.js";
+import { Appointment } from "../models/Appointment.model.js";
+import { VerificationStatus, UserRole, AppointmentStatus } from "../constants/index.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -386,8 +387,9 @@ export const getHospitalAdminVerificationDetails = asyncHandler(
   }
 );
 
-// this is for the stats of the admin dashboard 
-//we will update that route in the future
+/**
+ * Legacy Verification Stats (Retained for backward compatibility)
+ */
 export const getVerificationStats = asyncHandler(async (_req: Request, res: Response) => {
   const [
     pendingDoctors,
@@ -436,3 +438,364 @@ export const getVerificationStats = asyncHandler(async (_req: Request, res: Resp
     )
   );
 });
+
+
+export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res: Response) => {
+  const currentYear = parseInt(req.query.year as string) || new Date().getFullYear();
+  const startOfYear = new Date(currentYear, 0, 1);
+  const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Month names for time-series charts
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  // ── Parallel Execution of All Platform Metrics ─────────────────────────────
+  const [
+    // 1. User & Patient Metrics
+    totalUsers,
+    totalPatients,
+    activePatients,
+    newPatientsThisMonth,
+
+    // 2. Doctor Metrics & Verification Breakdown
+    totalDoctors,
+    approvedDoctors,
+    pendingDoctors,
+    rejectedDoctors,
+    suspendedDoctors,
+    affiliatedDoctors,
+    pendingAffiliationDoctors,
+    unaffiliatedDoctors,
+
+    // 3. Hospital Metrics
+    totalHospitals,
+    verifiedHospitals,
+    pendingHospitals,
+    pendingHospitalAdmins,
+
+    // 4. Appointment Operations
+    totalAppointments,
+    completedAppointments,
+    upcomingConfirmedAppointments,
+    cancelledByPatientAppointments,
+    cancelledByDoctorAppointments,
+    rescheduleRequiredAppointments,
+
+    // 5. Monthly User Registrations Aggregation
+    userGrowthAgg,
+
+    // 6. Monthly Hospital Onboarding Aggregation
+    hospitalGrowthAgg,
+
+    // 7. Monthly Appointment Activity Aggregation
+    appointmentActivityAgg,
+
+    // 8. Department Distribution (Top Specialties)
+    departmentAgg,
+
+    // 9. Top Verified Hospitals by Bed Capacity
+    topHospitals,
+
+    // 10. Urgent Action Queues (Latest 5 pending doctors & admins)
+    recentPendingDoctors,
+    recentPendingHospitalAdmins,
+  ] = await Promise.all([
+    // 1. Users
+    User.countDocuments(),
+    User.countDocuments({ role: UserRole.PATIENT }),
+    User.countDocuments({ role: UserRole.PATIENT, isActive: true }),
+    User.countDocuments({ role: UserRole.PATIENT, createdAt: { $gte: startOfMonth } }),
+
+    // 2. Doctors
+    DoctorProfile.countDocuments(),
+    DoctorProfile.countDocuments({ verificationStatus: VerificationStatus.APPROVED }),
+    DoctorProfile.countDocuments({ verificationStatus: VerificationStatus.PENDING }),
+    DoctorProfile.countDocuments({ verificationStatus: VerificationStatus.REJECTED }),
+    DoctorProfile.countDocuments({ verificationStatus: VerificationStatus.SUSPENDED }),
+    DoctorProfile.countDocuments({ hospitalAffiliationStatus: "APPROVED" }),
+    DoctorProfile.countDocuments({ hospitalAffiliationStatus: "PENDING_APPROVAL" }),
+    DoctorProfile.countDocuments({ hospitalAffiliationStatus: "NOT_AFFILIATED" }),
+
+    // 3. Hospitals
+    Hospital.countDocuments(),
+    Hospital.countDocuments({ verified: true }),
+    Hospital.countDocuments({ verified: false }),
+    HospitalAdminProfile.countDocuments({ verificationStatus: VerificationStatus.PENDING }),
+
+    // 4. Appointments
+    Appointment.countDocuments(),
+    Appointment.countDocuments({ status: AppointmentStatus.COMPLETED }),
+    Appointment.countDocuments({ status: AppointmentStatus.CONFIRMED }),
+    Appointment.countDocuments({ status: AppointmentStatus.CANCELLED_BY_PATIENT }),
+    Appointment.countDocuments({ status: AppointmentStatus.CANCELLED_BY_DOCTOR }),
+    Appointment.countDocuments({ status: AppointmentStatus.RESCHEDULE_REQUIRED }),
+
+    // 5. Monthly User Growth Aggregation
+    User.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfYear, $lte: endOfYear },
+          role: { $in: [UserRole.PATIENT, UserRole.DOCTOR, UserRole.HOSPITAL_ADMIN] },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            month: { $month: "$createdAt" },
+            role: "$role",
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+
+    // 6. Monthly Hospital Growth Aggregation
+    Hospital.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfYear, $lte: endOfYear },
+        },
+      },
+      {
+        $group: {
+          _id: { month: { $month: "$createdAt" } },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+
+    // 7. Monthly Appointment Activity Aggregation
+    Appointment.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfYear, $lte: endOfYear },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            month: { $month: "$createdAt" },
+            status: "$status",
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+
+    // 8. Department Distribution (Top 8 specialties)
+    DoctorProfile.aggregate([
+      { $match: { verificationStatus: VerificationStatus.APPROVED } },
+      {
+        $group: {
+          _id: "$department",
+          doctorCount: { $sum: 1 },
+          averageExperience: { $avg: "$experienceYears" },
+          averageRating: { $avg: "$ratingAverage" },
+        },
+      },
+      { $sort: { doctorCount: -1 } },
+      { $limit: 8 },
+    ]),
+
+    // 9. Top 5 Hospitals by Capacity
+    Hospital.find({ verified: true })
+      .select("name address.city address.state totalBeds icuBeds emergencyServices contactPhone")
+      .sort({ totalBeds: -1 })
+      .limit(5),
+
+    // 10. Urgent Action Queues
+    DoctorProfile.find({ verificationStatus: VerificationStatus.PENDING })
+      .populate("userId", "name email phoneNumber avatar createdAt")
+      .select("department specialization medicalCouncilRegistrationNumber experienceYears createdAt")
+      .sort({ createdAt: -1 })
+      .limit(5),
+
+    HospitalAdminProfile.find({ verificationStatus: VerificationStatus.PENDING })
+      .populate("userId", "name email phoneNumber avatar createdAt")
+      .select("hospitalName hospitalRegistrationNumber designation createdAt")
+      .sort({ createdAt: -1 })
+      .limit(5),
+  ]);
+
+  // ── Format Monthly User Growth Trend (Jan - Dec) ───────────────────────────
+  const monthlyUserGrowth = monthNames.map((name, index) => {
+    const monthNum = index + 1;
+    const patients =
+      userGrowthAgg.find(
+        (u) => u._id.month === monthNum && u._id.role === UserRole.PATIENT
+      )?.count || 0;
+    const doctors =
+      userGrowthAgg.find(
+        (u) => u._id.month === monthNum && u._id.role === UserRole.DOCTOR
+      )?.count || 0;
+    const hospitalAdmins =
+      userGrowthAgg.find(
+        (u) => u._id.month === monthNum && u._id.role === UserRole.HOSPITAL_ADMIN
+      )?.count || 0;
+    const hospitals =
+      hospitalGrowthAgg.find((h) => h._id.month === monthNum)?.count || 0;
+
+    return {
+      month: name,
+      monthNumber: monthNum,
+      patients,
+      doctors,
+      hospitalAdmins,
+      hospitals,
+      totalNewUsers: patients + doctors + hospitalAdmins,
+    };
+  });
+
+  // ── Format Monthly Appointment Activity Trend (Jan - Dec) ──────────────────
+  const monthlyAppointmentTrends = monthNames.map((name, index) => {
+    const monthNum = index + 1;
+    const monthAppointments = appointmentActivityAgg.filter(
+      (a) => a._id.month === monthNum
+    );
+
+    const booked = monthAppointments.reduce((sum, item) => sum + item.count, 0);
+    const completed =
+      monthAppointments.find(
+        (a) => a._id.status === AppointmentStatus.COMPLETED
+      )?.count || 0;
+    const cancelled =
+      monthAppointments
+        .filter((a) =>
+          [
+            AppointmentStatus.CANCELLED_BY_PATIENT,
+            AppointmentStatus.CANCELLED_BY_DOCTOR,
+          ].includes(a._id.status)
+        )
+        .reduce((sum, item) => sum + item.count, 0);
+    const rescheduled =
+      monthAppointments.find(
+        (a) => a._id.status === AppointmentStatus.RESCHEDULE_REQUIRED
+      )?.count || 0;
+
+    return {
+      month: name,
+      monthNumber: monthNum,
+      booked,
+      completed,
+      cancelled,
+      rescheduled,
+    };
+  });
+
+  // ── Format Department Distribution ─────────────────────────────────────────
+  const departmentDistribution = departmentAgg.map((dept) => ({
+    department: dept._id || "General Medicine",
+    doctorCount: dept.doctorCount,
+    averageExperienceYears: Math.round((dept.averageExperience || 0) * 10) / 10,
+    averageRating: Math.round((dept.averageRating || 0) * 10) / 10,
+  }));
+
+  // ── Calculate Health Percentages ───────────────────────────────────────────
+  const totalResolvedAppointments =
+    completedAppointments +
+    cancelledByPatientAppointments +
+    cancelledByDoctorAppointments;
+
+  const completionRate =
+    totalResolvedAppointments > 0
+      ? Math.round((completedAppointments / totalResolvedAppointments) * 100)
+      : 100;
+
+  const cancellationRate =
+    totalResolvedAppointments > 0
+      ? Math.round(
+          ((cancelledByPatientAppointments + cancelledByDoctorAppointments) /
+            totalResolvedAppointments) *
+            100
+        )
+      : 0;
+
+  // ── Assemble Final Production Response ─────────────────────────────────────
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        year: currentYear,
+
+        // 1. Executive KPI Summary Cards
+        summary: {
+          totalPlatformUsers: totalUsers,
+          patients: {
+            total: totalPatients,
+            active: activePatients,
+            newThisMonth: newPatientsThisMonth,
+          },
+          doctors: {
+            total: totalDoctors,
+            approved: approvedDoctors,
+            pending: pendingDoctors,
+            rejected: rejectedDoctors,
+            suspended: suspendedDoctors,
+          },
+          hospitals: {
+            total: totalHospitals,
+            verified: verifiedHospitals,
+            pending: pendingHospitals,
+          },
+          appointments: {
+            totalBooked: totalAppointments,
+            completed: completedAppointments,
+            upcomingConfirmed: upcomingConfirmedAppointments,
+            totalCancelled:
+              cancelledByPatientAppointments + cancelledByDoctorAppointments,
+            cancelledByPatient: cancelledByPatientAppointments,
+            cancelledByDoctor: cancelledByDoctorAppointments,
+            rescheduleRequired: rescheduleRequiredAppointments,
+          },
+          operationalHealth: {
+            completionRate: `${completionRate}%`,
+            cancellationRate: `${cancellationRate}%`,
+            pendingVerificationsQueue: pendingDoctors + pendingHospitalAdmins,
+          },
+        },
+
+        // 2. Time-Series Graphs (12-Month Arrays for Line / Bar Charts)
+        charts: {
+          monthlyUserGrowth,
+          monthlyAppointmentTrends,
+        },
+
+        // 3. Segmented Distribution Breakdowns (For Doughnut / Pie Charts)
+        distribution: {
+          departments: departmentDistribution,
+          doctorAffiliations: {
+            approvedAffiliated: affiliatedDoctors,
+            pendingHospitalApproval: pendingAffiliationDoctors,
+            unaffiliated: unaffiliatedDoctors,
+          },
+          doctorVerifications: {
+            approved: approvedDoctors,
+            pending: pendingDoctors,
+            rejected: rejectedDoctors,
+            suspended: suspendedDoctors,
+          },
+          appointmentStatusBreakdown: {
+            completed: completedAppointments,
+            upcoming: upcomingConfirmedAppointments,
+            cancelled:
+              cancelledByPatientAppointments + cancelledByDoctorAppointments,
+            rescheduleRequired: rescheduleRequiredAppointments,
+          },
+        },
+
+        // 4. Hospital Capacity Highlights
+        topHospitalsByCapacity: topHospitals,
+
+        // 5. Actionable Review Queues (Immediate Attention Needed)
+        actionQueues: {
+          pendingDoctors: recentPendingDoctors,
+          pendingHospitalAdmins: recentPendingHospitalAdmins,
+        },
+      },
+      "Admin dashboard analytics retrieved successfully"
+    )
+  );
+});
+

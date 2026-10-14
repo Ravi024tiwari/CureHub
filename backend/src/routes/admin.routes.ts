@@ -7,6 +7,7 @@ import {
   getHospitalAdminsForVerification,
   getHospitalAdminVerificationDetails,
   getVerificationStats,
+  getAdminDashboardAnalytics,
 } from "../controllers/admin.controller.js";
 import {
   authenticateToken,
@@ -19,7 +20,10 @@ const adminRouter = Router();
 // Protect all admin routes with authentication and SUPER_ADMIN authorization
 adminRouter.use(authenticateToken, authorizeRoles(UserRole.SUPER_ADMIN));
 
-// Overview stats
+// Production Admin Dashboard Analytics & KPIs
+adminRouter.get("/dashboard", getAdminDashboardAnalytics);
+
+// Overview verification stats
 adminRouter.get("/verifications/stats", getVerificationStats);
 
 // Doctor verification routes

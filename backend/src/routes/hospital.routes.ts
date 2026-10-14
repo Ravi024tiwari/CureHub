@@ -1,5 +1,12 @@
 import { Router } from "express";
-import {createHospital,getMyHospital,updateMyHospital,getAllHospitals,getHospitalBySlug,getHospitalById,
+import {
+  createHospital,
+  getMyHospital,
+  getHospitalDashboard,
+  updateMyHospital,
+  getAllHospitals,
+  getHospitalBySlug,
+  getHospitalById,
 } from "../controllers/hospital.controller.js";
 
 import {
@@ -10,6 +17,21 @@ import {
 import { UserRole } from "../constants/index.js";
 
 const hospitalRouter = Router();
+
+// Hospital Admin Dashboard & Analytics (Revenue, Patients, Doctors, Capacity)
+hospitalRouter.get(
+  "/dashboard",
+  authenticateToken,
+  authorizeRoles(UserRole.HOSPITAL_ADMIN),
+  getHospitalDashboard
+);
+
+hospitalRouter.get(
+  "/my-hospital/dashboard",
+  authenticateToken,
+  authorizeRoles(UserRole.HOSPITAL_ADMIN),
+  getHospitalDashboard
+);
 
 hospitalRouter.post(
   "/",
