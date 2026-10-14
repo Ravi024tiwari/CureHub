@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { Appointment } from "../models/Appointment.model.js";
+import { DoctorProfile } from "../models/DoctorProfile.model.js";
 import { TimeSlot } from "../models/TimeSlot.model.js";
 import { Payment } from "../models/Payment.model.js";
 import { AppointmentStatus, SlotStatus, PaymentStatus } from "../constants/index.js";
@@ -281,10 +282,10 @@ export const cancelAppointment = asyncHandler(async (req: Request, res: Response
 export const rescheduleAppointment = asyncHandler(async (req: Request, res: Response) => {
   const patientId = req.user?.userId;
   const { id } = req.params;
-  const { newSlotId } = req.body;
+  const { newSlotId, date, startTime } = req.body;
 
-  if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(newSlotId)) {
-    throw new ApiError(400, "Invalid appointment ID or new slot ID");
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(400, "Invalid appointment ID format.");
   }
 
   const appointment = await Appointment.findOne({ _id: id, patientId });
@@ -326,40 +327,154 @@ export const rescheduleAppointment = asyncHandler(async (req: Request, res: Resp
     }
   }
 
-  // Find and validate the requested new slot
-  const newSlot = await TimeSlot.findById(newSlotId);
-  if (!newSlot) {
-    throw new ApiError(404, "Requested new time slot not found");
-  }
+  let lockedNewSlot: any = null;
 
-  if (newSlot.status !== SlotStatus.AVAILABLE) {
-    throw new ApiError(409, "The selected new time slot is not available. Please choose another slot.");
-  }
+  // Helper conversions for timing
+  const toMinutes = (timeStr: string) => {
+    const [h, m] = timeStr.split(":").map(Number);
+    return h * 60 + m;
+  };
 
-  // Must belong to the same doctor
-  if (newSlot.doctorId.toString() !== appointment.doctorId.toString()) {
-    throw new ApiError(
-      400,
-      "Appointments can only be rescheduled with the same affiliated doctor."
+  const toTimeString = (totalMinutes: number) => {
+    const h = Math.floor(totalMinutes / 60)
+      .toString()
+      .padStart(2, "0");
+    const m = (totalMinutes % 60).toString().padStart(2, "0");
+    return `${h}:${m}`;
+  };
+
+  if (date && startTime) {
+    // =========================================================================
+    // APPROACH 1: On-Demand Virtual Reschedule (date + startTime)
+    // =========================================================================
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new ApiError(400, "Date must be in YYYY-MM-DD format.");
+    }
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(startTime)) {
+      throw new ApiError(400, "Start time must be in HH:mm 24-hour format.");
+    }
+
+    const slotDateTime = parseAppointmentDateTime(date, startTime);
+    if (slotDateTime.getTime() <= Date.now()) {
+      throw new ApiError(400, "Cannot reschedule to a slot in the past.");
+    }
+
+    const doctor = await DoctorProfile.findById(appointment.doctorId);
+    if (!doctor || !doctor.isActive) {
+      throw new ApiError(404, "The affiliated doctor is currently not accepting appointments.");
+    }
+
+    // Verify doctor not on leave
+    const isOnLeave = doctor.leaves?.some((l: any) => l.date === date);
+    if (isOnLeave) {
+      throw new ApiError(400, "The doctor is on leave on this date. Please pick another date.");
+    }
+
+    // Check doctor schedule rules for dayOfWeek
+    const [y, m, d] = date.split("-").map(Number);
+    const dayOfWeek = new Date(y, m - 1, d).getDay();
+
+    const matchingRule = doctor.scheduleRules?.find((r: any) => {
+      if (r.dayOfWeek !== dayOfWeek) return false;
+      const startMin = toMinutes(r.startTime);
+      const endMin = toMinutes(r.endTime);
+      const slotMin = toMinutes(startTime);
+      return slotMin >= startMin && slotMin < endMin;
+    });
+
+    if (!matchingRule) {
+      throw new ApiError(
+        400,
+        "The selected time does not fall within the doctor's active consultation hours for this day."
+      );
+    }
+
+    const duration = matchingRule.slotDurationMinutes || 30;
+    const computedEndTime = toTimeString(toMinutes(startTime) + duration);
+
+    // Guard: check if already booked or actively locked
+    const existingSlot = await TimeSlot.findOne({ doctorId: doctor._id, date, startTime });
+    if (existingSlot) {
+      if (existingSlot.status === SlotStatus.BOOKED || existingSlot.status === SlotStatus.UNAVAILABLE) {
+        throw new ApiError(409, "The selected time slot is already booked. Please choose another time.");
+      }
+      if (
+        existingSlot.status === SlotStatus.LOCKED &&
+        existingSlot.lockExpiresAt &&
+        existingSlot.lockExpiresAt > new Date()
+      ) {
+        throw new ApiError(409, "This time slot is currently being booked. Please select another slot.");
+      }
+    }
+
+    // Concurrency lock and mark as BOOKED directly since this is an immediate confirmed reschedule
+    try {
+      lockedNewSlot = await TimeSlot.findOneAndUpdate(
+        {
+          doctorId: doctor._id,
+          date,
+          startTime,
+          $or: [
+            { status: SlotStatus.AVAILABLE },
+            { status: SlotStatus.LOCKED, lockExpiresAt: { $lte: new Date() } },
+          ],
+        },
+        {
+          $set: {
+            hospitalId: doctor.hospitalId,
+            endTime: computedEndTime,
+            status: SlotStatus.BOOKED,
+            lockedByPatientId: new mongoose.Types.ObjectId(patientId),
+            lockedAt: new Date(),
+            lockExpiresAt: null,
+          },
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
+    } catch (err: any) {
+      if (err.code === 11000) {
+        throw new ApiError(409, "The selected new slot was just booked. Please pick another slot.");
+      }
+      throw err;
+    }
+  } else if (newSlotId) {
+    // =========================================================================
+    // APPROACH 2: Legacy Pre-Existing Slot (newSlotId)
+    // =========================================================================
+    if (!mongoose.Types.ObjectId.isValid(newSlotId)) {
+      throw new ApiError(400, "Invalid new slot ID format.");
+    }
+
+    const newSlot = await TimeSlot.findById(newSlotId);
+    if (!newSlot) {
+      throw new ApiError(404, "Requested new time slot not found");
+    }
+
+    if (newSlot.status !== SlotStatus.AVAILABLE) {
+      throw new ApiError(409, "The selected new time slot is not available. Please choose another slot.");
+    }
+
+    if (newSlot.doctorId.toString() !== appointment.doctorId.toString()) {
+      throw new ApiError(400, "Appointments can only be rescheduled with the same affiliated doctor.");
+    }
+
+    const newSlotDateTime = parseAppointmentDateTime(newSlot.date, newSlot.startTime);
+    if (newSlotDateTime.getTime() <= Date.now()) {
+      throw new ApiError(400, "Cannot reschedule to a slot in the past.");
+    }
+
+    lockedNewSlot = await TimeSlot.findOneAndUpdate(
+      { _id: newSlot._id, status: SlotStatus.AVAILABLE },
+      {
+        status: SlotStatus.BOOKED,
+        lockedByPatientId: new mongoose.Types.ObjectId(patientId),
+        lockedAt: new Date(),
+      },
+      { new: true }
     );
+  } else {
+    throw new ApiError(400, "Please provide either (date, startTime) or a newSlotId to reschedule.");
   }
-
-  // Check new slot is in the future
-  const newSlotDateTime = parseAppointmentDateTime(newSlot.date, newSlot.startTime);
-  if (newSlotDateTime.getTime() <= Date.now()) {
-    throw new ApiError(400, "Cannot reschedule to a slot in the past.");
-  }
-
-  // Concurrency lock on new slot
-  const lockedNewSlot = await TimeSlot.findOneAndUpdate(
-    { _id: newSlot._id, status: SlotStatus.AVAILABLE },
-    {
-      status: SlotStatus.BOOKED,
-      lockedByPatientId: new mongoose.Types.ObjectId(patientId),
-      lockedAt: new Date(),
-    },
-    { new: true }
-  );
 
   if (!lockedNewSlot) {
     throw new ApiError(409, "The selected new slot was just booked. Please pick another slot.");
@@ -390,10 +505,10 @@ export const rescheduleAppointment = asyncHandler(async (req: Request, res: Resp
   });
 
   // Update appointment with new schedule
-  appointment.slotId = newSlot._id;
-  appointment.date = newSlot.date;
-  appointment.startTime = newSlot.startTime;
-  appointment.endTime = newSlot.endTime;
+  appointment.slotId = lockedNewSlot._id;
+  appointment.date = lockedNewSlot.date;
+  appointment.startTime = lockedNewSlot.startTime;
+  appointment.endTime = lockedNewSlot.endTime;
   appointment.status = AppointmentStatus.CONFIRMED; // Restored to CONFIRMED!
   appointment.rescheduleDeadline = null;
   appointment.doctorLeaveReason = null;
