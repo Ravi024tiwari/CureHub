@@ -4,6 +4,7 @@ import {
   getAppointmentDetails,
   cancelAppointment,
   rescheduleAppointment,
+  downloadPrescriptionPdf,
 } from "../controllers/appointment.controller.js";
 import {
   initiateBooking,
@@ -52,6 +53,10 @@ appointmentRouter.get(
 
 // Particular appointment details (accessible by appointment participants)
 appointmentRouter.get("/:id", getAppointmentDetails);
+
+// Download or preview digital prescription PDF (Patient, Doctor, Hospital Admin, Super Admin)
+appointmentRouter.get("/:id/prescription/download", downloadPrescriptionPdf);
+appointmentRouter.get("/:id/download-prescription", downloadPrescriptionPdf);
 
 // Cancel appointment (Enforces 2-day prior policy + Razorpay refund)
 appointmentRouter.patch(

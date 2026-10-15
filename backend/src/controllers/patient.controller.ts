@@ -3,7 +3,8 @@ import mongoose from "mongoose";
 import { Appointment } from "../models/Appointment.model.js";
 import { Payment } from "../models/Payment.model.js";
 import { PatientProfile } from "../models/PatientProfile.model.js";
-import { AppointmentStatus, PaymentStatus } from "../constants/index.js";
+import { AppointmentStatus, PaymentStatus, Gender, BloodGroup } from "../constants/index.js";
+import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -113,6 +114,324 @@ export const getPatientDashboard = asyncHandler(async (req: Request, res: Respon
         recentAppointments,
       },
       "Patient dashboard data retrieved successfully"
+    )
+  );
+});
+
+/**
+ * ============================================================================
+ * Patient Prescription Locker
+ * ============================================================================
+ * Fetches all completed consultation prescriptions across all appointments
+ */
+export const getPatientPrescriptions = asyncHandler(async (req: Request, res: Response) => {
+  const patientId = req.user?.userId;
+  if (!patientId) throw new ApiError(401, "Unauthorized");
+
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
+  const skip = (page - 1) * limit;
+
+  const query = {
+    patientId: new mongoose.Types.ObjectId(patientId),
+    status: AppointmentStatus.COMPLETED,
+    "prescription.issuedAt": { $exists: true },
+  };
+
+  const [totalCount, appointments] = await Promise.all([
+    Appointment.countDocuments(query),
+    Appointment.find(query)
+      .select("appointmentNumber date startTime endTime symptoms type prescription doctorId hospitalId createdAt")
+      .populate({
+        path: "doctorId",
+        select: "department specialization qualifications consultationFee ratingAverage",
+        populate: { path: "userId", select: "name avatar email phoneNumber" },
+      })
+      .populate("hospitalId", "name slug address contactPhone contactEmail")
+      .sort({ "prescription.issuedAt": -1 })
+      .skip(skip)
+      .limit(limit),
+  ]);
+
+  // Transform into clean prescription locker card models
+  const prescriptions = appointments.map((appt) => {
+    const doc = appt.doctorId as any;
+    const hosp = appt.hospitalId as any;
+    const rx = appt.prescription;
+
+    return {
+      appointmentId: appt._id,
+      appointmentNumber: appt.appointmentNumber,
+      consultationDate: appt.date,
+      consultationTime: `${appt.startTime} - ${appt.endTime}`,
+      consultationType: appt.type,
+      symptoms: appt.symptoms,
+      prescription: {
+        diagnosis: rx?.diagnosis || "Consultation Completed",
+        issuedAt: rx?.issuedAt,
+        medicinesCount: rx?.medicines?.length || 0,
+        medicines: rx?.medicines || [],
+        notes: rx?.notes || "",
+      },
+      doctor: {
+        id: doc?._id,
+        name: doc?.userId?.name ? `Dr. ${doc.userId.name}` : "Doctor",
+        avatar: doc?.userId?.avatar || null,
+        department: doc?.department || "General",
+        qualifications: doc?.qualifications || [],
+        specialization: doc?.specialization || [],
+      },
+      hospital: hosp
+        ? {
+            id: hosp._id,
+            name: hosp.name,
+            address: hosp.address,
+            contactPhone: hosp.contactPhone,
+          }
+        : null,
+      downloadPdfUrl: `/api/appointments/${appt._id}/prescription/download`,
+      previewPdfUrl: `/api/appointments/${appt._id}/prescription/download?inline=true`,
+    };
+  });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
+        prescriptions,
+      },
+      "Patient prescription locker retrieved successfully."
+    )
+  );
+});
+
+/**
+ * ============================================================================
+ * Patient Medical Reports Vault (Fetch, Upload, Delete)
+ * ============================================================================
+ */
+
+/**
+ * Patient: Fetch all uploaded medical reports with optional category filter
+ */
+export const getPatientReports = asyncHandler(async (req: Request, res: Response) => {
+  const patientId = req.user?.userId;
+  if (!patientId) throw new ApiError(401, "Unauthorized");
+
+  const { category } = req.query;
+
+  const profile = await PatientProfile.findOne({ userId: patientId });
+  let reports = profile?.reports || [];
+
+  // Filter by category if supplied (case-insensitive)
+  if (category && typeof category === "string") {
+    const filterCat = category.trim().toLowerCase();
+    reports = reports.filter(
+      (r) => r.category && r.category.toLowerCase() === filterCat
+    );
+  }
+
+  // Sort by newest uploaded first
+  reports = [...reports].sort(
+    (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+  );
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        totalReports: reports.length,
+        reports,
+      },
+      "Medical reports retrieved successfully."
+    )
+  );
+});
+
+/**
+ * Patient: Upload / Add a new medical report to health vault
+ */
+export const uploadPatientReport = asyncHandler(async (req: Request, res: Response) => {
+  const patientId = req.user?.userId;
+  const { title, fileUrl, fileType, category } = req.body;
+
+  if (!patientId) throw new ApiError(401, "Unauthorized");
+
+  if (!title || !title.trim()) {
+    throw new ApiError(400, "Report title is required (e.g. 'CBC Blood Test', 'Chest X-Ray').");
+  }
+
+  if (!fileUrl || !fileUrl.trim()) {
+    throw new ApiError(400, "Report file URL is required.");
+  }
+
+  const newReport = {
+    title: title.trim(),
+    fileUrl: fileUrl.trim(),
+    fileType: fileType ? fileType.trim().toUpperCase() : "PDF",
+    category: category ? category.trim() : "General",
+    uploadedAt: new Date(),
+  };
+
+  const updatedProfile = await PatientProfile.findOneAndUpdate(
+    { userId: patientId },
+    { $push: { reports: newReport } },
+    { new: true, upsert: true }
+  );
+
+  // Retrieve the newly pushed report (the last element in reports array)
+  const createdReport = updatedProfile.reports[updatedProfile.reports.length - 1];
+
+  return res.status(201).json(
+    new ApiResponse(
+      201,
+      createdReport,
+      "Medical report uploaded and stored in health vault successfully."
+    )
+  );
+});
+
+/**
+ * Patient: Delete a medical report from health vault by its unique report ID
+ */
+export const deletePatientReport = asyncHandler(async (req: Request, res: Response) => {
+  const patientId = req.user?.userId;
+  const { reportId } = req.params;
+
+  if (!patientId) throw new ApiError(401, "Unauthorized");
+
+  if (!mongoose.Types.ObjectId.isValid(reportId)) {
+    throw new ApiError(400, "Invalid report ID format.");
+  }
+
+  const updatedProfile = await PatientProfile.findOneAndUpdate(
+    { userId: patientId, "reports._id": reportId },
+    { $pull: { reports: { _id: new mongoose.Types.ObjectId(reportId) } } },
+    { new: true }
+  );
+
+  if (!updatedProfile) {
+    throw new ApiError(404, "Report not found or already deleted from your health vault.");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, { reportId }, "Medical report deleted successfully.")
+  );
+});
+
+/**
+ * ============================================================================
+ * Patient Medical History & Chronic Conditions (Get & Update)
+ * ============================================================================
+ */
+
+/**
+ * Patient: Get complete medical history background
+ */
+export const getPatientMedicalHistory = asyncHandler(async (req: Request, res: Response) => {
+  const patientId = req.user?.userId;
+  if (!patientId) throw new ApiError(401, "Unauthorized");
+
+  let profile = await PatientProfile.findOne({ userId: patientId })
+    .populate("userId", "name email phoneNumber avatar");
+
+  if (!profile) {
+    profile = await PatientProfile.create({ userId: new mongoose.Types.ObjectId(patientId) });
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        allergies: profile.allergies || [],
+        chronicDiseases: profile.chronicDiseases || [],
+        pastSurgeries: profile.pastSurgeries || [],
+        currentMedications: profile.currentMedications || [],
+        bloodGroup: profile.bloodGroup || null,
+        gender: profile.gender || null,
+        dateOfBirth: profile.dateOfBirth || null,
+        emergencyContact: profile.emergencyContact || { name: "", relationship: "", phoneNumber: "" },
+        address: profile.address || null,
+      },
+      "Patient medical history retrieved successfully."
+    )
+  );
+});
+
+/**
+ * Patient: Update medical history, chronic diseases, allergies, and emergency contact
+ */
+export const updatePatientMedicalHistory = asyncHandler(async (req: Request, res: Response) => {
+  const patientId = req.user?.userId;
+  if (!patientId) throw new ApiError(401, "Unauthorized");
+
+  const {
+    allergies,
+    chronicDiseases,
+    pastSurgeries,
+    currentMedications,
+    bloodGroup,
+    gender,
+    dateOfBirth,
+    emergencyContact,
+    address,
+  } = req.body;
+
+  // Validate bloodGroup if provided
+  if (bloodGroup && !Object.values(BloodGroup).includes(bloodGroup)) {
+    throw new ApiError(400, `Invalid blood group. Allowed: ${Object.values(BloodGroup).join(", ")}`);
+  }
+
+  // Validate gender if provided
+  if (gender && !Object.values(Gender).includes(gender)) {
+    throw new ApiError(400, `Invalid gender. Allowed: ${Object.values(Gender).join(", ")}`);
+  }
+
+  const updateFields: any = {};
+
+  if (Array.isArray(allergies)) {
+    updateFields.allergies = allergies.map((a: string) => a.trim()).filter(Boolean);
+  }
+  if (Array.isArray(chronicDiseases)) {
+    updateFields.chronicDiseases = chronicDiseases.map((c: string) => c.trim()).filter(Boolean);
+  }
+  if (Array.isArray(pastSurgeries)) {
+    updateFields.pastSurgeries = pastSurgeries.map((s: string) => s.trim()).filter(Boolean);
+  }
+  if (Array.isArray(currentMedications)) {
+    updateFields.currentMedications = currentMedications.map((m: string) => m.trim()).filter(Boolean);
+  }
+  if (bloodGroup !== undefined) updateFields.bloodGroup = bloodGroup;
+  if (gender !== undefined) updateFields.gender = gender;
+  if (dateOfBirth !== undefined) updateFields.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
+  if (emergencyContact !== undefined) updateFields.emergencyContact = emergencyContact;
+  if (address !== undefined) updateFields.address = address;
+
+  const updatedProfile = await PatientProfile.findOneAndUpdate(
+    { userId: patientId },
+    { $set: updateFields },
+    { new: true, upsert: true }
+  );
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        allergies: updatedProfile.allergies,
+        chronicDiseases: updatedProfile.chronicDiseases,
+        pastSurgeries: updatedProfile.pastSurgeries,
+        currentMedications: updatedProfile.currentMedications,
+        bloodGroup: updatedProfile.bloodGroup,
+        gender: updatedProfile.gender,
+        dateOfBirth: updatedProfile.dateOfBirth,
+        emergencyContact: updatedProfile.emergencyContact,
+        address: updatedProfile.address,
+      },
+      "Patient medical history updated successfully."
     )
   );
 });

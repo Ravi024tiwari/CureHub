@@ -4,7 +4,9 @@ import { Appointment } from "../models/Appointment.model.js";
 import { DoctorProfile } from "../models/DoctorProfile.model.js";
 import { TimeSlot } from "../models/TimeSlot.model.js";
 import { Payment } from "../models/Payment.model.js";
-import { AppointmentStatus, SlotStatus, PaymentStatus } from "../constants/index.js";
+import { AppointmentStatus, SlotStatus, PaymentStatus, UserRole } from "../constants/index.js";
+import { Hospital } from "../models/Hospital.model.js";
+import { generatePrescriptionPdfBuffer } from "../services/prescriptionPdf.service.js";
 import { razorpayInstance } from "../config/razorpay.js";
 
 import { ApiError } from "../utils/apiError.js";
@@ -534,3 +536,84 @@ export const rescheduleAppointment = asyncHandler(async (req: Request, res: Resp
     )
   );
 });
+
+/**
+ * Download or Preview Official Prescription PDF for a Completed Appointment
+ */
+
+export const downloadPrescriptionPdf = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user?.userId;
+  const userRole = req.user?.role;
+  const { id } = req.params;
+  const inline = req.query.inline === "true";
+
+  if (!userId) {
+    throw new ApiError(401, "Authentication required to access prescription.");
+  }
+
+  const isObjectId = mongoose.Types.ObjectId.isValid(id);
+  const query = isObjectId ? { _id: id } : { appointmentNumber: id };
+
+  const appointment = await Appointment.findOne(query)
+    .populate({
+      path: "doctorId",
+      select: "department specialization qualifications medicalCouncilRegistrationNumber experienceYears consultationFee userId",
+      populate: { path: "userId", select: "name email phoneNumber avatar" },
+    })
+    .populate("hospitalId", "name slug address contactPhone contactEmail licenseNumber hospitalAdminId")
+    .populate("patientId", "name email phoneNumber avatar gender age");
+
+  if (!appointment) {
+    throw new ApiError(404, "Appointment not found.");
+  }
+
+  // 1. Strict Multi-Tier Role Authorization
+  const patientUserId = appointment.patientId?._id?.toString() || appointment.patientId?.toString();
+  const doctor = appointment.doctorId as any;
+  const doctorUserId = doctor?.userId?._id?.toString() || doctor?.userId?.toString();
+  const hospital = appointment.hospitalId as any;
+  const hospitalAdminUserId = hospital?.hospitalAdminId?.toString();
+
+  const isPatient = patientUserId === userId;
+  const isDoctor = doctorUserId === userId;
+  const isHospitalAdmin = hospitalAdminUserId === userId;
+  const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
+
+  if (!isPatient && !isDoctor && !isHospitalAdmin && !isSuperAdmin) {
+    throw new ApiError(403, "Access denied. You do not have permission to view or download this prescription.");
+  }
+
+  // 2. Lifecycle Status Verification
+  if (appointment.status !== AppointmentStatus.COMPLETED) {
+    throw new ApiError(
+      400,
+      `Prescription is only available after the consultation is completed. Current status: '${appointment.status}'.`
+    );
+  }
+
+  // 3. Clinical Prescription Integrity Check
+  if (
+    !appointment.prescription ||
+    (!appointment.prescription.diagnosis &&
+      (!appointment.prescription.medicines || appointment.prescription.medicines.length === 0))
+  ) {
+    throw new ApiError(404, "No prescription record found for this completed appointment.");
+  }
+
+  // 4. Generate Production Streaming PDF Buffer
+  const pdfBuffer = await generatePrescriptionPdfBuffer(appointment);
+
+  const filename = `Prescription-${appointment.appointmentNumber}.pdf`;
+  const disposition = inline ? "inline" : "attachment";
+
+  // 5. Send Professional HTTP Headers
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `${disposition}; filename="${filename}"`);
+  res.setHeader("Content-Length", pdfBuffer.length);
+  res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+
+  return res.end(pdfBuffer);
+});
+

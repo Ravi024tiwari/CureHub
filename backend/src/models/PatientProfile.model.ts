@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 import { Gender, BloodGroup } from "../constants/index.js";
 
 export interface IMedicalReport {
+  _id?: mongoose.Types.ObjectId;
   title: string;
   fileUrl: string;
   fileType: string;
