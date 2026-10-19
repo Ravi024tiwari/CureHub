@@ -1,19 +1,43 @@
 import * as React from "react"
-import { Input as InputPrimitive } from "@base-ui/react/input"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
-  return (
-    <InputPrimitive
-      type={type}
-      data-slot="input"
-      className={cn(
-        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
-        className
-      )}
-      {...props}
-    />
-  )
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  startIcon?: React.ReactNode
+  endIcon?: React.ReactNode
 }
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, startIcon, endIcon, ...props }, ref) => {
+    return (
+      <div className="relative flex items-center w-full">
+        {startIcon && (
+          <div className="absolute left-3.5 flex items-center pointer-events-none text-slate-400">
+            {startIcon}
+          </div>
+        )}
+        <input
+          type={type}
+          ref={ref}
+          className={cn(
+            "flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 placeholder:text-slate-400",
+            "transition-all duration-200 outline-none",
+            "focus:border-blue-600 focus:ring-4 focus:ring-blue-100",
+            "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-slate-50",
+            startIcon && "pl-10",
+            endIcon && "pr-10",
+            className
+          )}
+          {...props}
+        />
+        {endIcon && (
+          <div className="absolute right-3.5 flex items-center text-slate-400">
+            {endIcon}
+          </div>
+        )}
+      </div>
+    )
+  }
+)
+Input.displayName = "Input"
 
 export { Input }

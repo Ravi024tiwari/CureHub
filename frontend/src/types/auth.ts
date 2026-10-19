@@ -1,0 +1,58 @@
+export type RoleType = 'patient' | 'doctor' | 'hospital_admin'
+
+export interface PatientRegisterPayload {
+  name: string
+  email: string
+  password: string
+  phoneNumber: string
+}
+
+export interface DoctorRegisterPayload {
+  name: string
+  email: string
+  password: string
+  phoneNumber: string
+  hospitalId: string
+  department: string
+  medicalCouncilRegistrationNumber: string
+}
+
+export interface HospitalAdminRegisterPayload {
+  name: string
+  email: string
+  password: string
+  phoneNumber: string
+  hospitalName: string
+  designation: string
+  hospitalRegistrationNumber: string
+}
+
+export interface HospitalOption {
+  _id: string
+  name: string
+  address?: {
+    street?: string
+    city?: string
+    state?: string
+    zipCode?: string
+    country?: string
+  }
+  departments?: string[]
+  city?: string
+  state?: string
+}
+
+export interface FormValidationErrors {
+  firstName?: string
+  lastName?: string
+  email?: string
+  phoneNumber?: string
+  password?: string
+  hospitalName?: string
+  designation?: string
+  hospitalRegistrationNumber?: string
+  department?: string
+  medicalCouncilRegistrationNumber?: string
+  hospitalId?: string
+  general?: string
+}
