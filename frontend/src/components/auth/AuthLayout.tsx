@@ -28,7 +28,7 @@ export const AuthLayout: FC<AuthLayoutProps> = ({
   }
 
   const handleSignInClick = () => {
-    alert('Redirecting to Sign In portal...')
+    navigate('/login')
   }
 
   return (

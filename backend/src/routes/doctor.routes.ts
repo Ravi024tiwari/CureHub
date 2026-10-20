@@ -19,6 +19,8 @@ import {
   getMyHospitalAffiliation,
   getHospitalDoctorRequests,
   respondToDoctorRequest,
+  getPublicDoctors,
+  getPublicDoctorById,
 } from "../controllers/doctor.controller.js";
 import {
   authenticateToken,
@@ -27,6 +29,12 @@ import {
 import { UserRole } from "../constants/index.js";
 
 const doctorRouter = Router();
+
+// ==========================================
+// PUBLIC DOCTORS DIRECTORY (Pagination & Discovery)
+// ==========================================
+doctorRouter.get("/", getPublicDoctors);
+doctorRouter.get("/details/:doctorId", getPublicDoctorById);
 
 // ==========================================
 // DOCTOR PROTECTED ROUTES (Role: DOCTOR)

@@ -56,3 +56,25 @@ export interface FormValidationErrors {
   hospitalId?: string
   general?: string
 }
+
+export interface LoginPayload {
+  email: string
+  password: string
+}
+
+export interface AuthUser {
+  _id: string
+  name: string
+  email: string
+  phoneNumber?: string
+  role: 'patient' | 'doctor' | 'hospital_admin' | 'super_admin'
+  isAccountApproved?: boolean
+  avatar?: string
+}
+
+export interface LoginResponse {
+  user: AuthUser
+  profile: any
+  token: string
+}
+

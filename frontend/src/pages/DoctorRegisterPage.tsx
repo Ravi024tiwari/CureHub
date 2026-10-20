@@ -1,10 +1,12 @@
 import { useState, type FC } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AuthLayout } from '@/components/auth/AuthLayout'
 import { DoctorRegisterForm } from '@/components/auth/forms/DoctorRegisterForm'
 import { CheckCircle2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const DoctorRegisterPage: FC = () => {
+  const navigate = useNavigate()
   const [registeredUser, setRegisteredUser] = useState<string | null>(null)
 
   if (registeredUser) {
@@ -26,7 +28,7 @@ export const DoctorRegisterPage: FC = () => {
             variant="brand"
             size="lg"
             className="w-full"
-            onClick={() => alert('Proceeding to Sign In...')}
+            onClick={() => navigate('/login')}
           >
             <span>Proceed to Sign In</span>
             <ArrowRight className="size-4 ml-1" />
@@ -45,7 +47,7 @@ export const DoctorRegisterPage: FC = () => {
       {() => (
         <DoctorRegisterForm
           onSuccess={(name) => setRegisteredUser(name)}
-          onSignInClick={() => alert('Redirecting to Sign In...')}
+          onSignInClick={() => navigate('/login')}
         />
       )}
     </AuthLayout>

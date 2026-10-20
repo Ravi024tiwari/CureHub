@@ -4,6 +4,7 @@ import type {
   DoctorRegisterPayload,
   HospitalAdminRegisterPayload,
   HospitalOption,
+  LoginPayload,
 } from '@/types/auth'
 
 export async function registerPatientApi(payload: PatientRegisterPayload) {
@@ -18,6 +19,18 @@ export async function registerHospitalAdminApi(payload: HospitalAdminRegisterPay
   return apiClient.post('/auth/register/hospital-admin', payload)
 }
 
+export async function loginApi(payload: LoginPayload) {
+  return apiClient.post('/auth/login', payload)
+}
+
+export async function logoutApi() {
+  return apiClient.post('/auth/logout')
+}
+
+export async function getMeApi() {
+  return apiClient.get('/auth/me')
+}
+
 export async function fetchHospitalsApi(): Promise<HospitalOption[]> {
   try {
     const res: any = await apiClient.get('/hospitals')
@@ -30,3 +43,4 @@ export async function fetchHospitalsApi(): Promise<HospitalOption[]> {
     return []
   }
 }
+
