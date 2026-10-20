@@ -10,6 +10,7 @@ import {
   PatientHomePage,
   FindDoctorsPage,
   FindHospitalsPage,
+  PatientAppointmentsPage,
 } from '@/pages/patient'
 import { DashboardPage } from '@/pages/dashboard'
 
@@ -34,6 +35,8 @@ function App() {
         <Route path="/doctors" element={<FindDoctorsPage />} />
         <Route path="/patient/hospitals" element={<FindHospitalsPage />} />
         <Route path="/hospitals" element={<FindHospitalsPage />} />
+        <Route path="/patient/appointments" element={<PatientAppointmentsPage />} />
+        <Route path="/appointments" element={<PatientAppointmentsPage />} />
 
         {/* Logged in Dashboard */}
         <Route path="/dashboard" element={<DashboardPage />} />

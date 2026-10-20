@@ -1,5 +1,10 @@
 import apiClient from './apiClient'
-import type { HospitalCardData, AppointmentCardData, HospitalsApiResponse } from '@/types/patient'
+import type {
+  HospitalCardData,
+  AppointmentCardData,
+  HospitalsApiResponse,
+  AppointmentsApiResponse,
+} from '@/types/patient'
 
 // Fetch Patient Dashboard overview from backend
 export async function fetchPatientDashboardApi() {
@@ -152,29 +157,122 @@ export async function fetchHospitalDetailApi(idOrSlug: string): Promise<Hospital
   }
 }
 
-// Fetch Patient Appointments
-export async function fetchMyPatientAppointmentsApi(): Promise<AppointmentCardData[]> {
+// Fetch Patient Appointments with Pagination, Filters, and Search (10 per batch)
+export async function fetchMyPatientAppointmentsPaginatedApi(params: {
+  page: number
+  limit?: number
+  status?: string
+  search?: string
+  dateFrom?: string
+  dateTo?: string
+}): Promise<AppointmentsApiResponse | null> {
   try {
-    const res: any = await apiClient.get('/appointments/my-history')
-    const appointments = res?.data?.appointments || res?.appointments || []
-    if (Array.isArray(appointments) && appointments.length > 0) {
-      return appointments.map((a: any) => ({
+    const query = new URLSearchParams()
+    query.append('page', String(params.page))
+    query.append('limit', String(params.limit || 10))
+    if (params.status && params.status !== 'all') query.append('status', params.status)
+    if (params.search && params.search.trim()) query.append('search', params.search.trim())
+    if (params.dateFrom) query.append('dateFrom', params.dateFrom)
+    if (params.dateTo) query.append('dateTo', params.dateTo)
+
+    const res: any = await apiClient.get(`/appointments/my-history?${query.toString()}`)
+    const payload = res?.data || res
+    const rawList = payload?.appointments || []
+    const pagination = payload?.pagination || {}
+    const counts = payload?.counts || { all: 0, upcoming: 0, completed: 0, cancelled: 0 }
+
+    const mapped: AppointmentCardData[] = rawList.map((a: any) => {
+      const docUser = a.doctorId?.userId || {}
+      const hosp = a.hospitalId || {}
+      const hospAddr = hosp.address?.city
+        ? `${hosp.address.street ? hosp.address.street + ', ' : ''}${hosp.address.city}${hosp.address.state ? ', ' + hosp.address.state : ''}`
+        : hosp.address || 'Civil Lines, Bilaspur'
+
+      let uiStatus: 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled' = 'Confirmed'
+      if (a.status === 'COMPLETED') uiStatus = 'Completed'
+      else if (a.status === 'PENDING_PAYMENT') uiStatus = 'Pending'
+      else if (a.status?.includes('CANCELLED') || a.status === 'NO_SHOW') uiStatus = 'Cancelled'
+      else uiStatus = 'Confirmed'
+
+      return {
         _id: a._id,
-        doctorName: a.doctor?.name || a.doctorId?.name || 'Dr. Specialist',
-        doctorSpecialty: a.doctor?.department || a.department || 'General Physician',
-        doctorAvatar: a.doctor?.avatar,
-        hospitalName: a.hospital?.name || a.hospitalId?.name || 'CarePlus Partner Hospital',
+        appointmentNumber: a.appointmentNumber || `APT-${Date.now().toString().slice(-8)}`,
+        doctorId: a.doctorId?._id || a.doctorId,
+        hospitalId: a.hospitalId?._id || a.hospitalId,
+        doctorName: docUser.name || a.doctorId?.name || a.doctorName || 'Dr. Specialist',
+        doctorSpecialty: a.doctorId?.department || a.doctorId?.specialization?.[0] || 'Specialist',
+        doctorAvatar: docUser.avatar || a.doctorAvatar,
+        doctorRating: a.doctorId?.ratingAverage || 4.8,
+        doctorReviewCount: a.doctorId?.reviewCount || 280,
+        hospitalName: hosp.name || a.hospitalName || 'CarePlus Multispeciality Hospital',
+        hospitalAddress: hospAddr,
+        hospitalImage: hosp.images?.coverImage || hosp.image || '/src/assets/apollo-hospital.jpg',
+        hospitalPhone: hosp.contactPhone || '+91 98765 43210',
+        hospitalEmail: hosp.contactEmail || 'contact@careplus.health',
+        hospitalWebsite: hosp.website || 'www.careplus.health',
+        hospitalTimings: '09:00 AM - 11:00 PM',
         date: a.date,
-        time: a.timeSlot?.startTime || '10:00 AM',
-        status: a.status === 'CONFIRMED' ? 'Confirmed' : a.status === 'COMPLETED' ? 'Completed' : 'Pending',
-      }))
+        time: a.slotId ? `${a.slotId.startTime} - ${a.slotId.endTime}` : (a.startTime ? `${a.startTime} - ${a.endTime || ''}` : '10:30 AM - 11:00 AM'),
+        status: uiStatus,
+        consultationType: a.type === 'VIDEO' ? 'Video Consultation' : 'In-person',
+        symptoms: a.symptoms || 'General clinical consultation',
+        consultationFee: a.consultationFee || 500,
+        bookedOn: a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recently',
+        prescription: a.prescription ? {
+          diagnosis: a.prescription.diagnosis || 'Clinical Diagnosis',
+          issuedAt: a.prescription.issuedAt ? new Date(a.prescription.issuedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : undefined,
+          medicines: a.prescription.medicines || [],
+          notes: a.prescription.notes,
+        } : undefined,
+        rescheduleHistory: a.rescheduleHistory || [],
+        cancellation: a.cancellation ? {
+          reason: a.cancellation.reason || 'Cancelled',
+          cancelledAt: a.cancellation.cancelledAt ? new Date(a.cancellation.cancelledAt).toLocaleDateString('en-GB') : 'Unknown',
+        } : undefined,
+        canCancel: uiStatus === 'Confirmed' || uiStatus === 'Pending',
+        canReschedule: uiStatus === 'Confirmed' || uiStatus === 'Pending',
+      }
+    })
+
+    return {
+      appointments: mapped,
+      totalDocs: pagination.totalDocs ?? mapped.length,
+      totalPages: pagination.totalPages ?? 1,
+      currentPage: pagination.currentPage ?? params.page,
+      limit: pagination.limit ?? 10,
+      hasNextPage: pagination.hasNextPage ?? false,
+      counts,
     }
-    return []
   } catch (error) {
-    console.warn('Backend appointments not available, fallback to mock:', error)
-    return []
+    console.warn('Backend paginated appointments failed, returning null for fallback handling:', error)
+    return null
   }
 }
+
+// Legacy helper for quick appointment lists
+export async function fetchMyPatientAppointmentsApi(): Promise<AppointmentCardData[]> {
+  const result = await fetchMyPatientAppointmentsPaginatedApi({ page: 1, limit: 10 })
+  return result?.appointments || []
+}
+
+// Cancel Appointment with strict 48-hour policy & refund support
+export async function cancelAppointmentApi(appointmentId: string, reason: string) {
+  return apiClient.patch(`/appointments/${appointmentId}/cancel`, { reason })
+}
+
+// Reschedule Appointment
+export async function rescheduleAppointmentApi(appointmentId: string, newSlotId: string, reason?: string) {
+  return apiClient.patch(`/appointments/${appointmentId}/reschedule`, { newSlotId, reason })
+}
+
+// Download Prescription PDF
+export async function downloadPrescriptionPdfApi(appointmentId: string) {
+  const response = await apiClient.get(`/appointments/${appointmentId}/download-prescription`, {
+    responseType: 'blob',
+  })
+  return response
+}
+
 
 // Fetch Paginated Doctors for Discovery (with infinite scroll support)
 export async function fetchDoctorsListApi(params: {

@@ -43,7 +43,7 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
     { id: 'home', label: 'Home', icon: Home, path: '/patient/home' },
     { id: 'doctors', label: 'Find Doctors', icon: UserCheck, path: '/patient/doctors' },
     { id: 'hospitals', label: 'Hospitals', icon: Building2, path: '/patient/hospitals' },
-    { id: 'appointments', label: 'Appointments', icon: Calendar },
+    { id: 'appointments', label: 'Appointments', icon: Calendar, path: '/patient/appointments' },
     { id: 'records', label: 'Medical Records', icon: FileText },
     { id: 'prescriptions', label: 'Prescriptions', icon: Pill },
     { id: 'lab-tests', label: 'Lab Tests', icon: FlaskConical },

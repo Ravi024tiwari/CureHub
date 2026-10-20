@@ -29,13 +29,34 @@ export const getAppointmentHistory = asyncHandler(async (req: Request, res: Resp
   const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
   const skip = (page - 1) * limit;
 
-  const { status, timeline, dateFrom, dateTo } = req.query;
+  const { status, timeline, dateFrom, dateTo, search } = req.query;
 
   const query: any = { patientId };
 
-  // Status Filter
-  if (status && Object.values(AppointmentStatus).includes(status as AppointmentStatus)) {
-    query.status = status;
+  // Status Filter with Category Handling
+  if (status) {
+    const s = String(status).toLowerCase();
+    if (s === "upcoming") {
+      query.status = {
+        $in: [
+          AppointmentStatus.CONFIRMED,
+          AppointmentStatus.PENDING_PAYMENT,
+          AppointmentStatus.CHECKED_IN,
+          AppointmentStatus.RESCHEDULE_REQUIRED,
+        ],
+      };
+    } else if (s === "completed") {
+      query.status = AppointmentStatus.COMPLETED;
+    } else if (s === "cancelled") {
+      query.status = {
+        $in: [
+          AppointmentStatus.CANCELLED_BY_PATIENT,
+          AppointmentStatus.CANCELLED_BY_DOCTOR,
+        ],
+      };
+    } else if (Object.values(AppointmentStatus).includes(status as AppointmentStatus)) {
+      query.status = status;
+    }
   }
 
   const todayStr = new Date().toISOString().split("T")[0];
@@ -43,13 +64,15 @@ export const getAppointmentHistory = asyncHandler(async (req: Request, res: Resp
   // Timeline Filter: 'upcoming' vs 'past'
   if (timeline === "upcoming") {
     query.date = { $gte: todayStr };
-    query.status = {
-      $in: [
-        AppointmentStatus.CONFIRMED,
-        AppointmentStatus.PENDING_PAYMENT,
-        AppointmentStatus.CHECKED_IN,
-      ],
-    };
+    if (!query.status) {
+      query.status = {
+        $in: [
+          AppointmentStatus.CONFIRMED,
+          AppointmentStatus.PENDING_PAYMENT,
+          AppointmentStatus.CHECKED_IN,
+        ],
+      };
+    }
   } else if (timeline === "past") {
     query.$or = [
       { date: { $lt: todayStr } },
@@ -73,21 +96,65 @@ export const getAppointmentHistory = asyncHandler(async (req: Request, res: Resp
     if (dateTo) query.date.$lte = dateTo;
   }
 
-  const sortOrder: any = timeline === "upcoming" ? { date: 1, startTime: 1 } : { date: -1, startTime: -1 };
+  // Search filter
+  if (search && typeof search === "string" && search.trim()) {
+    const searchRegex = new RegExp(search.trim(), "i");
+    query.$or = [
+      { appointmentNumber: searchRegex },
+      { symptoms: searchRegex },
+    ];
+  }
 
-  const [appointments, totalDocs] = await Promise.all([
+  const sortOrder: any =
+    timeline === "upcoming" || String(status).toLowerCase() === "upcoming"
+      ? { date: 1, startTime: 1 }
+      : { date: -1, startTime: -1 };
+
+  const [
+    appointments,
+    totalDocs,
+    allCount,
+    upcomingCount,
+    completedCount,
+    cancelledCount,
+  ] = await Promise.all([
     Appointment.find(query)
       .populate({
         path: "doctorId",
-        select: "department specialization consultationFee ratingAverage",
-        populate: { path: "userId", select: "name avatar phoneNumber" },
+        select: "department specialization consultationFee ratingAverage reviewCount bio experienceYears",
+        populate: { path: "userId", select: "name avatar phoneNumber email" },
       })
-      .populate("hospitalId", "name slug address contactPhone")
+      .populate("hospitalId", "name slug address contactPhone contactEmail website images image")
       .populate("slotId", "date startTime endTime")
       .sort(sortOrder)
       .skip(skip)
       .limit(limit),
     Appointment.countDocuments(query),
+    Appointment.countDocuments({ patientId }),
+    Appointment.countDocuments({
+      patientId,
+      status: {
+        $in: [
+          AppointmentStatus.CONFIRMED,
+          AppointmentStatus.PENDING_PAYMENT,
+          AppointmentStatus.CHECKED_IN,
+          AppointmentStatus.RESCHEDULE_REQUIRED,
+        ],
+      },
+    }),
+    Appointment.countDocuments({
+      patientId,
+      status: AppointmentStatus.COMPLETED,
+    }),
+    Appointment.countDocuments({
+      patientId,
+      status: {
+        $in: [
+          AppointmentStatus.CANCELLED_BY_PATIENT,
+          AppointmentStatus.CANCELLED_BY_DOCTOR,
+        ],
+      },
+    }),
   ]);
 
   const totalPages = Math.ceil(totalDocs / limit) || 1;
@@ -104,6 +171,12 @@ export const getAppointmentHistory = asyncHandler(async (req: Request, res: Resp
           limit,
           hasNextPage: page < totalPages,
           hasPrevPage: page > 1,
+        },
+        counts: {
+          all: allCount,
+          upcoming: upcomingCount,
+          completed: completedCount,
+          cancelled: cancelledCount,
         },
       },
       "Appointment history retrieved successfully"

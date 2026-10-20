@@ -91,15 +91,86 @@ export interface HospitalsApiResponse {
   hasMore: boolean
 }
 
+export interface PrescriptionMedicineItem {
+  name: string
+  dosage: string
+  frequency: string
+  duration: string
+  instructions?: string
+}
+
+export interface AppointmentPrescriptionData {
+  diagnosis?: string
+  issuedAt?: string
+  medicines: PrescriptionMedicineItem[]
+  notes?: string
+}
+
+export interface AppointmentRescheduleItem {
+  previousSlotId?: string
+  previousDate: string
+  previousStartTime: string
+  previousEndTime?: string
+  reason?: string
+  rescheduledAt: string
+}
+
+export interface AppointmentCancellationData {
+  reason: string
+  cancelledAt: string
+  cancelledBy?: string
+}
+
+export type AppointmentStatusType = 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled'
+
 export interface AppointmentCardData {
   _id: string
+  appointmentNumber?: string
+  doctorId?: string
+  hospitalId?: string
   doctorName: string
   doctorSpecialty: string
   doctorAvatar?: string
+  doctorRating?: number
+  doctorReviewCount?: number
   hospitalName: string
-  date: string
-  time: string
-  status: 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled'
+  hospitalAddress?: string
+  hospitalImage?: string
+  hospitalPhone?: string
+  hospitalEmail?: string
+  hospitalWebsite?: string
+  hospitalTimings?: string
+  date: string // e.g., "2026-10-20" or "Mon, 20 Oct 2026"
+  time: string // e.g., "10:30 AM" or "10:30 AM - 11:00 AM"
+  status: AppointmentStatusType
+  consultationType?: 'In-person' | 'Video Consultation'
+  symptoms?: string
+  consultationFee?: number
+  bookedOn?: string
+  prescription?: AppointmentPrescriptionData
+  rescheduleHistory?: AppointmentRescheduleItem[]
+  cancellation?: AppointmentCancellationData
+  canCancel?: boolean
+  canReschedule?: boolean
+}
+
+export type AppointmentFilterTab = 'all' | 'upcoming' | 'completed' | 'cancelled'
+
+export interface AppointmentCategoryCounts {
+  all: number
+  upcoming: number
+  completed: number
+  cancelled: number
+}
+
+export interface AppointmentsApiResponse {
+  appointments: AppointmentCardData[]
+  totalDocs: number
+  totalPages: number
+  currentPage: number
+  limit: number
+  hasNextPage: boolean
+  counts?: AppointmentCategoryCounts
 }
 
 export interface SpecialtyCategory {
