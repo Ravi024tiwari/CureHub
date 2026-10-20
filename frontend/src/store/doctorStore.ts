@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { devtools, persist } from 'zustand/middleware'
 import type { DoctorCardData } from '@/types/patient'
 import { fetchDoctorsListApi, fetchDoctorByIdApi } from '@/services/patientService'
 
@@ -74,7 +74,8 @@ const DEFAULT_FILTERS = {
 }
 
 export const useDoctorStore = create<DoctorStoreState>()(
-  persist(
+  devtools(
+    persist(
     (set, get) => ({
       // Initial Data
       doctors: [],
@@ -262,5 +263,7 @@ export const useDoctorStore = create<DoctorStoreState>()(
         selectedCity: state.selectedCity,
       }),
     }
-  )
+  ),
+  { name: 'DoctorStore' }
+)
 )

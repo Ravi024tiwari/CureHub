@@ -3,15 +3,38 @@ export interface HospitalCardData {
   name: string
   slug?: string
   image?: string
+  images?: {
+    coverImage?: string
+    gallery?: string[]
+  }
   rating: number
-  reviewCount?: number
   distance: string
   location: string
+  address?: {
+    street?: string
+    city?: string
+    state?: string
+    zipCode?: string
+    country?: string
+  }
   tags: string[]
   departments?: string[]
+  facilities?: string[]
+  hospitalType?: string
+  establishmentYear?: number
+  totalBeds?: number
+  website?: string
+  contactEmail?: string
+  contactPhone?: string
+  phoneNumber?: string
+  openingTime?: string
+  closingTime?: string
+  isEmergency24x7?: boolean
   emergencyAvailable?: boolean
   icuAvailable?: boolean
-  phoneNumber?: string
+  description?: string
+  verificationStatus?: string
+  isFavorite?: boolean
 }
 
 export interface DoctorCardData {
@@ -54,6 +77,14 @@ export interface DoctorFilterState {
 
 export interface DoctorsApiResponse {
   doctors: DoctorCardData[]
+  total: number
+  page: number
+  limit: number
+  hasMore: boolean
+}
+
+export interface HospitalsApiResponse {
+  hospitals: HospitalCardData[]
   total: number
   page: number
   limit: number

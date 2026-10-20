@@ -28,7 +28,7 @@ export const PatientHeroBanner: FC<PatientHeroBannerProps> = ({
 
       <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-8">
         {/* Left Column: Greeting, Big Headline, Subtitle, Search bar */}
-        <div className="w-full lg:max-w-2xl space-y-4">
+        <div className="w-full lg:max-w-3xl xl:max-w-4xl space-y-4">
           {/* Greeting */}
           <div className="inline-flex items-center gap-2">
             <span className="text-xs sm:text-sm font-semibold text-slate-600">

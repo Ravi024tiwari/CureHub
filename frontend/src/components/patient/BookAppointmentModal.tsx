@@ -15,7 +15,7 @@ interface BookAppointmentModalProps {
   onClose: () => void
   preselectedDoctor?: DoctorCardData | null
   preselectedHospital?: HospitalCardData | null
-  doctorsList: DoctorCardData[]
+  doctorsList?: DoctorCardData[]
   onAppointmentBooked: (newAppt: AppointmentCardData) => void
 }
 
@@ -24,7 +24,7 @@ export const BookAppointmentModal: FC<BookAppointmentModalProps> = ({
   onClose,
   preselectedDoctor,
   preselectedHospital,
-  doctorsList,
+  doctorsList = [],
   onAppointmentBooked,
 }) => {
   if (!isOpen) return null

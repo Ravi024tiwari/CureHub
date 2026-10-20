@@ -647,34 +647,85 @@ export const getAllHospitals = asyncHandler(async (req: Request, res: Response) 
   const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
   const skip = (page - 1) * limit;
 
-  const { city, department, search } = req.query;
+  const {
+    city,
+    department,
+    search,
+    hospitalType,
+    facility,
+    emergency,
+    minYear,
+    maxYear,
+    sortBy,
+  } = req.query;
 
   const filter: any = {
     isActive: true,
     verificationStatus: VerificationStatus.APPROVED,
   };
 
-  if (city && typeof city === "string") {
-    filter["address.city"] = new RegExp(city.trim(), "i");
+  if (
+    city &&
+    typeof city === "string" &&
+    city.trim().toLowerCase() !== "all" &&
+    !city.toLowerCase().includes("all cities")
+  ) {
+    const cleanCity = city.split(",")[0].trim();
+    filter["address.city"] = new RegExp(cleanCity, "i");
   }
 
-  if (department && typeof department === "string") {
+  if (department && typeof department === "string" && department.trim() !== "all") {
     filter.departments = { $in: [new RegExp(department.trim(), "i")] };
   }
 
-  if (search && typeof search === "string") {
+  if (hospitalType && typeof hospitalType === "string" && hospitalType.trim() !== "all") {
+    filter.hospitalType = new RegExp(hospitalType.trim(), "i");
+  }
+
+  if (facility && typeof facility === "string") {
+    const facilitiesList = facility.split(",").map((f) => f.trim()).filter(Boolean);
+    if (facilitiesList.length > 0) {
+      filter.facilities = { $all: facilitiesList.map((f) => new RegExp(f, "i")) };
+    }
+  }
+
+  if (emergency === "true") {
+    filter.isEmergency24x7 = true;
+  }
+
+  if (minYear || maxYear) {
+    filter.establishmentYear = {};
+    if (minYear) filter.establishmentYear.$gte = parseInt(minYear as string);
+    if (maxYear) filter.establishmentYear.$lte = parseInt(maxYear as string);
+  }
+
+  if (search && typeof search === "string" && search.trim() !== "") {
     const searchRegex = new RegExp(search.trim(), "i");
     filter.$or = [
       { name: searchRegex },
       { "address.city": searchRegex },
+      { "address.street": searchRegex },
       { departments: searchRegex },
+      { hospitalType: searchRegex },
+      { description: searchRegex },
     ];
+  }
+
+  let sortOption: any = { rating: -1, createdAt: -1 };
+  if (sortBy === "rating") {
+    sortOption = { rating: -1 };
+  } else if (sortBy === "beds") {
+    sortOption = { totalBeds: -1 };
+  } else if (sortBy === "name") {
+    sortOption = { name: 1 };
+  } else if (sortBy === "establishmentYear") {
+    sortOption = { establishmentYear: -1 };
   }
 
   const [hospitals, totalDocs] = await Promise.all([
     Hospital.find(filter)
       .select("-licenseDocumentUrl -verifiedBy")
-      .sort({ createdAt: -1 })
+      .sort(sortOption)
       .skip(skip)
       .limit(limit),
     Hospital.countDocuments(filter),

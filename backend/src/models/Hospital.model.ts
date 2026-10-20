@@ -31,6 +31,10 @@ export interface IHospital extends Document {
   openingTime?: string;
   closingTime?: string;
   isEmergency24x7?: boolean;
+  hospitalType?: string;
+  facilities?: string[];
+  rating?: number;
+  distance?: string;
   description?: string;
   verificationStatus: VerificationStatus;
   verifiedBy?: mongoose.Types.ObjectId;
@@ -137,6 +141,25 @@ const HospitalSchema = new Schema<IHospital>(
     isEmergency24x7: {
       type: Boolean,
       default: true,
+    },
+    hospitalType: {
+      type: String,
+      default: "Multi-Speciality",
+      index: true,
+    },
+    facilities: {
+      type: [String],
+      default: ["24x7 Emergency", "Pharmacy", "Lab", "Ambulance"],
+    },
+    rating: {
+      type: Number,
+      default: 4.5,
+      min: 1,
+      max: 5,
+    },
+    distance: {
+      type: String,
+      default: "2.5 km",
     },
     description: {
       type: String,

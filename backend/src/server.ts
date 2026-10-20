@@ -23,16 +23,38 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Global rate limiter — safety net for all endpoints (100 req / 15 min per IP)
-app.use(globalRateLimiter);
+// 1. CORS FIRST: Guarantees every response (including 429 errors & preflight OPTIONS) has proper CORS headers
+const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+const allowedOrigins = [
+  clientUrl,
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+];
 
-app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
-    credentials: true, 
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === "development") {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
   })
 );
+
+// 2. Helmet with crossOriginResourcePolicy allowing frontend asset access
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+// 3. Global rate limiter (after CORS so any 429 response still has Access-Control-Allow-Origin)
+app.use(globalRateLimiter);
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

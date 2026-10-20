@@ -6,7 +6,8 @@
     "dev": "nodemon --exec tsx src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "admin": "tsx src/scripts/seedSuperAdmin.ts"
+    "admin": "tsx src/scripts/seedSuperAdmin.ts",
+    "seed:hospitals": "tsx src/scripts/seedHospitals.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1149.0",

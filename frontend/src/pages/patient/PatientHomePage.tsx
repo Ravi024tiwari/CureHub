@@ -37,7 +37,7 @@ export const PatientHomePage: FC = () => {
   // State
   const [activeTab, setActiveTab] = useState('home')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCity, setSelectedCity] = useState('Bilaspur, Chhattisgarh')
+  const [selectedCity, setSelectedCity] = useState('All Cities')
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null)
   const [hospitalFilter, setHospitalFilter] = useState<'all' | 'top-rated' | 'emergency' | 'near-me'>('all')
   const [isSidebarDrawerOpen, setIsSidebarDrawerOpen] = useState(false)
@@ -56,7 +56,6 @@ export const PatientHomePage: FC = () => {
       name: 'Apollo Multispeciality Hospital',
       image: apolloImg,
       rating: 4.8,
-      reviewCount: 1240,
       distance: '2.3 km',
       location: 'Civil Lines, Bilaspur',
       tags: ['24/7 Emergency', 'ICU', 'Pharmacy'],
@@ -68,7 +67,6 @@ export const PatientHomePage: FC = () => {
       name: 'City Care Hospital',
       image: cityCareImg,
       rating: 4.5,
-      reviewCount: 890,
       distance: '3.1 km',
       location: 'Vyapar Vihar, Bilaspur',
       tags: ['General Medicine', 'Surgery'],
@@ -80,7 +78,6 @@ export const PatientHomePage: FC = () => {
       name: 'Shree Sai Hospital',
       image: shreeSaiImg,
       rating: 4.4,
-      reviewCount: 650,
       distance: '4.6 km',
       location: 'Talapara, Bilaspur',
       tags: ['Cardiology', 'Orthopedics'],
@@ -92,7 +89,6 @@ export const PatientHomePage: FC = () => {
       name: 'LifeCare Hospital',
       image: lifecareImg,
       rating: 4.3,
-      reviewCount: 520,
       distance: '5.0 km',
       location: 'Koni Road, Bilaspur',
       tags: ['Pediatrics', 'Gynecology', 'Dermatology'],
@@ -180,9 +176,9 @@ export const PatientHomePage: FC = () => {
       fetchDoctors(1, true)
 
       const serverHospitals = await fetchHospitalsListApi()
-      if (serverHospitals && serverHospitals.length > 0) {
+      if (serverHospitals?.hospitals && serverHospitals.hospitals.length > 0) {
         setHospitals(
-          serverHospitals.map((h, i) => ({
+          serverHospitals.hospitals.map((h, i) => ({
             ...h,
             image: h.image || initialHospitals[i % initialHospitals.length].image,
           }))
@@ -268,7 +264,7 @@ export const PatientHomePage: FC = () => {
         onToggleSidebar={() => setIsSidebarDrawerOpen(!isSidebarDrawerOpen)}
       />
 
-      <div className="flex-1 flex w-full max-w-7xl mx-auto">
+      <div className="flex-1 flex w-full">
         {/* Collapsible Slide-out Sidebar Drawer for All Screen Sizes */}
         {isSidebarDrawerOpen && (
           <div className="fixed inset-0 z-50 flex">
@@ -284,6 +280,8 @@ export const PatientHomePage: FC = () => {
                 onSelectTab={(tab) => {
                   setActiveTab(tab)
                   setIsSidebarDrawerOpen(false)
+                  if (tab === 'hospitals') navigate('/patient/hospitals')
+                  if (tab === 'doctors') navigate('/patient/doctors')
                 }}
                 isMobileDrawer={true}
                 onCloseDrawer={() => setIsSidebarDrawerOpen(false)}
@@ -302,7 +300,7 @@ export const PatientHomePage: FC = () => {
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-10">
-          <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-5 sm:py-7 space-y-6 sm:space-y-8">
+          <main className="flex-1 w-full max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8 2xl:px-10 py-5 sm:py-7 space-y-6 sm:space-y-8">
             {/* Hero Section */}
             <PatientHeroBanner
               patientName={patientDisplayName}
@@ -458,9 +456,10 @@ export const PatientHomePage: FC = () => {
         activeTab={activeTab}
         onSelectTab={(tab) => {
           setActiveTab(tab)
-          if (tab === 'profile' || tab === 'doctors' || tab === 'hospitals') {
-            setIsSidebarDrawerOpen(true)
-          }
+          if (tab === 'hospitals') navigate('/patient/hospitals')
+          else if (tab === 'doctors') navigate('/patient/doctors')
+          else if (tab === 'home') navigate('/patient/home')
+          else if (tab === 'profile') setIsSidebarDrawerOpen(true)
         }}
       />
 

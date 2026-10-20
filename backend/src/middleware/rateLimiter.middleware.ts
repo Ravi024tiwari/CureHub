@@ -9,11 +9,12 @@ import rateLimit from "express-rate-limit";
 /**
  * Auth Rate Limiter
  * Applied to: /api/auth/login, /api/auth/register/*
- * Limit: 10 requests per 15 minutes per IP
+ * Limit: 10 requests per 15 minutes per IP (50 in dev)
  */
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: process.env.NODE_ENV === 'development' ? 100 : 10,
+  skip: (req) => req.method === 'OPTIONS',
   statusCode: 429,
   standardHeaders: true,
   legacyHeaders: false,
@@ -33,7 +34,8 @@ export const authRateLimiter = rateLimit({
  */
 export const bookingRateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 5,
+  max: process.env.NODE_ENV === 'development' ? 50 : 5,
+  skip: (req) => req.method === 'OPTIONS',
   statusCode: 429,
   standardHeaders: true,
   legacyHeaders: false,
@@ -53,7 +55,8 @@ export const bookingRateLimiter = rateLimit({
  */
 export const paymentVerifyRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,
+  max: process.env.NODE_ENV === 'development' ? 50 : 10,
+  skip: (req) => req.method === 'OPTIONS',
   statusCode: 429,
   standardHeaders: true,
   legacyHeaders: false,
@@ -68,12 +71,13 @@ export const paymentVerifyRateLimiter = rateLimit({
 /**
  * Global API Rate Limiter
  * Applied to: All routes (app-level)
- * Limit: 100 requests per 15 minutes per IP
+ * Limit: 100 requests per 15 minutes per IP (3000 in dev)
  * Acts as a safety net for all endpoints
  */
 export const globalRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: process.env.NODE_ENV === 'development' ? 3000 : 100,
+  skip: (req) => req.method === 'OPTIONS',
   statusCode: 429,
   standardHeaders: true,
   legacyHeaders: false,

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { devtools, persist } from 'zustand/middleware'
 import { loginApi, logoutApi, getMeApi } from '@/services/authService'
 import type { AuthUser, LoginPayload } from '@/types/auth'
 
@@ -23,8 +23,9 @@ export interface AuthState {
   fetchMe: () => Promise<void>
 }
 
-export const useAuthStore = create<AuthState>()(// persist their storage
-  persist(
+export const useAuthStore = create<AuthState>()(
+  devtools(
+    persist(
     (set, get) => ({
       user: null,
       profile: null,
@@ -140,5 +141,7 @@ export const useAuthStore = create<AuthState>()(// persist their storage
         isAuthenticated: state.isAuthenticated,
       }),
     }
-  )
+  ),
+  { name: 'AuthStore' }
+)
 )

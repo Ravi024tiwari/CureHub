@@ -42,7 +42,7 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
   const mainNavItems = [
     { id: 'home', label: 'Home', icon: Home, path: '/patient/home' },
     { id: 'doctors', label: 'Find Doctors', icon: UserCheck, path: '/patient/doctors' },
-    { id: 'hospitals', label: 'Hospitals', icon: Building2 },
+    { id: 'hospitals', label: 'Hospitals', icon: Building2, path: '/patient/hospitals' },
     { id: 'appointments', label: 'Appointments', icon: Calendar },
     { id: 'records', label: 'Medical Records', icon: FileText },
     { id: 'prescriptions', label: 'Prescriptions', icon: Pill },
@@ -54,7 +54,7 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
   const quickActionItems = [
     { id: 'quick-book', label: 'Book Appointment', icon: CalendarPlus, action: onOpenBookingModal },
     { id: 'quick-doctors', label: 'Find Doctors', icon: Search, path: '/patient/doctors' },
-    { id: 'quick-hospitals', label: 'Find Hospitals', icon: Building2, tab: 'hospitals' },
+    { id: 'quick-hospitals', label: 'Find Hospitals', icon: Building2, path: '/patient/hospitals' },
     { id: 'quick-upload', label: 'Upload Report', icon: UploadCloud, action: onOpenUploadModal },
   ]
 
@@ -73,8 +73,6 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
       item.action()
     } else if (item.path) {
       navigate(item.path)
-    } else if (item.tab) {
-      onSelectTab(item.tab)
     }
     if (isMobileDrawer && onCloseDrawer) {
       onCloseDrawer()

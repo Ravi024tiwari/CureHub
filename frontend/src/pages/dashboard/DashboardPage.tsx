@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/store/authStore'
-import { PatientHomePage } from '@/pages/PatientHomePage'
+import { PatientHomePage } from '@/pages/patient'
 
 export const DashboardPage: FC = () => {
   const navigate = useNavigate()

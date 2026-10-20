@@ -1,5 +1,5 @@
 import apiClient from './apiClient'
-import type { HospitalCardData, AppointmentCardData } from '@/types/patient'
+import type { HospitalCardData, AppointmentCardData, HospitalsApiResponse } from '@/types/patient'
 
 // Fetch Patient Dashboard overview from backend
 export async function fetchPatientDashboardApi() {
@@ -12,32 +12,143 @@ export async function fetchPatientDashboardApi() {
   }
 }
 
-// Fetch Hospitals for discovery
-export async function fetchHospitalsListApi(): Promise<HospitalCardData[]> {
+// Fetch Hospitals for discovery with dynamic query parameters
+export async function fetchHospitalsListApi(params?: {
+  search?: string
+  city?: string
+  department?: string
+  hospitalType?: string
+  facility?: string
+  emergency?: boolean
+  minYear?: number
+  maxYear?: number
+  sortBy?: string
+  page?: number
+  limit?: number
+}): Promise<HospitalsApiResponse> {
   try {
-    const res: any = await apiClient.get('/hospitals')
-    const list = res?.data?.hospitals || res?.hospitals || res?.data || res
-    if (Array.isArray(list) && list.length > 0) {
-      return list.map((h: any, idx: number) => ({
-        _id: h._id || String(idx),
-        name: h.name,
-        slug: h.slug,
-        image: h.images?.[0] || h.logo || undefined,
-        rating: h.rating || 4.5,
-        reviewCount: h.reviewCount || 120,
-        distance: `${(2.0 + idx * 0.8).toFixed(1)} km`,
-        location: h.address?.city ? `${h.address.street || 'Main Road'}, ${h.address.city}` : 'Bilaspur, Chhattisgarh',
-        tags: h.departments?.slice(0, 3) || ['24/7 Emergency', 'ICU', 'Pharmacy'],
-        departments: h.departments,
-        emergencyAvailable: h.emergencyAvailable ?? true,
-        icuAvailable: h.icuAvailable ?? true,
-        phoneNumber: h.phone || h.emergencyPhone,
-      }))
+    const queryParams = new URLSearchParams()
+    if (params?.search) queryParams.append('search', params.search)
+    if (params?.city && params.city !== 'all' && !params.city.toLowerCase().includes('all')) {
+      queryParams.append('city', params.city)
     }
-    return []
+    if (params?.department && params.department !== 'all') queryParams.append('department', params.department)
+    if (params?.hospitalType && params.hospitalType !== 'all') queryParams.append('hospitalType', params.hospitalType)
+    if (params?.facility) queryParams.append('facility', params.facility)
+    if (params?.emergency) queryParams.append('emergency', 'true')
+    if (params?.minYear) queryParams.append('minYear', String(params.minYear))
+    if (params?.maxYear) queryParams.append('maxYear', String(params.maxYear))
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy)
+    if (params?.page) queryParams.append('page', String(params.page))
+    if (params?.limit) queryParams.append('limit', String(params.limit))
+
+    const url = `/hospitals${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    const res: any = await apiClient.get(url)
+    const data = res?.data?.data || res?.data || res
+    const list = data?.hospitals || (Array.isArray(data) ? data : [])
+    const total = data?.pagination?.totalDocs ?? (list.length || 0)
+    const pageNum = params?.page || 1
+    const limitNum = params?.limit || 10
+    const hasMore = data?.pagination?.hasNextPage ?? (pageNum * limitNum < total)
+
+    if (Array.isArray(list)) {
+      const mapped = list.map((h: any, idx: number) => {
+        const coverImg = h.images?.coverImage || (Array.isArray(h.images) ? h.images[0] : null) || h.image || h.logo
+        const gallery = h.images?.gallery || (Array.isArray(h.images) ? h.images : [])
+        const loc = h.address?.city
+          ? `${h.address.street || 'Main Road'}, ${h.address.city}, ${h.address.state || ''}`
+          : 'Bilaspur, Chhattisgarh'
+
+        return {
+          _id: h._id || String(idx),
+          name: h.name,
+          slug: h.slug,
+          image: coverImg,
+          images: {
+            coverImage: coverImg,
+            gallery: gallery.length > 0 ? gallery : [coverImg].filter(Boolean),
+          },
+          rating: h.rating || 4.5,
+          distance: h.distance || `${(2.0 + (idx % 6) * 1.1).toFixed(1)} km`,
+          location: loc,
+          address: h.address,
+          tags: h.departments?.slice(0, 3) || ['Multi-Speciality', '24/7 Emergency', 'Cardiology'],
+          departments: h.departments || ['General Medicine'],
+          facilities: h.facilities || ['24x7 Emergency', 'Ambulance', 'ICU', 'Pharmacy'],
+          hospitalType: h.hospitalType || 'Multi-Speciality',
+          establishmentYear: h.establishmentYear || 2012,
+          totalBeds: h.totalBeds || 150,
+          website: h.website || '',
+          contactEmail: h.contactEmail || '',
+          contactPhone: h.contactPhone || h.phone || '+91 7752 494000',
+          phoneNumber: h.contactPhone || h.phone || '+91 7752 494000',
+          openingTime: h.openingTime || '00:00',
+          closingTime: h.closingTime || '23:59',
+          isEmergency24x7: h.isEmergency24x7 ?? true,
+          emergencyAvailable: h.isEmergency24x7 ?? true,
+          icuAvailable: (h.facilities || []).some((f: string) => f.toLowerCase().includes('icu')),
+          description: h.description || '',
+          verificationStatus: h.verificationStatus || 'APPROVED',
+        } as HospitalCardData
+      })
+      return { hospitals: mapped, total, page: pageNum, limit: limitNum, hasMore }
+    }
+    return { hospitals: [], total: 0, page: 1, limit: limitNum, hasMore: false }
   } catch (error) {
-    console.warn('Backend hospitals list not available, fallback to mock:', error)
-    return []
+    console.warn('Backend hospitals list not available, fallback to empty:', error)
+    return { hospitals: [], total: 0, page: 1, limit: 10, hasMore: false }
+  }
+}
+
+// Fetch single hospital by ID or Slug
+export async function fetchHospitalDetailApi(idOrSlug: string): Promise<HospitalCardData | null> {
+  try {
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(idOrSlug)
+    const url = isObjectId ? `/hospitals/${idOrSlug}` : `/hospitals/slug/${idOrSlug}`
+    const res: any = await apiClient.get(url)
+    const h = res?.data || res
+    if (!h || !h.name) return null
+
+    const coverImg = h.images?.coverImage || (Array.isArray(h.images) ? h.images[0] : null) || h.image
+    const gallery = h.images?.gallery || (Array.isArray(h.images) ? h.images : [])
+    const loc = h.address?.city
+      ? `${h.address.street || 'Main Road'}, ${h.address.city}, ${h.address.state || ''}`
+      : 'Bilaspur, Chhattisgarh'
+
+    return {
+      _id: h._id,
+      name: h.name,
+      slug: h.slug,
+      image: coverImg,
+      images: {
+        coverImage: coverImg,
+        gallery: gallery.length > 0 ? gallery : [coverImg].filter(Boolean),
+      },
+      rating: h.rating || 4.5,
+      distance: h.distance || '2.5 km',
+      location: loc,
+      address: h.address,
+      tags: h.departments?.slice(0, 3) || ['Multi-Speciality', '24/7 Emergency'],
+      departments: h.departments || ['General Medicine'],
+      facilities: h.facilities || ['24x7 Emergency', 'Ambulance', 'ICU', 'Pharmacy'],
+      hospitalType: h.hospitalType || 'Multi-Speciality',
+      establishmentYear: h.establishmentYear || 2012,
+      totalBeds: h.totalBeds || 150,
+      website: h.website || '',
+      contactEmail: h.contactEmail || '',
+      contactPhone: h.contactPhone || h.phone || '+91 7752 494000',
+      phoneNumber: h.contactPhone || h.phone || '+91 7752 494000',
+      openingTime: h.openingTime || '00:00',
+      closingTime: h.closingTime || '23:59',
+      isEmergency24x7: h.isEmergency24x7 ?? true,
+      emergencyAvailable: h.isEmergency24x7 ?? true,
+      icuAvailable: (h.facilities || []).some((f: string) => f.toLowerCase().includes('icu')),
+      description: h.description || '',
+      verificationStatus: h.verificationStatus || 'APPROVED',
+    } as HospitalCardData
+  } catch (error) {
+    console.error('Failed to fetch hospital detail:', error)
+    return null
   }
 }
 

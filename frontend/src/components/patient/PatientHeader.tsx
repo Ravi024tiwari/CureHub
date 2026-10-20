@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Clock,
   Sparkles,
+  X,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useNavigate } from 'react-router-dom'
@@ -38,12 +39,14 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
   const [isCityOpen, setIsCityOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
 
   const cityRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
 
   const cities = [
+    'All Cities',
     'Bilaspur, Chhattisgarh',
     'Raipur, Chhattisgarh',
     'New Delhi, NCR',
@@ -103,13 +106,13 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
   const patientName = user?.name || 'Ravi Tiwari'
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-slate-100 px-3 sm:px-6 lg:px-8 py-3 transition-all shadow-2xs">
-      <div className="w-full flex items-center justify-between gap-3 sm:gap-6">
-        {/* Left: Brand Logo & Sidebar Toggle (Far Left) */}
+    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-slate-100 px-3 sm:px-6 lg:px-8 2xl:px-10 py-2.5 sm:py-3 transition-all shadow-2xs">
+      <div className="w-full max-w-[1720px] mx-auto flex items-center justify-between gap-2 sm:gap-6">
+        {/* Left: Brand Logo & Sidebar Toggle */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             onClick={onToggleSidebar}
-            className="p-2 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200/70 transition-all cursor-pointer"
+            className="p-2 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200/70 transition-all cursor-pointer active:scale-95"
             title="Toggle Navigation Menu"
             aria-label="Toggle Navigation Menu"
           >
@@ -121,36 +124,58 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
             className="flex items-center gap-2 cursor-pointer select-none"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
-            <div className="size-9 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
-              <Activity className="size-5 stroke-[2.5]" />
+            <div className="size-8 sm:size-9 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0">
+              <Activity className="size-4.5 sm:size-5 stroke-[2.5]" />
             </div>
-            <span className="text-xl font-black tracking-tight text-slate-900">
+            <span className="text-lg sm:text-xl font-black tracking-tight text-slate-900">
               Care<span className="text-blue-600">Plus</span>
             </span>
           </div>
         </div>
 
-        {/* Center: Global Search Bar (Spacious & Centered) */}
-        <div className="flex-1 max-w-xl lg:max-w-2xl mx-2">
-          <div className="relative">
+        {/* Center: Global Search Bar (Hidden on Mobile to prevent squishing, visible md+) */}
+        <div className="hidden md:flex flex-1 max-w-xl lg:max-w-2xl mx-2 lg:mx-4">
+          <div className="relative w-full">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 stroke-[2]" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search hospitals, doctors, services..."
-              className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm font-medium bg-slate-50 border border-slate-200/90 rounded-full text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-2xs"
+              className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm font-medium bg-slate-50 border border-slate-200/90 rounded-full text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-2xs"
             />
+            {searchQuery && (
+              <button
+                onClick={() => onSearchChange('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Right Section: Location Pill + Notifications + Profile Pill */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Location Selector Pill */}
+        {/* Right Section: Mobile Search Toggle + Location + Notifications + Interactive Profile */}
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Mobile Search Icon Button */}
+          <button
+            onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+            className={`md:hidden p-2 rounded-xl transition-all cursor-pointer active:scale-95 ${
+              isMobileSearchOpen
+                ? 'bg-blue-50 text-blue-600 border border-blue-200'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600'
+            }`}
+            title="Search"
+            aria-label="Toggle Mobile Search"
+          >
+            <Search className="size-5 stroke-[2]" />
+          </button>
+
+          {/* Location Selector Pill (Desktop) */}
           <div className="relative" ref={cityRef}>
             <button
               onClick={() => setIsCityOpen(!isCityOpen)}
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200/80 hover:bg-slate-100 text-xs font-medium text-slate-700 transition-all cursor-pointer"
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200/80 hover:bg-slate-100 text-xs font-medium text-slate-700 transition-all cursor-pointer"
             >
               <MapPin className="size-3.5 text-blue-600 shrink-0" />
               <span className="truncate max-w-[130px] sm:max-w-[160px]">{selectedCity}</span>
@@ -185,17 +210,16 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-              className="relative p-2 rounded-full hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+              className="relative p-2 rounded-xl hover:bg-slate-100 text-slate-600 hover:text-blue-600 transition-all cursor-pointer active:scale-95"
               title="Notifications"
+              aria-label="Notifications"
             >
               <Bell className="size-5 stroke-[2]" />
-              <span className="absolute top-1 right-1 size-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
-                3
-              </span>
+              <span className="absolute top-1.5 right-1.5 size-2 sm:size-2.5 rounded-full bg-rose-500 ring-2 ring-white" />
             </button>
 
             {isNotificationsOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 mt-2 w-[calc(100vw-24px)] max-w-xs sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
                 <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
                   <span className="text-xs font-bold text-slate-900">Notifications</span>
                   <span className="text-[11px] font-medium text-blue-600 cursor-pointer hover:underline">
@@ -211,12 +235,12 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
                           <div className={`size-7 rounded-lg ${item.color} flex items-center justify-center shrink-0 mt-0.5`}>
                             <Icon className="size-4" />
                           </div>
-                          <div className="space-y-0.5 flex-1">
-                            <div className="flex items-center justify-between">
-                              <h5 className="text-xs font-bold text-slate-900">{item.title}</h5>
-                              <span className="text-[10px] text-slate-400">{item.time}</span>
+                          <div className="space-y-0.5 flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <h5 className="text-xs font-bold text-slate-900 truncate">{item.title}</h5>
+                              <span className="text-[10px] text-slate-400 shrink-0">{item.time}</span>
                             </div>
-                            <p className="text-[11px] text-slate-500 leading-snug">{item.desc}</p>
+                            <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">{item.desc}</p>
                           </div>
                         </div>
                       </div>
@@ -227,35 +251,63 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
             )}
           </div>
 
-          {/* User Profile Pill */}
-          <div className="relative" ref={profileRef}>
+          {/* Interactive User Profile Pill & Avatar */}
+          <div className="relative shrink-0" ref={profileRef}>
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-full hover:bg-slate-100 transition-colors cursor-pointer border border-transparent hover:border-slate-200"
+              className="flex items-center gap-2 p-0.5 sm:px-2.5 sm:py-1.5 rounded-full hover:bg-slate-100 active:scale-95 transition-all cursor-pointer border border-transparent hover:border-slate-200 group"
+              aria-label="User Profile"
             >
-              <div className="size-8 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center ring-2 ring-white shadow-xs">
-                {patientName.charAt(0).toUpperCase()}
+              {/* Vibrant Gradient Avatar with Ring & Status Indicator */}
+              <div className="relative shrink-0">
+                <div className="size-8 sm:size-9 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-sm shadow-blue-500/25 ring-2 ring-white group-hover:ring-blue-400 group-hover:shadow-blue-500/30 transition-all select-none">
+                  {patientName.charAt(0).toUpperCase()}
+                </div>
+                {/* Active Status Badge */}
+                <span className="absolute -bottom-0.5 -right-0.5 size-2.5 bg-emerald-500 ring-2 ring-white rounded-full" />
               </div>
+
+              {/* Desktop Name & Role */}
               <div className="text-left hidden sm:block">
-                <p className="text-xs font-bold text-slate-900 leading-tight">{patientName}</p>
-                <p className="text-[10px] text-slate-400 leading-none">Patient</p>
+                <p className="text-xs font-bold text-slate-900 leading-tight group-hover:text-blue-600 transition-colors">
+                  {patientName}
+                </p>
+                <p className="text-[10px] font-semibold text-emerald-600 leading-none flex items-center gap-1 mt-0.5">
+                  <span className="size-1.5 rounded-full bg-emerald-500"></span>
+                  Patient
+                </p>
               </div>
-              <ChevronDown className="size-3 text-slate-400 hidden sm:block" />
+
+              <ChevronDown
+                className={`size-3 text-slate-400 hidden sm:block transition-transform duration-200 ${
+                  isProfileOpen ? 'rotate-180 text-blue-600' : ''
+                }`}
+              />
             </button>
 
+            {/* Profile Dropdown Menu */}
             {isProfileOpen && (
-              <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-3 py-2 border-b border-slate-100">
-                  <p className="text-xs font-bold text-slate-900">{patientName}</p>
-                  <p className="text-[11px] text-slate-400">{user?.email || 'patient@curehealth.org'}</p>
+              <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-24px)] bg-white rounded-2xl shadow-xl border border-slate-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3.5 py-3 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50 rounded-t-2xl">
+                  <div className="size-10 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 text-white font-extrabold text-sm flex items-center justify-center shadow-xs shrink-0">
+                    {patientName.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-900 truncate">{patientName}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{user?.email || 'patient@curehealth.org'}</p>
+                    <span className="inline-block mt-0.5 text-[9px] font-bold text-blue-700 bg-blue-100/80 px-1.5 py-0.5 rounded-full">
+                      Verified Patient
+                    </span>
+                  </div>
                 </div>
+
                 <div className="py-1">
                   <button
                     onClick={() => {
                       setIsProfileOpen(false)
-                      alert('Profile: Patient record active. Blood Group: O+, Age: 28')
+                      alert(`Profile: ${patientName} | Status: Active | Blood Group: O+`)
                     }}
-                    className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 font-medium cursor-pointer"
+                    className="w-full px-3.5 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 font-medium transition-colors cursor-pointer"
                   >
                     <User className="size-4 text-slate-400" />
                     <span>View Profile</span>
@@ -265,16 +317,17 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
                       setIsProfileOpen(false)
                       alert('Health notifications and privacy settings')
                     }}
-                    className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 font-medium cursor-pointer"
+                    className="w-full px-3.5 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 font-medium transition-colors cursor-pointer"
                   >
                     <Settings className="size-4 text-slate-400" />
                     <span>Settings</span>
                   </button>
                 </div>
+
                 <div className="border-t border-slate-100 pt-1">
                   <button
                     onClick={handleSignOut}
-                    className="w-full px-3 py-2 text-left text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 font-semibold cursor-pointer"
+                    className="w-full px-3.5 py-2 text-left text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 font-semibold transition-colors cursor-pointer"
                   >
                     <LogOut className="size-4 text-rose-500" />
                     <span>Sign Out</span>
@@ -285,6 +338,39 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Mobile Expandable Search Bar (Smoothly opens below header without squeezing navbar) */}
+      {isMobileSearchOpen && (
+        <div className="md:hidden pt-2.5 pb-1 border-t border-slate-100 mt-2 animate-in slide-in-from-top-2 duration-150">
+          <div className="relative flex items-center">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 stroke-[2]" />
+            <input
+              type="text"
+              autoFocus
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search doctors, hospitals, services..."
+              className="w-full pl-10 pr-9 py-2 text-xs font-medium bg-slate-50 border border-slate-200/90 rounded-full text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-2xs"
+            />
+            {searchQuery ? (
+              <button
+                onClick={() => onSearchChange('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+              >
+                <X className="size-3.5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsMobileSearchOpen(false)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   )
 }
+

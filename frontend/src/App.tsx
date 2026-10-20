@@ -1,11 +1,17 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { LoginPage } from '@/pages/LoginPage'
-import { DashboardPage } from '@/pages/DashboardPage'
-import { PatientHomePage } from '@/pages/PatientHomePage'
-import { FindDoctorsPage } from '@/pages/FindDoctorsPage'
-import { PatientRegisterPage } from '@/pages/PatientRegisterPage'
-import { DoctorRegisterPage } from '@/pages/DoctorRegisterPage'
-import { HospitalAdminRegisterPage } from '@/pages/HospitalAdminRegisterPage'
+import {
+  LoginPage,
+  PatientRegisterPage,
+  DoctorRegisterPage,
+  HospitalAdminRegisterPage,
+} from '@/pages/auth'
+
+import {
+  PatientHomePage,
+  FindDoctorsPage,
+  FindHospitalsPage,
+} from '@/pages/patient'
+import { DashboardPage } from '@/pages/dashboard'
 
 function App() {
   return (
@@ -26,6 +32,8 @@ function App() {
         <Route path="/patient/home" element={<PatientHomePage />} />
         <Route path="/patient/doctors" element={<FindDoctorsPage />} />
         <Route path="/doctors" element={<FindDoctorsPage />} />
+        <Route path="/patient/hospitals" element={<FindHospitalsPage />} />
+        <Route path="/hospitals" element={<FindHospitalsPage />} />
 
         {/* Logged in Dashboard */}
         <Route path="/dashboard" element={<DashboardPage />} />

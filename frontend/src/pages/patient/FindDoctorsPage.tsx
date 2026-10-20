@@ -74,6 +74,7 @@ export const FindDoctorsPage: FC = () => {
   // City Dropdown State
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false)
   const cityOptions = [
+    'All Cities',
     'Bilaspur, Chhattisgarh',
     'Raipur, Chhattisgarh',
     'Delhi NCR',
@@ -234,6 +235,7 @@ export const FindDoctorsPage: FC = () => {
                 activeTab="doctors"
                 onSelectTab={(tab) => {
                   if (tab === 'home') navigate('/patient/home')
+                  if (tab === 'hospitals') navigate('/patient/hospitals')
                   setIsSidebarDrawerOpen(false)
                 }}
                 isMobileDrawer={true}
@@ -246,11 +248,11 @@ export const FindDoctorsPage: FC = () => {
 
         {/* Main Page Area */}
         <div className="flex-1 flex flex-col min-w-0 pb-28 md:pb-12">
-          <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-7 space-y-6 sm:space-y-8">
+          <main className="flex-1 w-full max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8 2xl:px-10 py-5 sm:py-7 space-y-6 sm:space-y-8">
             {/* Find Doctors Hero Section */}
             <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-50/95 via-sky-50/80 to-indigo-50/85 border border-blue-100/90 p-6 sm:p-8 lg:p-10 shadow-sm">
               <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
-                <div className="w-full lg:max-w-2xl space-y-4">
+                <div className="w-full lg:max-w-3xl xl:max-w-4xl space-y-4">
                   <div className="space-y-1.5">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100/80 border border-blue-200 text-blue-700 text-[11px] font-bold tracking-wide uppercase">
                       <Sparkles className="size-3" />
@@ -259,7 +261,7 @@ export const FindDoctorsPage: FC = () => {
                     <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
                       Find Doctors
                     </h1>
-                    <p className="text-xs sm:text-sm text-slate-600 max-w-lg leading-relaxed">
+                    <p className="text-xs sm:text-sm text-slate-600 max-w-xl leading-relaxed">
                       Discover and book appointments with top-rated doctors from trusted hospitals across Bilaspur.
                     </p>
                   </div>
@@ -586,7 +588,7 @@ export const FindDoctorsPage: FC = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 min-[1680px]:grid-cols-4 gap-5 sm:gap-6">
                     {doctors.map((doctor) => (
                       <DoctorCard
                         key={doctor._id}
@@ -596,10 +598,10 @@ export const FindDoctorsPage: FC = () => {
                       />
                     ))}
 
-                    {/* Smooth Skeleton Cards while loading next batch (3 cards matching row width) */}
+                    {/* Smooth Skeleton Cards while loading next batch (matches row width) */}
                     {isLoadingMore && (
                       <>
-                        {[1, 2, 3].map((idx) => (
+                        {[1, 2, 3, 4].map((idx) => (
                           <div
                             key={`scroll-skeleton-${idx}`}
                             className="bg-white rounded-3xl border border-slate-200/70 p-5 flex flex-col justify-between gap-4 animate-pulse shadow-2xs"
@@ -787,6 +789,17 @@ export const FindDoctorsPage: FC = () => {
         preselectedDoctor={selectedDoctorForBooking}
         doctorsList={doctors}
         onAppointmentBooked={handleAppointmentBooked}
+      />
+
+      {/* Mobile Sticky Bottom Navigation */}
+      <MobileBottomNav
+        activeTab="doctors"
+        onSelectTab={(tab) => {
+          if (tab === 'home') navigate('/patient/home')
+          if (tab === 'doctors') navigate('/patient/doctors')
+          if (tab === 'hospitals') navigate('/patient/hospitals')
+          if (tab === 'profile') setIsSidebarDrawerOpen(true)
+        }}
       />
     </div>
   )
