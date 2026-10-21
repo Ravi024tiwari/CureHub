@@ -16,6 +16,7 @@ import appointmentRouter from "./routes/appointment.routes.js";
 import patientRouter from "./routes/patient.routes.js";
 import reviewRouter from "./routes/review.routes.js";
 import doctorRouter from "./routes/doctor.routes.js";
+import hospitalAdminRouter from "./routes/hospitalAdmin.routes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import { globalRateLimiter } from "./middleware/rateLimiter.middleware.js";
 import { initCronJobs } from "./services/cron.service.js";
@@ -78,7 +79,7 @@ app.use("/api/appointments", appointmentRouter);
 app.use("/api/patients", patientRouter);
 app.use("/api/reviews", reviewRouter);
 app.use("/api/doctors", doctorRouter);
-
+app.use("/api/hospital-admin", hospitalAdminRouter);
 
 app.use(errorHandler);
 

@@ -46,17 +46,6 @@ export const createHospital = asyncHandler(async (req: Request, res: Response) =
     throw new ApiError(401, "Authentication required");
   }
 
-  const existingHospitalForAdmin = await Hospital.findOne({
-    hospitalAdminId: adminUserId,
-  });
-
-  if (existingHospitalForAdmin) {
-    throw new ApiError(
-      409,
-      "You have already created a hospital. Please manage or update your existing hospital profile."
-    );
-  }
-
   const {
     name,
     licenseNumber,
