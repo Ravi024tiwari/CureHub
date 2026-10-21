@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/store/authStore'
 import { PatientHomePage } from '@/pages/patient'
+import { HospitalAdminDashboardPage } from '@/pages/hospital-admin'
 
 export const DashboardPage: FC = () => {
   const navigate = useNavigate()
@@ -40,6 +41,11 @@ export const DashboardPage: FC = () => {
   // If patient, render the dedicated production-grade Patient Home Screen
   if (user.role === 'patient') {
     return <PatientHomePage />
+  }
+
+  // If hospital admin, render the dedicated production-grade Hospital Admin Dashboard
+  if (user.role === 'hospital_admin') {
+    return <HospitalAdminDashboardPage />
   }
 
   const getRoleDetails = (role: string) => {

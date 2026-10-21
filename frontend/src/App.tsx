@@ -14,6 +14,10 @@ import {
   PatientMedicalRecordsPage,
 } from '@/pages/patient'
 import { DashboardPage } from '@/pages/dashboard'
+import {
+  HospitalAdminDashboardPage,
+  HospitalAdminHospitalsPage,
+} from '@/pages/hospital-admin'
 
 function App() {
   return (
@@ -44,6 +48,10 @@ function App() {
 
         {/* Logged in Dashboard */}
         <Route path="/dashboard" element={<DashboardPage />} />
+
+        {/* Dedicated Hospital Admin Routes */}
+        <Route path="/hospital-admin/dashboard" element={<HospitalAdminDashboardPage />} />
+        <Route path="/hospital-admin/hospitals" element={<HospitalAdminHospitalsPage />} />
 
         {/* Catch-all fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />

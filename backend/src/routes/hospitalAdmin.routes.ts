@@ -8,8 +8,8 @@ import {
   getAdminJoinRequests,
   respondToJoinRequest,
   disaffiliateDoctor,
+  getHospitalAdminPortalDashboard,
 } from "../controllers/hospitalAdmin.controller.js";
-import { getHospitalDashboard } from "../controllers/hospital.controller.js";
 import {
   authenticateToken,
   authorizeRoles,
@@ -25,7 +25,7 @@ hospitalAdminRouter.use(
 );
 
 // ── 1. Dashboard & Analytics ────────────────────────────────────────────────
-hospitalAdminRouter.get("/dashboard", getHospitalDashboard);
+hospitalAdminRouter.get("/dashboard", getHospitalAdminPortalDashboard);
 
 // ── 2. Multi-Hospital Management (CRUD) ─────────────────────────────────────
 hospitalAdminRouter.get("/hospitals", getAdminHospitals);
