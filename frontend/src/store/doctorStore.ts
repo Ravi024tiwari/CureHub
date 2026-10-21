@@ -149,8 +149,10 @@ export const useDoctorStore = create<DoctorStoreState>()(
       fetchDoctors: async (pageNumber = 1, isNewFilter = false) => {
         const state = get()
         if (isNewFilter || pageNumber === 1) {
+          if (state.isLoadingInitial) return
           set({ isLoadingInitial: true, error: null })
         } else {
+          if (state.isLoadingMore || !state.hasMore) return
           set({ isLoadingMore: true, error: null })
         }
 
@@ -220,6 +222,7 @@ export const useDoctorStore = create<DoctorStoreState>()(
             set({
               isLoadingInitial: false,
               isLoadingMore: false,
+              hasMore: false,
               error: 'Failed to retrieve doctors from database',
             })
           }
@@ -228,6 +231,7 @@ export const useDoctorStore = create<DoctorStoreState>()(
           set({
             isLoadingInitial: false,
             isLoadingMore: false,
+            hasMore: false,
             error: err.message || 'Error fetching doctors',
           })
         }

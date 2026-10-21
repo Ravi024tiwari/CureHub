@@ -1,5 +1,5 @@
 import { type FC } from 'react'
-import { Home, Stethoscope, Building2, Calendar, User } from 'lucide-react'
+import { Home, Stethoscope, Building2, Calendar, FileText } from 'lucide-react'
 
 interface MobileBottomNavProps {
   activeTab: string
@@ -11,8 +11,8 @@ export const MobileBottomNav: FC<MobileBottomNavProps> = ({ activeTab, onSelectT
     { id: 'home', label: 'Home', icon: Home },
     { id: 'doctors', label: 'Doctors', icon: Stethoscope },
     { id: 'hospitals', label: 'Hospitals', icon: Building2 },
+    { id: 'records', label: 'Records', icon: FileText },
     { id: 'appointments', label: 'Appts', icon: Calendar },
-    { id: 'profile', label: 'Profile', icon: User },
   ]
 
   return (

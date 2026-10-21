@@ -190,3 +190,43 @@ export interface HealthTipItem {
   description: string
   imageUrl?: string
 }
+
+// Medical Records Types
+export type MedicalRecordCategory =
+  | 'All Reports'
+  | 'Lab Report'
+  | 'Imaging'
+  | 'Prescription'
+  | 'Others'
+
+export interface MedicalRecordItem {
+  _id: string
+  title: string
+  category: 'Lab Report' | 'Imaging' | 'Prescription' | 'Others' | string
+  fileUrl: string
+  fileType: 'PDF' | 'IMAGE' | 'JPG' | 'PNG' | string
+  fileSize?: string
+  uploadedAt: string
+  uploadedBy?: string
+  doctorName?: string
+  hospitalName?: string
+  notes?: string
+}
+
+export interface PatientEmergencyContact {
+  name: string
+  relationship: string
+  phoneNumber: string
+}
+
+export interface PatientMedicalHistory {
+  bloodGroup: string | null
+  allergies: string[]
+  chronicDiseases: string[]
+  pastSurgeries: string[]
+  currentMedications: string[]
+  emergencyContact: PatientEmergencyContact
+  gender?: string | null
+  dateOfBirth?: string | null
+}
+

@@ -327,3 +327,71 @@ export async function fetchDoctorByIdApi(doctorId: string) {
   }
 }
 
+// ============================================================================
+// Medical Records & Patient Medical History Vault APIs
+// ============================================================================
+
+// Fetch Patient Medical History (Blood group, allergies, surgeries, chronic diseases, emergency contact)
+export async function fetchPatientMedicalHistoryApi() {
+  try {
+    const res: any = await apiClient.get('/patients/medical-history')
+    return res?.data?.data || res?.data || res
+  } catch (error) {
+    console.warn('Backend medical history not available:', error)
+    return null
+  }
+}
+
+// Update Patient Medical History
+export async function updatePatientMedicalHistoryApi(data: Partial<{
+  bloodGroup: string | null
+  allergies: string[]
+  chronicDiseases: string[]
+  pastSurgeries: string[]
+  currentMedications: string[]
+  emergencyContact: { name: string; relationship: string; phoneNumber: string }
+  gender?: string | null
+  dateOfBirth?: string | null
+}>) {
+  const res: any = await apiClient.patch('/patients/medical-history', data)
+  return res?.data?.data || res?.data || res
+}
+
+// Fetch all Patient Medical Reports Vault
+export async function fetchPatientReportsApi(category?: string) {
+  try {
+    const query = category && category !== 'All Reports' ? `?category=${encodeURIComponent(category)}` : ''
+    const res: any = await apiClient.get(`/patients/reports${query}`)
+    const data = res?.data?.data || res?.data || res
+    return Array.isArray(data?.reports) ? data.reports : (Array.isArray(data) ? data : [])
+  } catch (error) {
+    console.warn('Backend medical reports vault not available:', error)
+    return null
+  }
+}
+
+// Upload Medical Report (supports multipart file upload or JSON payload)
+export async function uploadPatientReportApi(payload: FormData | {
+  title: string
+  fileUrl: string
+  fileType?: string
+  category?: string
+}) {
+  if (payload instanceof FormData) {
+    const res: any = await apiClient.post('/profile/patient/reports', payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res?.data?.data?.report || res?.data?.data || res?.data || res
+  } else {
+    const res: any = await apiClient.post('/patients/reports', payload)
+    return res?.data?.data || res?.data || res
+  }
+}
+
+// Delete Medical Report by ID
+export async function deletePatientReportApi(reportId: string) {
+  const res: any = await apiClient.delete(`/patients/reports/${reportId}`)
+  return res?.data || res
+}
+
+

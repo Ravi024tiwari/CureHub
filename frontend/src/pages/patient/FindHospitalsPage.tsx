@@ -107,6 +107,8 @@ export const FindHospitalsPage: FC = () => {
     { id: 'Dermatology', label: 'Dermatology', icon: Sparkles },
   ]
 
+  const isInitialSearch = useRef(true)
+
   // Fetch hospitals on initial mount and when filters change
   useEffect(() => {
     fetchHospitals(1, true)
@@ -121,8 +123,12 @@ export const FindHospitalsPage: FC = () => {
     maxYear,
   ])
 
-  // Debounced search
+  // Debounced search (skips initial mount to avoid duplicate fetch)
   useEffect(() => {
+    if (isInitialSearch.current) {
+      isInitialSearch.current = false
+      return
+    }
     const timer = setTimeout(() => {
       fetchHospitals(1, true)
     }, 350)
@@ -132,20 +138,20 @@ export const FindHospitalsPage: FC = () => {
   // Infinite Scroll IntersectionObserver with prefetch margin
   useEffect(() => {
     const target = observerTarget.current
-    if (!target || !hasMore) return
+    if (!target || !hasMore || isLoadingInitial || isLoadingMore || hospitals.length === 0) return
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !isLoadingMore && hasMore) {
+        if (entries[0].isIntersecting && !isLoadingMore && hasMore && hospitals.length > 0) {
           fetchNextPage()
         }
       },
-      { threshold: 0.1, rootMargin: '300px' }
+      { threshold: 0.1, rootMargin: '200px' }
     )
 
     observer.observe(target)
     return () => observer.disconnect()
-  }, [hasMore, isLoadingMore, fetchNextPage])
+  }, [hasMore, isLoadingMore, isLoadingInitial, hospitals.length, fetchNextPage])
 
   const handleOpenBooking = (hospital: HospitalCardData, doctor?: DoctorCardData) => {
     setPreselectedHospital(hospital)
@@ -527,7 +533,7 @@ export const FindHospitalsPage: FC = () => {
                         {/* Bottom Section: Infinite Scroll Sentinel, Progress & Load More Station */}
                         <div className="pt-4 pb-8 text-center space-y-4">
                           {/* Invisible sentinel for smooth auto-fetch when scrolling */}
-                          {hasMore && !isLoadingInitial && (
+                          {hasMore && !isLoadingInitial && hospitals.length > 0 && (
                             <div ref={observerTarget} className="h-1 opacity-0 pointer-events-none" />
                           )}
 

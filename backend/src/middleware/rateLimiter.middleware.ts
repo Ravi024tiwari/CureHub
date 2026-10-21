@@ -1,4 +1,12 @@
 import rateLimit from "express-rate-limit";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const isDev =
+  !process.env.NODE_ENV ||
+  process.env.NODE_ENV === "development" ||
+  process.env.NODE_ENV === "test";
 
 /**
  * Rate Limiter Configurations
@@ -9,11 +17,11 @@ import rateLimit from "express-rate-limit";
 /**
  * Auth Rate Limiter
  * Applied to: /api/auth/login, /api/auth/register/*
- * Limit: 10 requests per 15 minutes per IP (50 in dev)
+ * Limit: 10 requests per 15 minutes per IP (500 in dev)
  */
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'development' ? 100 : 10,
+  max: isDev ? 500 : 10,
   skip: (req) => req.method === 'OPTIONS',
   statusCode: 429,
   standardHeaders: true,
@@ -34,7 +42,7 @@ export const authRateLimiter = rateLimit({
  */
 export const bookingRateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
-  max: process.env.NODE_ENV === 'development' ? 50 : 5,
+  max: isDev ? 500 : 5,
   skip: (req) => req.method === 'OPTIONS',
   statusCode: 429,
   standardHeaders: true,
@@ -55,7 +63,7 @@ export const bookingRateLimiter = rateLimit({
  */
 export const paymentVerifyRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 50 : 10,
+  max: isDev ? 500 : 10,
   skip: (req) => req.method === 'OPTIONS',
   statusCode: 429,
   standardHeaders: true,
@@ -71,12 +79,12 @@ export const paymentVerifyRateLimiter = rateLimit({
 /**
  * Global API Rate Limiter
  * Applied to: All routes (app-level)
- * Limit: 100 requests per 15 minutes per IP (3000 in dev)
+ * Limit: 100 requests per 15 minutes per IP (10000 in dev)
  * Acts as a safety net for all endpoints
  */
 export const globalRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 3000 : 100,
+  max: isDev ? 10000 : 100,
   skip: (req) => req.method === 'OPTIONS',
   statusCode: 429,
   standardHeaders: true,

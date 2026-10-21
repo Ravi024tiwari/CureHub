@@ -115,9 +115,12 @@ export const useHospitalStore = create<HospitalStoreState>()(
         },
 
         fetchHospitals: async (pageNumber = 1, isNewFilter = false) => {
+          const currentState = get()
           if (isNewFilter || pageNumber === 1) {
+            if (currentState.isLoadingInitial) return
             set({ isLoading: true, isLoadingInitial: true, error: null })
           } else {
+            if (currentState.isLoadingMore || !currentState.hasMore) return
             set({ isLoadingMore: true, error: null })
           }
 
@@ -188,11 +191,12 @@ export const useHospitalStore = create<HospitalStoreState>()(
               })
             }
           } catch (err: any) {
-            console.error('Failed to fetch hospitals in store:', err)
+            console.warn('Backend hospitals list not available, fallback to empty:', err?.message || err)
             set({
               isLoading: false,
               isLoadingInitial: false,
               isLoadingMore: false,
+              hasMore: false,
               error: err?.message || 'Failed to load hospitals list',
             })
           }

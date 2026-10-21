@@ -1,5 +1,7 @@
-import express, { Request, Response } from "express";
 import dotenv from "dotenv";
+dotenv.config();
+
+import express, { Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -17,8 +19,6 @@ import doctorRouter from "./routes/doctor.routes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import { globalRateLimiter } from "./middleware/rateLimiter.middleware.js";
 import { initCronJobs } from "./services/cron.service.js";
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

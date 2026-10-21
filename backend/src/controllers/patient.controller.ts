@@ -119,9 +119,6 @@ export const getPatientDashboard = asyncHandler(async (req: Request, res: Respon
 });
 
 /**
- * ============================================================================
- * Patient Prescription Locker
- * ============================================================================
  * Fetches all completed consultation prescriptions across all appointments
  */
 export const getPatientPrescriptions = asyncHandler(async (req: Request, res: Response) => {
@@ -209,11 +206,7 @@ export const getPatientPrescriptions = asyncHandler(async (req: Request, res: Re
   );
 });
 
-/**
- * ============================================================================
- * Patient Medical Reports Vault (Fetch, Upload, Delete)
- * ============================================================================
- */
+
 
 /**
  * Patient: Fetch all uploaded medical reports with optional category filter
@@ -322,12 +315,6 @@ export const deletePatientReport = asyncHandler(async (req: Request, res: Respon
     new ApiResponse(200, { reportId }, "Medical report deleted successfully.")
   );
 });
-
-/**
- * ============================================================================
- * Patient Medical History & Chronic Conditions (Get & Update)
- * ============================================================================
- */
 
 /**
  * Patient: Get complete medical history background

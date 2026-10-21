@@ -11,6 +11,7 @@ import {
   FindDoctorsPage,
   FindHospitalsPage,
   PatientAppointmentsPage,
+  PatientMedicalRecordsPage,
 } from '@/pages/patient'
 import { DashboardPage } from '@/pages/dashboard'
 
@@ -37,6 +38,9 @@ function App() {
         <Route path="/hospitals" element={<FindHospitalsPage />} />
         <Route path="/patient/appointments" element={<PatientAppointmentsPage />} />
         <Route path="/appointments" element={<PatientAppointmentsPage />} />
+        <Route path="/patient/records" element={<PatientMedicalRecordsPage />} />
+        <Route path="/records" element={<PatientMedicalRecordsPage />} />
+        <Route path="/patient/medical-records" element={<PatientMedicalRecordsPage />} />
 
         {/* Logged in Dashboard */}
         <Route path="/dashboard" element={<DashboardPage />} />

@@ -167,8 +167,14 @@ export const FindDoctorsPage: FC = () => {
     sortBy,
   ])
 
-  // Debounced search query
+  const isInitialSearch = useRef(true)
+
+  // Debounced search query (skips initial mount)
   useEffect(() => {
+    if (isInitialSearch.current) {
+      isInitialSearch.current = false
+      return
+    }
     const timer = setTimeout(() => {
       fetchDoctors(1, true)
     }, 350)
@@ -178,20 +184,20 @@ export const FindDoctorsPage: FC = () => {
   // Infinite Scroll IntersectionObserver with prefetch margin
   useEffect(() => {
     const target = observerTarget.current
-    if (!target || !hasMore) return
+    if (!target || !hasMore || isLoadingInitial || isLoadingMore || doctors.length === 0) return
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !isLoadingMore && hasMore) {
+        if (entries[0].isIntersecting && !isLoadingMore && hasMore && doctors.length > 0) {
           fetchNextPage()
         }
       },
-      { threshold: 0.1, rootMargin: '300px' }
+      { threshold: 0.1, rootMargin: '200px' }
     )
 
     observer.observe(target)
     return () => observer.disconnect()
-  }, [hasMore, isLoadingMore, fetchNextPage])
+  }, [hasMore, isLoadingMore, isLoadingInitial, doctors.length, fetchNextPage])
 
   const handleLoadMore = () => {
     fetchNextPage()
@@ -633,7 +639,7 @@ export const FindDoctorsPage: FC = () => {
                 {/* Bottom Section: Interactive Gray Color UI Load More & Industrial Spinner */}
                 <div className="py-8 text-center space-y-4">
                   {/* Invisible sentinel for smooth auto-fetch when scrolling */}
-                  {hasMore && !isLoadingInitial && (
+                  {hasMore && !isLoadingInitial && doctors.length > 0 && (
                     <div ref={observerTarget} className="h-1 opacity-0 pointer-events-none" />
                   )}
 
