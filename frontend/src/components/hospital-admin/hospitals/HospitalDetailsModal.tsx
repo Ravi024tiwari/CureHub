@@ -1,4 +1,5 @@
 import { useState, type FC } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   X,
   MapPin,
@@ -26,11 +27,11 @@ import shreeSaiImg from '@/assets/shree-sai-hospital.jpg'
 import lifecareImg from '@/assets/lifecare-hospital.jpg'
 
 export const HospitalDetailsModal: FC = () => {
+  const navigate = useNavigate()
   const {
     selectedHospital,
     isDetailsModalOpen,
     setIsDetailsModalOpen,
-    setIsEditModalOpen,
     toggleActiveStatus,
     isSubmitting,
   } = useHospitalBranchesStore()
@@ -65,7 +66,7 @@ export const HospitalDetailsModal: FC = () => {
 
   const handleEditClick = () => {
     setIsDetailsModalOpen(false)
-    setIsEditModalOpen(true)
+    navigate(`/hospital-admin/hospitals/${selectedHospital._id}/edit`)
   }
 
   return (
@@ -336,8 +337,18 @@ export const HospitalDetailsModal: FC = () => {
           )}
         </div>
 
-        {/* Modal Bottom Actions matching mockup (Edit & Deactivate buttons) */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3 shrink-0">
+        {/* Modal Bottom Actions matching mockup (Edit & Deactivate buttons + Full Page) */}
+        <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-end gap-3 shrink-0">
+          <button
+            onClick={() => {
+              setIsDetailsModalOpen(false)
+              navigate(`/hospital-admin/hospitals/${selectedHospital._id}`)
+            }}
+            className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+          >
+            <span>Open Full Page</span>
+          </button>
+
           <button
             onClick={handleEditClick}
             className="flex-1 sm:flex-none px-4 py-2 rounded-xl border border-slate-200 hover:border-blue-400 text-slate-700 hover:text-blue-600 bg-white font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"

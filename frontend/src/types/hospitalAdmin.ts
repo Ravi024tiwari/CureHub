@@ -152,3 +152,85 @@ export interface HospitalBranchPagination {
   hasPrevPage: boolean
 }
 
+export interface AddHospitalFormData {
+  name: string
+  hospitalType: string
+  slug: string
+  establishmentYear: number | ''
+  totalBeds: number | ''
+  website: string
+  description: string
+  street: string
+  city: string
+  state: string
+  zipCode: string
+  country: string
+  contactEmail: string
+  contactPhone: string
+  departments: string[]
+  facilities: string[]
+  openingTime: string
+  closingTime: string
+  isEmergency24x7: boolean
+  coverImage: string
+  gallery: string[]
+  licenseNumber: string
+  licenseDocumentUrl: string
+  licenseDocumentName?: string
+}
+
+export interface HospitalDoctorUser {
+  _id: string
+  name: string
+  email: string
+  phoneNumber?: string
+  avatar?: string
+}
+
+export interface HospitalDoctorItem {
+  _id: string
+  userId: HospitalDoctorUser
+  department: string
+  specialization: string[]
+  experienceYears: number
+  consultationFee: number
+  ratingAverage: number
+  reviewCount?: number
+  bio?: string
+  medicalCouncilRegistrationNumber?: string
+  qualifications?: string[]
+  createdAt?: string
+}
+
+export interface HospitalActivityItem {
+  id: string
+  type: string
+  title: string
+  description: string
+  timestamp: string
+}
+
+export interface HospitalDetailData {
+  hospital: HospitalBranchItem & {
+    hospitalAdminId?: HospitalDoctorUser
+    verifiedBy?: { _id: string; name: string; email: string }
+  }
+  stats: {
+    totalBeds: number
+    totalDoctors: number
+    totalAppointments: number
+    totalPatients: number
+  }
+  departmentCounts: Array<{ department: string; doctorCount: number }>
+  topDoctors: HospitalDoctorItem[]
+  recentActivities: HospitalActivityItem[]
+  isOwner?: boolean
+  pendingRequestsCount?: number
+}
+
+export interface HospitalDoctorsResponse {
+  doctors: HospitalDoctorItem[]
+  pagination: HospitalBranchPagination
+}
+
+

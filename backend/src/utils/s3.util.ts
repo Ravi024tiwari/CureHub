@@ -1,4 +1,9 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand,} from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  CopyObjectCommand,
+} from "@aws-sdk/client-s3";
 
 import dotenv from "dotenv";
 import path from "path";
@@ -119,3 +124,62 @@ export const deleteFileFromS3 = async (fileUrlOrKey: string): Promise<boolean> =
     return false;
   }
 };
+
+/**
+ * Promote temporary file to permanent storage (move from temp/... to destination folder)
+ */
+export const promoteFileFromTemp = async (
+  fileUrlOrKey: string,
+  targetFolder: string
+): Promise<IS3UploadResult> => {
+  if (!fileUrlOrKey || !bucketName) {
+    return { url: fileUrlOrKey, key: fileUrlOrKey };
+  }
+
+  // If already not in temp, return as is
+  if (!fileUrlOrKey.includes("temp/")) {
+    return { url: fileUrlOrKey, key: fileUrlOrKey };
+  }
+
+  try {
+    let sourceKey = fileUrlOrKey;
+    if (fileUrlOrKey.startsWith("http")) {
+      const urlPattern = new RegExp(
+        `https://${bucketName}\\.s3\\.[a-z0-9-]+\\.amazonaws\\.com/(.+)`
+      );
+      const match = fileUrlOrKey.match(urlPattern);
+      if (match && match[1]) {
+        sourceKey = decodeURIComponent(match[1]);
+      } else {
+        const urlObj = new URL(fileUrlOrKey);
+        sourceKey = decodeURIComponent(urlObj.pathname.replace(/^\//, ""));
+      }
+    }
+
+    // Destination key replaces 'temp/' prefix with targetFolder
+    const fileName = path.basename(sourceKey);
+    const destinationKey = `${targetFolder}/${fileName}`;
+
+    // 1. Copy object from source to destination
+    const copyCommand = new CopyObjectCommand({
+      Bucket: bucketName,
+      CopySource: `${bucketName}/${sourceKey}`,
+      Key: destinationKey,
+    });
+    await s3Client.send(copyCommand);
+
+    // 2. Delete source object from temp
+    const deleteCommand = new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: sourceKey,
+    });
+    await s3Client.send(deleteCommand);
+
+    const url = `https://${bucketName}.s3.${region}.amazonaws.com/${destinationKey}`;
+    return { url, key: destinationKey };
+  } catch (err) {
+    console.warn("Failed to promote temp file in S3, keeping original:", err);
+    return { url: fileUrlOrKey, key: fileUrlOrKey };
+  }
+};
+

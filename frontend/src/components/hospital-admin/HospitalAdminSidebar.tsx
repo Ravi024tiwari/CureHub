@@ -7,8 +7,6 @@ import {
   Stethoscope,
   UserPlus,
   Calendar,
-  Users,
-  BarChart3,
   Settings,
   X,
   ChevronRight,
@@ -62,18 +60,6 @@ export const HospitalAdminSidebar: FC<HospitalAdminSidebarProps> = ({
       label: 'Appointments',
       icon: Calendar,
       path: '/hospital-admin/appointments',
-    },
-    {
-      id: 'patients',
-      label: 'Patients',
-      icon: Users,
-      path: '/hospital-admin/patients',
-    },
-    {
-      id: 'reports',
-      label: 'Reports & Analytics',
-      icon: BarChart3,
-      path: '/hospital-admin/reports',
     },
     {
       id: 'settings',
@@ -134,7 +120,8 @@ export const HospitalAdminSidebar: FC<HospitalAdminSidebarProps> = ({
             const isActive =
               currentPath === item.path ||
               (item.alias && item.alias.includes(currentPath)) ||
-              (item.id === 'dashboard' && (currentPath === '/dashboard' || currentPath === '/hospital-admin'))
+              (item.id === 'dashboard' && (currentPath === '/dashboard' || currentPath === '/hospital-admin')) ||
+              (item.id === 'hospitals' && currentPath.startsWith('/hospital-admin/hospitals'))
 
             return (
               <button

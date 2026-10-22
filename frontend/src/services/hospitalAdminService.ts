@@ -5,6 +5,8 @@ import type {
   HospitalBranchItem,
   HospitalBranchKpis,
   HospitalBranchPagination,
+  HospitalDetailData,
+  HospitalDoctorsResponse,
 } from '@/types/hospitalAdmin'
 
 export const hospitalAdminService = {
@@ -54,8 +56,31 @@ export const hospitalAdminService = {
   },
 
   // Fetch hospital detail with affiliated doctors
-  getHospitalDetail: async (id: string): Promise<any> => {
+  getHospitalDetail: async (id: string): Promise<HospitalDetailData> => {
     const response = await apiClient.get(`/hospital-admin/hospitals/${id}`)
+    return (response as any)?.data || response
+  },
+
+  // Fetch hospital doctors paginated (10 per page default)
+  getHospitalDoctors: async (
+    hospitalId: string,
+    params?: { page?: number; limit?: number; department?: string; search?: string }
+  ): Promise<HospitalDoctorsResponse> => {
+    const q = new URLSearchParams()
+    if (params?.page) q.append('page', params.page.toString())
+    if (params?.limit) q.append('limit', params.limit.toString())
+    if (params?.department && params.department !== 'All') q.append('department', params.department)
+    if (params?.search) q.append('search', params.search)
+
+    const response = await apiClient.get(
+      `/hospital-admin/hospitals/${hospitalId}/doctors?${q.toString()}`
+    )
+    return (response as any)?.data || response
+  },
+
+  // Toggle active status (activate/deactivate)
+  toggleHospitalStatus: async (id: string, isActive: boolean): Promise<any> => {
+    const response = await apiClient.patch(`/hospital-admin/hospitals/${id}`, { isActive })
     return (response as any)?.data || response
   },
 

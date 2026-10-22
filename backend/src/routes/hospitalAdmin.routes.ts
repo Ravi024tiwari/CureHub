@@ -1,7 +1,6 @@
 import { Router } from "express";
 import {
   getAdminHospitals,
-  getHospitalDetailById,
   createHospitalForAdmin,
   updateHospitalById,
   deleteHospitalById,
@@ -10,6 +9,10 @@ import {
   disaffiliateDoctor,
   getHospitalAdminPortalDashboard,
 } from "../controllers/hospitalAdmin.controller.js";
+import {
+  getHospitalById,
+  getHospitalDoctors,
+} from "../controllers/hospital.controller.js";
 import {
   authenticateToken,
   authorizeRoles,
@@ -30,7 +33,8 @@ hospitalAdminRouter.get("/dashboard", getHospitalAdminPortalDashboard);
 // ── 2. Multi-Hospital Management (CRUD) ─────────────────────────────────────
 hospitalAdminRouter.get("/hospitals", getAdminHospitals);
 hospitalAdminRouter.post("/hospitals", createHospitalForAdmin);
-hospitalAdminRouter.get("/hospitals/:id", getHospitalDetailById);
+hospitalAdminRouter.get("/hospitals/:id", getHospitalById);
+hospitalAdminRouter.get("/hospitals/:id/doctors", getHospitalDoctors);
 hospitalAdminRouter.put("/hospitals/:id", updateHospitalById);
 hospitalAdminRouter.patch("/hospitals/:id", updateHospitalById);
 hospitalAdminRouter.delete("/hospitals/:id", deleteHospitalById);

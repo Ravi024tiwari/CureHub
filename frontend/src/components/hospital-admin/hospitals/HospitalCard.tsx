@@ -1,4 +1,5 @@
 import { useState, type FC } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   MapPin,
   Star,
@@ -25,12 +26,11 @@ interface HospitalCardProps {
 }
 
 export const HospitalCard: FC<HospitalCardProps> = ({ hospital, index = 0 }) => {
+  const navigate = useNavigate()
   const {
     favorites,
     toggleFavorite,
     setSelectedHospital,
-    setIsDetailsModalOpen,
-    setIsEditModalOpen,
   } = useHospitalBranchesStore()
 
   const [imgError, setImgError] = useState(false)
@@ -70,12 +70,12 @@ export const HospitalCard: FC<HospitalCardProps> = ({ hospital, index = 0 }) => 
 
   const handleOpenDetails = () => {
     setSelectedHospital(hospital)
-    setIsDetailsModalOpen(true)
+    navigate(`/hospital-admin/hospitals/${hospital._id}`)
   }
 
   const handleOpenManage = () => {
     setSelectedHospital(hospital)
-    setIsEditModalOpen(true)
+    navigate(`/hospital-admin/hospitals/${hospital._id}/edit`)
   }
 
   return (

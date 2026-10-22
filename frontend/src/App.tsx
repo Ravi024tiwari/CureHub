@@ -17,6 +17,8 @@ import { DashboardPage } from '@/pages/dashboard'
 import {
   HospitalAdminDashboardPage,
   HospitalAdminHospitalsPage,
+  AddNewHospitalPage,
+  HospitalDetailPage,
 } from '@/pages/hospital-admin'
 
 function App() {
@@ -52,6 +54,11 @@ function App() {
         {/* Dedicated Hospital Admin Routes */}
         <Route path="/hospital-admin/dashboard" element={<HospitalAdminDashboardPage />} />
         <Route path="/hospital-admin/hospitals" element={<HospitalAdminHospitalsPage />} />
+        <Route path="/hospital-admin/hospitals/new" element={<AddNewHospitalPage />} />
+        <Route path="/hospital-admin/hospitals/:id" element={<HospitalDetailPage />} />
+        <Route path="/hospital-admin/hospitals/:id/edit" element={<AddNewHospitalPage />} />
+        <Route path="/hospital-admin/hospitals/add" element={<Navigate to="/hospital-admin/hospitals/new" replace />} />
+        <Route path="/hospital-admin/add-hospital" element={<Navigate to="/hospital-admin/hospitals/new" replace />} />
 
         {/* Catch-all fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />

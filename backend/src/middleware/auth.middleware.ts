@@ -39,6 +39,38 @@ export const authenticateToken = (
 };
 
 /**
+ * Optional token authentication: populates req.user if a valid token is present,
+ * but does not reject the request if no token is provided.
+ */
+export const optionalAuthenticateToken = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
+  let token: string | undefined;
+
+  if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  } else if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+  ) {
+    token = req.headers.authorization.split(" ")[1];
+  }
+
+  if (token) {
+    try {
+      const payload = verifyToken(token);
+      req.user = payload;
+    } catch {
+      // invalid token ignored for optional auth
+    }
+  }
+
+  next();
+};
+
+/**
  * Restricts access to specified user roles
  */
 export const authorizeRoles = (...allowedRoles: UserRole[]) => {

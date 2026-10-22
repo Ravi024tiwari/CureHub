@@ -19,6 +19,7 @@ import {
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { promoteFileFromTemp, deleteFileFromS3 } from "../utils/s3.util.js";
 
 /**
  * Helper to generate a unique SEO-friendly hospital slug
@@ -265,90 +266,6 @@ export const getAdminHospitals = asyncHandler(async (req: Request, res: Response
   );
 });
 
-// get hospital detail by id (with lightweight doctor card fields & metrics)
-export const getHospitalDetailById = asyncHandler(async (req: Request, res: Response) => {
-  const adminUserId = req.user?.userId;
-  const { id } = req.params;
-
-  if (!adminUserId) {
-    throw new ApiError(401, "Authentication required");
-  }
-
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    throw new ApiError(400, "Invalid hospital ID format");
-  }
-
-  const hospital = await Hospital.findById(id)
-    .populate("hospitalAdminId", "name email phoneNumber avatar")
-    .populate("verifiedBy", "name email");
-
-  if (!hospital) {
-    throw new ApiError(404, "Hospital not found");
-  }
-
-  // Ownership security check: verify that this hospital belongs to the logged-in admin
-  if (hospital.hospitalAdminId._id.toString() !== adminUserId.toString()) {
-    throw new ApiError(403, "Access denied. You do not have permission to manage this hospital.");
-  }
-
-
-  const [doctors, pendingRequestsCount, pendingRequests] = await Promise.all([
-    DoctorProfile.find({
-      hospitalId: hospital._id,
-      hospitalAffiliationStatus: "APPROVED",
-    })
-      .populate("userId", "name email phoneNumber avatar")
-      .select(
-        "userId department specialization experienceYears consultationFee ratingAverage medicalCouncilRegistrationNumber hospitalAffiliationStatus createdAt"
-      )
-      .sort({ createdAt: -1 })
-      .lean(),
-
-    HospitalJoinRequest.countDocuments({
-      hospitalId: hospital._id,
-      status: JoinRequestStatus.PENDING,
-    }),
-
-    HospitalJoinRequest.find({
-      hospitalId: hospital._id,
-      status: JoinRequestStatus.PENDING,
-    })
-      .populate("doctorUserId", "name email phoneNumber avatar")
-      .select("doctorId doctorUserId department message status createdAt")
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .lean(),
-  ]);
-
-  // Aggregate in-memory department distribution from doctors
-  const departmentCounts: Record<string, number> = {};
-  doctors.forEach((doc) => {
-    const dept = doc.department || "General Medicine";
-    departmentCounts[dept] = (departmentCounts[dept] || 0) + 1;
-  });
-
-  const departmentsDistribution = Object.entries(departmentCounts).map(([department, count]) => ({
-    department,
-    doctorCount: count,
-  }));
-
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        hospital,
-        doctors,
-        totalDoctors: doctors.length,
-        pendingRequestsCount,
-        pendingRequests,
-        departmentsDistribution,
-      },
-      "Hospital detail retrieved successfully"
-    )
-  );
-});
-
-
 // create hospital for admin
 export const createHospitalForAdmin = asyncHandler(async (req: Request, res: Response) => {
   const adminUserId = req.user?.userId;
@@ -422,42 +339,82 @@ export const createHospitalForAdmin = asyncHandler(async (req: Request, res: Res
   // 3. Generate Unique Slug
   const slug = await generateUniqueSlug(name);
 
-  // 4. Create Hospital Document
-  const hospital = await Hospital.create({
-    name: name.trim(),
-    slug,
-    hospitalAdminId: new mongoose.Types.ObjectId(adminUserId),
-    licenseNumber: licenseNumber.trim(),
-    licenseDocumentUrl: licenseDocumentUrl.trim(),
-    images: {
-      coverImage: images?.coverImage || "",
-      gallery: Array.isArray(images?.gallery) ? images.gallery : [],
-    },
-    address: {
-      street: address.street.trim(),
-      city: address.city.trim(),
-      state: address.state.trim(),
-      zipCode: address.zipCode.trim(),
-      country: address.country?.trim() || "India",
-    },
-    contactEmail: contactEmail.toLowerCase().trim(),
-    contactPhone: contactPhone.trim(),
-    departments:
-      Array.isArray(departments) && departments.length > 0
-        ? departments
-        : ["General Medicine"],
-    establishmentYear: establishmentYear ? Number(establishmentYear) : undefined,
-    totalBeds: totalBeds ? Number(totalBeds) : 10,
-    website: website?.trim() || "",
-    openingTime: openingTime?.trim() || "09:00",
-    closingTime: closingTime?.trim() || "23:59",
-    isEmergency24x7: isEmergency24x7 !== undefined ? Boolean(isEmergency24x7) : true,
-    hospitalType: hospitalType?.trim() || "Multispeciality Hospital",
-    facilities: Array.isArray(facilities) ? facilities : ["Pharmacy", "Emergency Unit", "Ambulance"],
-    description: description?.trim() || "",
-    verificationStatus: VerificationStatus.PENDING,
-    isActive: true,
-  });
+  // 4. Promote temporary staging files to permanent directories
+  const promotedFilesToRollback: string[] = [];
+
+  let finalLicenseDocUrl = licenseDocumentUrl.trim();
+  if (finalLicenseDocUrl.includes("temp/")) {
+    const promotedDoc = await promoteFileFromTemp(finalLicenseDocUrl, "hospitals/licenses");
+    finalLicenseDocUrl = promotedDoc.url;
+    promotedFilesToRollback.push(promotedDoc.url);
+  }
+
+  let finalCoverImage = images?.coverImage || "";
+  if (finalCoverImage.includes("temp/")) {
+    const promotedCover = await promoteFileFromTemp(finalCoverImage, "hospitals/covers");
+    finalCoverImage = promotedCover.url;
+    promotedFilesToRollback.push(promotedCover.url);
+  }
+
+  let finalGallery: string[] = [];
+  if (Array.isArray(images?.gallery)) {
+    finalGallery = await Promise.all(
+      images.gallery.map(async (imgUrl: string) => {
+        if (imgUrl.includes("temp/")) {
+          const promoted = await promoteFileFromTemp(imgUrl, "hospitals/gallery");
+          promotedFilesToRollback.push(promoted.url);
+          return promoted.url;
+        }
+        return imgUrl;
+      })
+    );
+  }
+
+  // 5. Create Hospital Document with automatic rollback
+  let hospital;
+  try {
+    hospital = await Hospital.create({
+      name: name.trim(),
+      slug,
+      hospitalAdminId: new mongoose.Types.ObjectId(adminUserId),
+      licenseNumber: licenseNumber.trim(),
+      licenseDocumentUrl: finalLicenseDocUrl,
+      images: {
+        coverImage: finalCoverImage,
+        gallery: finalGallery,
+      },
+      address: {
+        street: address.street.trim(),
+        city: address.city.trim(),
+        state: address.state.trim(),
+        zipCode: address.zipCode.trim(),
+        country: address.country?.trim() || "India",
+      },
+      contactEmail: contactEmail.toLowerCase().trim(),
+      contactPhone: contactPhone.trim(),
+      departments:
+        Array.isArray(departments) && departments.length > 0
+          ? departments
+          : ["General Medicine"],
+      establishmentYear: establishmentYear ? Number(establishmentYear) : undefined,
+      totalBeds: totalBeds ? Number(totalBeds) : 10,
+      website: website?.trim() || "",
+      openingTime: openingTime?.trim() || "09:00",
+      closingTime: closingTime?.trim() || "23:59",
+      isEmergency24x7: isEmergency24x7 !== undefined ? Boolean(isEmergency24x7) : true,
+      hospitalType: hospitalType?.trim() || "Multispeciality Hospital",
+      facilities: Array.isArray(facilities) ? facilities : ["Pharmacy", "Emergency Unit", "Ambulance"],
+      description: description?.trim() || "",
+      verificationStatus: VerificationStatus.PENDING,
+      isActive: true,
+    });
+  } catch (error) {
+    // Rollback: Delete any promoted files from S3 if database insertion fails
+    for (const fileUrl of promotedFilesToRollback) {
+      await deleteFileFromS3(fileUrl).catch(() => {});
+    }
+    throw error;
+  }
 
   // Link newly created hospital to HospitalAdminProfile if one exists
   await HospitalAdminProfile.findOneAndUpdate(
@@ -515,20 +472,92 @@ export const updateHospitalById = asyncHandler(async (req: Request, res: Respons
     facilities,
     description,
     licenseDocumentUrl,
+    licenseNumber,
     isActive,
   } = req.body;
 
-  // Name & Slug update
+  // 1. Name & Slug update
   if (name && name.trim() && name.trim() !== hospital.name) {
     hospital.name = name.trim();
     hospital.slug = await generateUniqueSlug(name);
   }
 
-  if (images) {
-    if (images.coverImage !== undefined) hospital.images.coverImage = images.coverImage;
-    if (Array.isArray(images.gallery)) hospital.images.gallery = images.gallery;
+  // 2. License Number update with duplicate check
+  if (licenseNumber && licenseNumber.trim() && licenseNumber.trim() !== hospital.licenseNumber) {
+    const existing = await Hospital.findOne({
+      licenseNumber: licenseNumber.trim(),
+      _id: { $ne: hospital._id },
+    });
+    if (existing) {
+      throw new ApiError(409, "Another hospital with this license number already exists.");
+    }
+    hospital.licenseNumber = licenseNumber.trim();
   }
 
+  // 3. License Document update with S3 cleanup & promotion
+  if (licenseDocumentUrl !== undefined) {
+    let finalDocUrl = licenseDocumentUrl.trim();
+    if (finalDocUrl !== hospital.licenseDocumentUrl) {
+      // If replaced, delete old document from S3
+      if (hospital.licenseDocumentUrl && hospital.licenseDocumentUrl.startsWith("http")) {
+        await deleteFileFromS3(hospital.licenseDocumentUrl);
+      }
+      // If new document is in temp/, promote to permanent storage
+      if (finalDocUrl && finalDocUrl.includes("temp/")) {
+        const promoted = await promoteFileFromTemp(finalDocUrl, "hospitals/licenses");
+        finalDocUrl = promoted.url;
+      }
+      hospital.licenseDocumentUrl = finalDocUrl;
+    }
+  }
+
+  // 4. Media & Gallery S3 diffing, promotion & orphan purge
+  if (images) {
+    // 4A. Cover Image Diff
+    if (images.coverImage !== undefined) {
+      let finalCover = images.coverImage;
+      if (finalCover !== hospital.images.coverImage) {
+        // If old cover existed, delete it from S3
+        if (hospital.images.coverImage && hospital.images.coverImage.startsWith("http")) {
+          await deleteFileFromS3(hospital.images.coverImage);
+        }
+        // If new cover is in temp/, promote to permanent storage
+        if (finalCover && finalCover.includes("temp/")) {
+          const promoted = await promoteFileFromTemp(finalCover, "hospitals/covers");
+          finalCover = promoted.url;
+        }
+        hospital.images.coverImage = finalCover;
+      }
+    }
+
+    // 4B. Gallery Images Diff
+    if (Array.isArray(images.gallery)) {
+      const oldGallery: string[] = hospital.images.gallery || [];
+      const newIncomingGallery: string[] = images.gallery;
+
+      // Find images that were in old gallery but removed by user -> delete from S3
+      const removedImages = oldGallery.filter(
+        (oldUrl) => oldUrl && oldUrl.startsWith("http") && !newIncomingGallery.includes(oldUrl)
+      );
+      if (removedImages.length > 0) {
+        await Promise.all(removedImages.map((url) => deleteFileFromS3(url)));
+      }
+
+      // Promote any new images that were uploaded to temp/
+      const finalGallery = await Promise.all(
+        newIncomingGallery.map(async (imgUrl: string) => {
+          if (imgUrl && imgUrl.includes("temp/")) {
+            const promoted = await promoteFileFromTemp(imgUrl, "hospitals/gallery");
+            return promoted.url;
+          }
+          return imgUrl;
+        })
+      );
+      hospital.images.gallery = finalGallery;
+    }
+  }
+
+  // 5. Address Update
   if (address) {
     if (address.street) hospital.address.street = address.street.trim();
     if (address.city) hospital.address.city = address.city.trim();
@@ -557,9 +586,6 @@ export const updateHospitalById = asyncHandler(async (req: Request, res: Respons
   if (hospitalType !== undefined) hospital.hospitalType = hospitalType.trim();
   if (Array.isArray(facilities)) hospital.facilities = facilities;
   if (description !== undefined) hospital.description = description.trim();
-  if (licenseDocumentUrl !== undefined) {
-    hospital.licenseDocumentUrl = licenseDocumentUrl.trim();
-  }
   if (isActive !== undefined) {
     hospital.isActive = Boolean(isActive);
   }

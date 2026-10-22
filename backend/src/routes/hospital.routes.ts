@@ -7,10 +7,12 @@ import {
   getAllHospitals,
   getHospitalBySlug,
   getHospitalById,
+  getHospitalDoctors,
 } from "../controllers/hospital.controller.js";
 
 import {
   authenticateToken,
+  optionalAuthenticateToken,
   authorizeRoles,
 } from "../middleware/auth.middleware.js";
 
@@ -61,9 +63,10 @@ hospitalRouter.patch(
   updateMyHospital
 );
 
-// Public routes for hospital discovery
+// Public / authenticated routes for hospital discovery & details
 hospitalRouter.get("/", getAllHospitals);
 hospitalRouter.get("/slug/:slug", getHospitalBySlug);
-hospitalRouter.get("/:id", getHospitalById);
+hospitalRouter.get("/:id", optionalAuthenticateToken, getHospitalById);
+hospitalRouter.get("/:id/doctors", optionalAuthenticateToken, getHospitalDoctors);
 
 export default hospitalRouter;

@@ -1,4 +1,5 @@
 import { useEffect, type FC } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Plus, SearchX } from 'lucide-react'
 import { HospitalAdminSidebar } from '@/components/hospital-admin/HospitalAdminSidebar'
 import { HospitalAdminHeader } from '@/components/hospital-admin/HospitalAdminHeader'
@@ -15,13 +16,13 @@ import { useHospitalBranchesStore } from '@/store/hospitalBranchesStore'
 import { useHospitalAdminStore } from '@/store/hospitalAdminStore'
 
 export const HospitalAdminHospitalsPage: FC = () => {
+  const navigate = useNavigate()
   const { isMobileSidebarOpen, setIsMobileSidebarOpen } = useHospitalAdminStore()
   const {
     hospitals,
     isLoading,
     viewMode,
     fetchHospitals,
-    setIsAddModalOpen,
     resetFilters,
   } = useHospitalBranchesStore()
 
@@ -65,7 +66,7 @@ export const HospitalAdminHospitalsPage: FC = () => {
 
               {/* Primary Add New Hospital Button */}
               <button
-                onClick={() => setIsAddModalOpen(true)}
+                onClick={() => navigate('/hospital-admin/hospitals/new')}
                 className="w-full sm:w-auto px-4 sm:px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs sm:text-sm shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
               >
                 <Plus className="size-4 stroke-[3]" />

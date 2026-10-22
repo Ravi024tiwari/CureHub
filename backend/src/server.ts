@@ -17,6 +17,7 @@ import patientRouter from "./routes/patient.routes.js";
 import reviewRouter from "./routes/review.routes.js";
 import doctorRouter from "./routes/doctor.routes.js";
 import hospitalAdminRouter from "./routes/hospitalAdmin.routes.js";
+import uploadRouter from "./routes/upload.routes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import { globalRateLimiter } from "./middleware/rateLimiter.middleware.js";
 import { initCronJobs } from "./services/cron.service.js";
@@ -57,8 +58,8 @@ app.use(
 // 3. Global rate limiter (after CORS so any 429 response still has Access-Control-Allow-Origin)
 app.use(globalRateLimiter);
 app.use(morgan("dev"));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 
 //health check 
@@ -80,6 +81,7 @@ app.use("/api/patients", patientRouter);
 app.use("/api/reviews", reviewRouter);
 app.use("/api/doctors", doctorRouter);
 app.use("/api/hospital-admin", hospitalAdminRouter);
+app.use("/api/upload", uploadRouter);
 
 app.use(errorHandler);
 

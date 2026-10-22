@@ -1,4 +1,5 @@
 import { useState, type FC } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   MapPin,
   Star,
@@ -24,12 +25,12 @@ interface HospitalListItemProps {
 }
 
 export const HospitalListItem: FC<HospitalListItemProps> = ({ hospital, index = 0 }) => {
+  const navigate = useNavigate()
   const {
     favorites,
     toggleFavorite,
     setSelectedHospital,
     setIsDetailsModalOpen,
-    setIsEditModalOpen,
   } = useHospitalBranchesStore()
 
   const [imgError, setImgError] = useState(false)
@@ -153,7 +154,7 @@ export const HospitalListItem: FC<HospitalListItemProps> = ({ hospital, index = 
         <button
           onClick={() => {
             setSelectedHospital(hospital)
-            setIsDetailsModalOpen(true)
+            navigate(`/hospital-admin/hospitals/${hospital._id}`)
           }}
           className="px-3.5 py-2 rounded-xl border border-slate-200 hover:border-blue-300 text-blue-600 hover:bg-blue-50/70 text-xs font-bold transition-all cursor-pointer shadow-2xs"
         >
@@ -162,7 +163,7 @@ export const HospitalListItem: FC<HospitalListItemProps> = ({ hospital, index = 
         <button
           onClick={() => {
             setSelectedHospital(hospital)
-            setIsEditModalOpen(true)
+            navigate(`/hospital-admin/hospitals/${hospital._id}/edit`)
           }}
           className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all cursor-pointer shadow-2xs hover:shadow-xs"
         >
