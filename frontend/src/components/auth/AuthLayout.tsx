@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { RegisterHeader } from './RegisterHeader'
 import { RegisterHero } from './RegisterHero'
 import { RoleSelector } from './RoleSelector'
+import { UserRole } from '@/types/auth'
 import type { RoleType } from '@/types/auth'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -22,9 +23,9 @@ export const AuthLayout: FC<AuthLayoutProps> = ({
   const navigate = useNavigate()
 
   const handleRoleChange = (newRole: RoleType) => {
-    if (newRole === 'patient') navigate('/register/patient')
-    else if (newRole === 'doctor') navigate('/register/doctor')
-    else if (newRole === 'hospital_admin') navigate('/register/hospital-admin')
+    if (newRole === UserRole.PATIENT) navigate('/register/patient')
+    else if (newRole === UserRole.DOCTOR) navigate('/register/doctor')
+    else if (newRole === UserRole.HOSPITAL_ADMIN) navigate('/register/hospital-admin')
   }
 
   const handleSignInClick = () => {

@@ -24,6 +24,7 @@ import { HospitalDepartmentsTab } from '@/components/hospital-admin/hospital-det
 import { HospitalFacilitiesTab } from '@/components/hospital-admin/hospital-detail/HospitalFacilitiesTab'
 import { HospitalGalleryTab } from '@/components/hospital-admin/hospital-detail/HospitalGalleryTab'
 import { HospitalSettingsTab } from '@/components/hospital-admin/hospital-detail/HospitalSettingsTab'
+import { HospitalDoctorDetailModal } from '@/components/hospital-admin/hospital-detail/HospitalDoctorDetailModal'
 
 import { useHospitalDetailStore } from '@/store/hospitalDetailStore'
 import { useHospitalBranchesStore } from '@/store/hospitalBranchesStore'
@@ -35,7 +36,7 @@ export const HospitalDetailPage: FC = () => {
   const navigate = useNavigate()
 
   // App-level sidebar drawer state
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen } = useHospitalAdminStore()
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, isSidebarCollapsed, toggleSidebar } = useHospitalAdminStore()
 
   // Dedicated public/multi-role store
   const {
@@ -53,6 +54,7 @@ export const HospitalDetailPage: FC = () => {
 
   const [activeTab, setActiveTab] = useState<HospitalTabKey>('overview')
   const [isTogglingActive, setIsTogglingActive] = useState(false)
+  const [selectedDoctorForModal, setSelectedDoctorForModal] = useState<any | null>(null)
 
   // Fetch hospital detail on component mount or id change
   useEffect(() => {
@@ -121,8 +123,12 @@ export const HospitalDetailPage: FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex selection:bg-blue-100 selection:text-blue-700 antialiased">
-      {/* 1. Desktop Persistent Sidebar */}
-      <div className="hidden lg:block w-64 shrink-0">
+      {/* 1. Desktop Persistent Collapsible Sidebar */}
+      <div
+        className={`hidden lg:block transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${
+          isSidebarCollapsed ? 'w-0 opacity-0 -ml-2 pointer-events-none' : 'w-64 opacity-100'
+        }`}
+      >
         <HospitalAdminSidebar />
       </div>
 
@@ -135,9 +141,9 @@ export const HospitalDetailPage: FC = () => {
       )}
 
       {/* 3. Main Page Area */}
-      <div className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-10">
+      <div className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-10 transition-all duration-300">
         {/* Top Header with Hamburger Mobile Menu toggle */}
-        <HospitalAdminHeader onToggleSidebar={() => setIsMobileSidebarOpen(true)} />
+        <HospitalAdminHeader onToggleSidebar={toggleSidebar} />
 
         {/* Content Body */}
         <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 sm:space-y-6">
@@ -219,7 +225,7 @@ export const HospitalDetailPage: FC = () => {
                       recentActivities={recentActivities}
                       onOpenDoctorsTab={() => setActiveTab('doctors')}
                       onOpenDepartmentsTab={() => setActiveTab('departments')}
-                      onSelectDoctorProfile={() => setActiveTab('doctors')}
+                      onSelectDoctorProfile={(doc) => setSelectedDoctorForModal(doc)}
                     />
                   )}
 
@@ -227,6 +233,7 @@ export const HospitalDetailPage: FC = () => {
                     <HospitalDoctorsTab
                       hospitalId={hospital._id}
                       departmentsList={hospital.departments}
+                      onSelectDoctorProfile={(doc) => setSelectedDoctorForModal(doc)}
                     />
                   )}
 
@@ -274,6 +281,24 @@ export const HospitalDetailPage: FC = () => {
 
       {/* Edit Hospital Modal */}
       <EditHospitalModal />
+
+      {/* Doctor Profile Detail Modal (fetches real-time DB doctor profile) */}
+      <HospitalDoctorDetailModal
+        doctorId={selectedDoctorForModal?._id || null}
+        isOpen={Boolean(selectedDoctorForModal)}
+        onClose={() => setSelectedDoctorForModal(null)}
+        initialData={
+          selectedDoctorForModal
+            ? {
+                name: selectedDoctorForModal.userId?.name,
+                department: selectedDoctorForModal.department,
+                avatar: selectedDoctorForModal.userId?.avatar,
+                experienceYears: selectedDoctorForModal.experienceYears,
+                consultationFee: selectedDoctorForModal.consultationFee,
+              }
+            : undefined
+        }
+      />
 
       {/* Mobile Bottom Navigation */}
       <HospitalAdminMobileNav />

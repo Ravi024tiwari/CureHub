@@ -9,6 +9,7 @@ import {
 import {
   PatientHomePage,
   FindDoctorsPage,
+  DoctorDetailPage,
   FindHospitalsPage,
   PatientAppointmentsPage,
   PatientMedicalRecordsPage,
@@ -20,6 +21,7 @@ import {
   AddNewHospitalPage,
   HospitalDetailPage,
 } from '@/pages/hospital-admin'
+import { SuperAdminDashboardPage } from '@/pages/super-admin'
 
 function App() {
   return (
@@ -40,6 +42,8 @@ function App() {
         <Route path="/patient/home" element={<PatientHomePage />} />
         <Route path="/patient/doctors" element={<FindDoctorsPage />} />
         <Route path="/doctors" element={<FindDoctorsPage />} />
+        <Route path="/patient/doctors/:id" element={<DoctorDetailPage />} />
+        <Route path="/doctors/:id" element={<DoctorDetailPage />} />
         <Route path="/patient/hospitals" element={<FindHospitalsPage />} />
         <Route path="/hospitals" element={<FindHospitalsPage />} />
         <Route path="/patient/appointments" element={<PatientAppointmentsPage />} />
@@ -59,6 +63,10 @@ function App() {
         <Route path="/hospital-admin/hospitals/:id/edit" element={<AddNewHospitalPage />} />
         <Route path="/hospital-admin/hospitals/add" element={<Navigate to="/hospital-admin/hospitals/new" replace />} />
         <Route path="/hospital-admin/add-hospital" element={<Navigate to="/hospital-admin/hospitals/new" replace />} />
+
+        {/* Dedicated Super Admin Routes */}
+        <Route path="/super-admin/dashboard" element={<SuperAdminDashboardPage />} />
+        <Route path="/super-admin" element={<Navigate to="/super-admin/dashboard" replace />} />
 
         {/* Catch-all fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />

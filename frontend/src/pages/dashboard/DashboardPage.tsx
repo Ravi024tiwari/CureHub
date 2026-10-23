@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/store/authStore'
 import { PatientHomePage } from '@/pages/patient'
 import { HospitalAdminDashboardPage } from '@/pages/hospital-admin'
+import { SuperAdminDashboardPage } from '@/pages/super-admin'
+import { UserRole } from '@/types/auth'
 
 export const DashboardPage: FC = () => {
   const navigate = useNavigate()
@@ -24,10 +26,14 @@ export const DashboardPage: FC = () => {
     // If not authenticated in Zustand store, redirect to login
     if (!user) {
       navigate('/login')
-    } else {
-      fetchMe()
     }
-  }, [user, navigate, fetchMe])
+  }, [user, navigate])
+
+  useEffect(() => {
+    // Fetch latest user details only once on mount to prevent infinite loop
+    fetchMe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleLogout = async () => {
     await logout()
@@ -39,46 +45,50 @@ export const DashboardPage: FC = () => {
   }
 
   // If patient, render the dedicated production-grade Patient Home Screen
-  if (user.role === 'patient') {
+  if (user.role === UserRole.PATIENT) {
     return <PatientHomePage />
   }
 
   // If hospital admin, render the dedicated production-grade Hospital Admin Dashboard
-  if (user.role === 'hospital_admin') {
+  if (user.role === UserRole.HOSPITAL_ADMIN) {
     return <HospitalAdminDashboardPage />
   }
 
-  const getRoleDetails = (role: string) => {
-    switch (role) {
-      case 'doctor':
-        return {
-          title: 'Doctor Portal',
-          icon: Stethoscope,
-          badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-          desc: 'Manage your patients, review clinical appointments, and write electronic prescriptions.',
-        }
-      case 'hospital_admin':
-        return {
-          title: 'Hospital Administration',
-          icon: Building,
-          badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
-          desc: 'Manage hospital departments, doctor onboarding, bed allocations, and appointments.',
-        }
-      case 'super_admin':
-        return {
-          title: 'Super Admin Console',
-          icon: ShieldCheck,
-          badgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
-          desc: 'Platform-wide authority to verify doctors, onboard hospitals, and monitor security.',
-        }
-      case 'patient':
-      default:
-        return {
-          title: 'Patient Portal',
-          icon: HeartPulse,
-          badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
-          desc: 'Access quality healthcare, book appointments, and manage your electronic health records.',
-        }
+  // If super admin, render the dedicated production-grade Super Admin Dashboard
+  if (user.role === UserRole.SUPER_ADMIN) {
+    return <SuperAdminDashboardPage />
+  }
+
+  const getRoleDetails = (role: UserRole) => {
+    if (role === UserRole.HOSPITAL_ADMIN) {
+      return {
+        title: 'Hospital Administration',
+        icon: Building,
+        badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
+        desc: 'Manage hospital departments, doctor onboarding, bed allocations, and appointments.',
+      }
+    }
+    if (role === UserRole.DOCTOR) {
+      return {
+        title: 'Doctor Portal',
+        icon: Stethoscope,
+        badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        desc: 'Manage your patients, review clinical appointments, and write electronic prescriptions.',
+      }
+    }
+    if (role === UserRole.SUPER_ADMIN) {
+      return {
+        title: 'Super Admin Console',
+        icon: ShieldCheck,
+        badgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
+        desc: 'Platform-wide authority to verify doctors, onboard hospitals, and monitor security.',
+      }
+    }
+    return {
+      title: 'Patient Portal',
+      icon: HeartPulse,
+      badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
+      desc: 'Access quality healthcare, book appointments, and manage your electronic health records.',
     }
   }
 

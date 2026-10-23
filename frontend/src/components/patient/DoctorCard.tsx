@@ -1,4 +1,5 @@
 import { useState, type FC } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Star,
   Heart,
@@ -28,6 +29,7 @@ export const DoctorCard: FC<DoctorCardProps> = ({
   onBookAppointment,
   onToggleFavorite,
 }) => {
+  const navigate = useNavigate()
   const [isFavorite, setIsFavorite] = useState(doctor.isFavorite || false)
 
   // Map avatar image fallback
@@ -70,7 +72,7 @@ export const DoctorCard: FC<DoctorCardProps> = ({
 
   return (
     <div
-      onClick={() => onBookAppointment(doctor)}
+      onClick={() => navigate(`/patient/doctors/${doctor._id}`)}
       className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-xl hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between p-4 sm:p-5 group cursor-pointer relative overflow-hidden"
     >
       {/* Top Profile Header: Avatar on left, Doctor Info beside it, Heart at top-right */}

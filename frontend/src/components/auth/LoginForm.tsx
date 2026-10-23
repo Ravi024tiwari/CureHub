@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/store/authStore'
+import { UserRole } from '@/types/auth'
 import type { AuthUser, RoleType } from '@/types/auth'
 
 interface LoginFormProps {
@@ -56,13 +57,13 @@ export const LoginForm: FC<LoginFormProps> = ({ onSuccess }) => {
     clearError()
     setValidationErrors({})
 
-    if (role === 'patient') {
+    if (role === UserRole.PATIENT) {
       setEmail('patient@careplus.com')
       setPassword('Patient@123')
-    } else if (role === 'doctor') {
+    } else if (role === UserRole.DOCTOR) {
       setEmail('doctor@careplus.com')
       setPassword('Doctor@123')
-    } else if (role === 'hospital_admin') {
+    } else if (role === UserRole.HOSPITAL_ADMIN) {
       setEmail('admin@hospital.com')
       setPassword('Hospital@123')
     }
@@ -104,10 +105,14 @@ export const LoginForm: FC<LoginFormProps> = ({ onSuccess }) => {
 
       if (onSuccess && user) {
         onSuccess(user)
-      } else if (user?.role === 'patient') {
-        navigate('/patient/home')
       } else {
-        navigate('/dashboard')
+        if (user?.role === UserRole.HOSPITAL_ADMIN) {
+          navigate('/hospital-admin/dashboard')
+        } else if (user?.role === UserRole.PATIENT) {
+          navigate('/patient/home')
+        } else {
+          navigate('/dashboard')
+        }
       }
     } catch (err: any) {
       const msg =
@@ -165,9 +170,9 @@ export const LoginForm: FC<LoginFormProps> = ({ onSuccess }) => {
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2 p-1 bg-slate-50 border border-slate-200/80 rounded-2xl">
           <button
             type="button"
-            onClick={() => handleSelectRole('patient')}
+            onClick={() => handleSelectRole(UserRole.PATIENT)}
             className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
-              activeRoleTab === 'patient'
+              activeRoleTab === UserRole.PATIENT
                 ? 'bg-white text-blue-600 shadow-sm border border-blue-200/60'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
             }`}
@@ -178,9 +183,9 @@ export const LoginForm: FC<LoginFormProps> = ({ onSuccess }) => {
 
           <button
             type="button"
-            onClick={() => handleSelectRole('doctor')}
+            onClick={() => handleSelectRole(UserRole.DOCTOR)}
             className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
-              activeRoleTab === 'doctor'
+              activeRoleTab === UserRole.DOCTOR
                 ? 'bg-white text-blue-600 shadow-sm border border-blue-200/60'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
             }`}
@@ -191,9 +196,9 @@ export const LoginForm: FC<LoginFormProps> = ({ onSuccess }) => {
 
           <button
             type="button"
-            onClick={() => handleSelectRole('hospital_admin')}
+            onClick={() => handleSelectRole(UserRole.HOSPITAL_ADMIN)}
             className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
-              activeRoleTab === 'hospital_admin'
+              activeRoleTab === UserRole.HOSPITAL_ADMIN
                 ? 'bg-white text-blue-600 shadow-sm border border-blue-200/60'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
             }`}

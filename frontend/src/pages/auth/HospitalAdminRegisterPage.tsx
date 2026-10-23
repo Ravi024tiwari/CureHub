@@ -4,6 +4,7 @@ import { AuthLayout } from '@/components/auth/AuthLayout'
 import { HospitalAdminRegisterForm } from '@/components/auth/forms/HospitalAdminRegisterForm'
 import { CheckCircle2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { UserRole } from '@/types/auth'
 
 export const HospitalAdminRegisterPage: FC = () => {
   const navigate = useNavigate()
@@ -40,7 +41,7 @@ export const HospitalAdminRegisterPage: FC = () => {
 
   return (
     <AuthLayout
-      currentRole="hospital_admin"
+      currentRole={UserRole.HOSPITAL_ADMIN}
       title="Hospital Admin Onboarding"
       subtitle="Register and manage your hospital, clinical staff, and operations"
     >

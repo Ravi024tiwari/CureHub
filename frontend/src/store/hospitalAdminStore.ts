@@ -237,6 +237,7 @@ interface HospitalAdminState {
   appointmentsTrend: AppointmentDailyStat[]
 
   // Modal / Drawer state
+  isSidebarCollapsed: boolean
   isMobileSidebarOpen: boolean
   selectedApplicant: DoctorJoinRequestItem | null
   actionSuccessMessage: string | null
@@ -247,7 +248,9 @@ interface HospitalAdminState {
   setSelectedDateRange: (range: string) => void
   setAppointmentTimeframe: (tf: 'Last 30 Days' | 'Last 7 Days' | 'This Year') => void
   setSearchQuery: (query: string) => void
+  setIsSidebarCollapsed: (collapsed: boolean) => void
   setIsMobileSidebarOpen: (isOpen: boolean) => void
+  toggleSidebar: () => void
   setSelectedApplicant: (applicant: DoctorJoinRequestItem | null) => void
   clearActionSuccessMessage: () => void
 
@@ -273,11 +276,20 @@ export const useHospitalAdminStore = create<HospitalAdminState>((set, get) => ({
   pendingRequests: INITIAL_PENDING_REQUESTS,
   appointmentsTrend: generateDailyAppointmentStats(),
 
+  isSidebarCollapsed: false,
   isMobileSidebarOpen: false,
   selectedApplicant: null,
   actionSuccessMessage: null,
 
+  setIsSidebarCollapsed: (collapsed) => set({ isSidebarCollapsed: collapsed }),
   setIsMobileSidebarOpen: (isOpen) => set({ isMobileSidebarOpen: isOpen }),
+  toggleSidebar: () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      set((state) => ({ isMobileSidebarOpen: !state.isMobileSidebarOpen }))
+    } else {
+      set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed }))
+    }
+  },
   setSelectedApplicant: (applicant) => set({ selectedApplicant: applicant }),
   clearActionSuccessMessage: () => set({ actionSuccessMessage: null }),
 

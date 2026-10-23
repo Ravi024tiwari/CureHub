@@ -22,6 +22,8 @@ export const HospitalAdminDashboardPage: FC = () => {
     fetchDashboard,
     isMobileSidebarOpen,
     setIsMobileSidebarOpen,
+    isSidebarCollapsed,
+    toggleSidebar,
     selectedDateRange,
     setSelectedDateRange,
     actionSuccessMessage,
@@ -48,8 +50,12 @@ export const HospitalAdminDashboardPage: FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex selection:bg-blue-100 selection:text-blue-700 antialiased">
-      {/* Desktop Persistent Sidebar */}
-      <div className="hidden lg:block w-64 shrink-0">
+      {/* Desktop Persistent Collapsible Sidebar */}
+      <div
+        className={`hidden lg:block transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${
+          isSidebarCollapsed ? 'w-0 opacity-0 -ml-2 pointer-events-none' : 'w-64 opacity-100'
+        }`}
+      >
         <HospitalAdminSidebar />
       </div>
 
@@ -62,9 +68,9 @@ export const HospitalAdminDashboardPage: FC = () => {
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-10">
+      <div className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-10 transition-all duration-300">
         {/* Top Header */}
-        <HospitalAdminHeader onToggleSidebar={() => setIsMobileSidebarOpen(true)} />
+        <HospitalAdminHeader onToggleSidebar={toggleSidebar} />
 
         {/* Dashboard Content */}
         <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">

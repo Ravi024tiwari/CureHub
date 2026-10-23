@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { User, Stethoscope, Building2, CheckCircle2 } from 'lucide-react'
+import { UserRole } from '@/types/auth'
 import type { RoleType } from '@/types/auth'
 import { cn } from '@/lib/utils'
 
@@ -14,19 +15,19 @@ export const RoleSelector: FC<RoleSelectorProps> = ({
 }) => {
   const roles = [
     {
-      id: 'patient' as RoleType,
+      id: UserRole.PATIENT,
       title: 'Patient',
       description: 'Book appointments & health',
       icon: User,
     },
     {
-      id: 'doctor' as RoleType,
+      id: UserRole.DOCTOR,
       title: 'Doctor',
       description: 'Consult patients & practice',
       icon: Stethoscope,
     },
     {
-      id: 'hospital_admin' as RoleType,
+      id: UserRole.HOSPITAL_ADMIN,
       title: 'Hospital Admin',
       description: 'Manage hospital & staff',
       icon: Building2,

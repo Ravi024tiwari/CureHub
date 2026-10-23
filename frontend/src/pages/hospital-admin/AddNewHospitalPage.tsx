@@ -74,7 +74,7 @@ export const AddNewHospitalPage: FC = () => {
   const { id } = useParams<{ id?: string }>()
   const isEditMode = Boolean(id)
   const navigate = useNavigate()
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen } = useHospitalAdminStore()
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen, isSidebarCollapsed, toggleSidebar } = useHospitalAdminStore()
   const { createHospital, updateHospital, isSubmitting } = useHospitalBranchesStore()
 
   // Stepper state
@@ -378,8 +378,12 @@ export const AddNewHospitalPage: FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex selection:bg-blue-100 selection:text-blue-700 antialiased">
-      {/* 1. Desktop Persistent Sidebar */}
-      <div className="hidden lg:block w-64 shrink-0">
+      {/* 1. Desktop Persistent Collapsible Sidebar */}
+      <div
+        className={`hidden lg:block transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${
+          isSidebarCollapsed ? 'w-0 opacity-0 -ml-2 pointer-events-none' : 'w-64 opacity-100'
+        }`}
+      >
         <HospitalAdminSidebar />
       </div>
 
@@ -392,9 +396,9 @@ export const AddNewHospitalPage: FC = () => {
       )}
 
       {/* 3. Main Content Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 pb-28 lg:pb-16">
+      <div className="flex-1 flex flex-col min-w-0 pb-28 lg:pb-16 transition-all duration-300">
         {/* Top Header with Hamburger menu */}
-        <HospitalAdminHeader onToggleSidebar={() => setIsMobileSidebarOpen(true)} />
+        <HospitalAdminHeader onToggleSidebar={toggleSidebar} />
 
         {/* Page Body */}
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">

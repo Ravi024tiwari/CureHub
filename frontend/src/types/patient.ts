@@ -37,6 +37,36 @@ export interface HospitalCardData {
   isFavorite?: boolean
 }
 
+export interface DoctorScheduleRuleItem {
+  dayOfWeek: number // 0=Sun, 1=Mon, ..., 6=Sat
+  startTime: string
+  endTime: string
+  slotDurationMinutes?: number
+}
+
+export interface DoctorLeaveItem {
+  date: string
+  reason?: string
+  createdAt?: string
+}
+
+export interface DoctorReviewItem {
+  _id: string
+  patientName: string
+  patientAvatar?: string
+  rating: number
+  comment: string
+  createdAt: string
+}
+
+export interface DoctorWorkExperience {
+  title: string
+  institution: string
+  period: string
+  duration?: string
+  description?: string
+}
+
 export interface DoctorCardData {
   _id: string
   name: string
@@ -61,6 +91,27 @@ export interface DoctorCardData {
   verificationStatus?: string
   email?: string
   phoneNumber?: string
+  experiences?: DoctorWorkExperience[]
+}
+
+export interface DoctorDetailData extends DoctorCardData {
+  userId?: {
+    _id?: string
+    name: string
+    email: string
+    phoneNumber: string
+    avatar?: string
+    isEmailVerified?: boolean
+    isAccountApproved?: boolean
+  }
+  hospitalId?: HospitalCardData | null
+  hospitalAffiliationStatus?: 'NOT_AFFILIATED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | string
+  scheduleRules?: DoctorScheduleRuleItem[]
+  leaves?: DoctorLeaveItem[]
+  licenseDocumentUrl?: string
+  isActive?: boolean
+  ratingAverage?: number
+  reviews?: DoctorReviewItem[]
 }
 
 export interface DoctorFilterState {

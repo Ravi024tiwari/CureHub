@@ -314,6 +314,7 @@ export interface AppointmentStoreState {
   handleCancelAppointment: (id: string, reason: string) => Promise<boolean>
   handleRescheduleAppointment: (id: string, newSlotId: string, reason?: string) => Promise<boolean>
   downloadPrescriptionPdf: (appointment: AppointmentCardData) => Promise<void>
+  addAppointmentLocally: (newAppt: AppointmentCardData) => void
 }
 
 export const useAppointmentStore = create<AppointmentStoreState>()(
@@ -705,6 +706,19 @@ ${appointment.prescription?.notes || 'Avoid harsh soaps and keep skin moisturize
       } catch (err) {
         console.error('Download prescription error:', err)
       }
+    },
+
+    addAppointmentLocally: (newAppt: AppointmentCardData) => {
+      const current = get().appointments
+      set({
+        appointments: [newAppt, ...current],
+        totalAppointments: get().totalAppointments + 1,
+        counts: {
+          ...get().counts,
+          all: get().counts.all + 1,
+          upcoming: get().counts.upcoming + 1,
+        },
+      })
     },
   }))
 )

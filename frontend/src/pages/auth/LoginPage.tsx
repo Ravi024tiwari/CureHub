@@ -4,6 +4,7 @@ import { LoginHeader } from '@/components/auth/LoginHeader'
 import { LoginHero } from '@/components/auth/LoginHero'
 import { LoginForm } from '@/components/auth/LoginForm'
 import { Card, CardContent } from '@/components/ui/card'
+import { UserRole } from '@/types/auth'
 import type { AuthUser } from '@/types/auth'
 import consultationImg from '@/assets/careplus-consultation.jpg'
 import {
@@ -16,9 +17,14 @@ import {
 export const LoginPage: FC = () => {
   const navigate = useNavigate()
 
-  const handleLoginSuccess = (_user: AuthUser) => {
-    // Navigate to role-aware dashboard
-    navigate('/dashboard')
+  const handleLoginSuccess = (user: AuthUser) => {
+    if (user?.role === UserRole.HOSPITAL_ADMIN) {
+      navigate('/hospital-admin/dashboard')
+    } else if (user?.role === UserRole.PATIENT) {
+      navigate('/patient/home')
+    } else {
+      navigate('/dashboard')
+    }
   }
 
   return (

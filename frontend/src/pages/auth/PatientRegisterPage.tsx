@@ -4,6 +4,7 @@ import { AuthLayout } from '@/components/auth/AuthLayout'
 import { PatientRegisterForm } from '@/components/auth/forms/PatientRegisterForm'
 import { CheckCircle2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { UserRole } from '@/types/auth'
 
 export const PatientRegisterPage: FC = () => {
   const navigate = useNavigate()
@@ -40,7 +41,7 @@ export const PatientRegisterPage: FC = () => {
 
   return (
     <AuthLayout
-      currentRole="patient"
+      currentRole={UserRole.PATIENT}
       title="Create Patient Account"
       subtitle="Book appointments and manage your health records"
     >

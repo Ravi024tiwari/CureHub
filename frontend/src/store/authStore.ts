@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
 import { loginApi, logoutApi, getMeApi } from '@/services/authService'
+import { UserRole } from '@/types/auth'
 import type { AuthUser, LoginPayload } from '@/types/auth'
 
 export interface AuthState {
@@ -23,6 +24,25 @@ export interface AuthState {
   fetchMe: () => Promise<void>
 }
 
+export const normalizeUser = (user: any): AuthUser | null => {
+  if (!user) return null
+  const rawRole = String(user.role || '').toUpperCase().trim()
+  let role: UserRole = UserRole.PATIENT
+  if (rawRole === UserRole.HOSPITAL_ADMIN || rawRole.includes('HOSPITAL')) {
+    role = UserRole.HOSPITAL_ADMIN
+  } else if (rawRole === UserRole.DOCTOR) {
+    role = UserRole.DOCTOR
+  } else if (rawRole === UserRole.SUPER_ADMIN) {
+    role = UserRole.SUPER_ADMIN
+  } else {
+    role = UserRole.PATIENT
+  }
+  return {
+    ...user,
+    role,
+  }
+}
+
 export const useAuthStore = create<AuthState>()(
   devtools(
     persist(
@@ -35,7 +55,10 @@ export const useAuthStore = create<AuthState>()(
       error: null,
 
       // Setters
-      setUser: (user) => set({ user, isAuthenticated: !!user }),
+      setUser: (user) => {
+        const normalized = normalizeUser(user)
+        set({ user: normalized, isAuthenticated: !!normalized })
+      },
       setProfile: (profile) => set({ profile }),
       setToken: (token) => {
         if (token) {
@@ -54,7 +77,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           const response: any = await loginApi(payload)
           const responseData = response?.data || response
-          const user: AuthUser = responseData?.user
+          const rawUser = responseData?.user
+          const user = normalizeUser(rawUser)
           const profile = responseData?.profile || null
           const token: string = responseData?.token
 
@@ -74,7 +98,7 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           })
 
-          return user
+          return user as AuthUser
         } catch (err: any) {
           const errorMessage =
             err?.message || 'Login failed. Please check your credentials.'
@@ -111,14 +135,19 @@ export const useAuthStore = create<AuthState>()(
       // API Setter: calls backend /auth/me, refreshes central state using current token
       fetchMe: async () => {
         const currentToken = get().token || localStorage.getItem('careplus_token')
-        if (!currentToken) return
+        if (!currentToken || get().isLoading) return
 
         set({ isLoading: true })
         try {
           const response: any = await getMeApi()
           const responseData = response?.data || response
-          const user: AuthUser = responseData?.user
+          const rawUser = responseData?.user
+          const user = normalizeUser(rawUser)
           const profile = responseData?.profile
+
+          if (user) {
+            localStorage.setItem('careplus_user', JSON.stringify(user))
+          }
 
           set({
             user: user || get().user,

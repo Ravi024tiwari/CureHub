@@ -406,7 +406,7 @@ export const PatientHomePage: FC = () => {
                 {/* Top Doctors Near You - Upgraded 2-column cards with full genuine portraits */}
                 <TopDoctorsSection
                   doctors={filteredDoctors}
-                  onSelectDoctor={(doc) => handleOpenBooking(doc)}
+                  onSelectDoctor={(doc) => navigate(`/patient/doctors/${doc._id}`)}
                   onBookDoctor={(doc) => handleOpenBooking(doc)}
                 />
               </div>

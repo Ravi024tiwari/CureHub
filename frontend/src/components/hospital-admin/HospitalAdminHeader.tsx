@@ -29,6 +29,8 @@ export const HospitalAdminHeader: FC<HospitalAdminHeaderProps> = ({ onToggleSide
     searchQuery,
     setSearchQuery,
     recentActivities,
+    toggleSidebar,
+    isSidebarCollapsed,
   } = useHospitalAdminStore()
 
   const [isHospitalMenuOpen, setIsHospitalMenuOpen] = useState(false)
@@ -69,17 +71,21 @@ export const HospitalAdminHeader: FC<HospitalAdminHeaderProps> = ({ onToggleSide
   return (
     <header className="sticky top-0 z-30 w-full bg-white/90 backdrop-blur-md border-b border-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-3 sm:gap-4">
-        {/* Left Section: Mobile Menu Toggle & Search Bar */}
-        <div className="flex items-center gap-3 flex-1 max-w-lg">
-          {onToggleSidebar && (
-            <button
-              onClick={onToggleSidebar}
-              className="lg:hidden p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer shrink-0"
-              title="Open Navigation"
-            >
-              <Menu className="size-5" />
-            </button>
-          )}
+        {/* Left Section: Responsive Menu Toggle & Search Bar */}
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-1 max-w-lg">
+          <button
+            type="button"
+            onClick={onToggleSidebar || toggleSidebar}
+            className={`p-2 rounded-xl transition-all cursor-pointer shrink-0 flex items-center justify-center border shadow-2xs group ${
+              isSidebarCollapsed
+                ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 ring-2 ring-blue-100'
+                : 'bg-slate-50/80 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-200/80'
+            }`}
+            title={isSidebarCollapsed ? 'Open navigation sidebar' : 'Close / Toggle navigation sidebar'}
+            aria-label="Toggle navigation sidebar"
+          >
+            <Menu className="size-5 transition-transform group-hover:scale-105" />
+          </button>
 
           {/* Search Box matching mockup */}
           <div className="relative flex-1">

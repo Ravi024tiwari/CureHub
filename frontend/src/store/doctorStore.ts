@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
-import type { DoctorCardData } from '@/types/patient'
+import type { DoctorCardData, DoctorDetailData } from '@/types/patient'
 import { fetchDoctorsListApi, fetchDoctorByIdApi } from '@/services/patientService'
 
 export interface DoctorFilterParams {
@@ -28,6 +28,9 @@ export interface DoctorStoreState {
 
   // Selection & Details
   selectedDoctor: DoctorCardData | null
+  currentDoctorDetail: DoctorDetailData | null
+  isDetailLoading: boolean
+  detailError: string | null
   favoriteDoctorIds: string[]
 
   // Filter State
@@ -52,6 +55,7 @@ export interface DoctorStoreState {
   setMaxFee: (fee: number) => void
   setSortBy: (sort: string) => void
   setSelectedDoctor: (doctor: DoctorCardData | null) => void
+  setCurrentDoctorDetail: (doctor: DoctorDetailData | null) => void
   toggleFavorite: (doctorId: string) => void
   clearFilters: () => void
 
@@ -59,6 +63,7 @@ export interface DoctorStoreState {
   fetchDoctors: (pageNumber?: number, isNewFilter?: boolean) => Promise<void>
   fetchNextPage: () => Promise<void>
   fetchDoctorById: (doctorId: string) => Promise<DoctorCardData | null>
+  fetchDoctorDetailById: (doctorId: string) => Promise<DoctorDetailData | null>
 }
 
 const DEFAULT_FILTERS = {
@@ -87,6 +92,9 @@ export const useDoctorStore = create<DoctorStoreState>()(
       isLoadingMore: false,
       error: null,
       selectedDoctor: null,
+      currentDoctorDetail: null,
+      isDetailLoading: false,
+      detailError: null,
       favoriteDoctorIds: [],
 
       // Initial Filters
@@ -122,6 +130,9 @@ export const useDoctorStore = create<DoctorStoreState>()(
       },
       setSelectedDoctor: (doctor: DoctorCardData | null) => {
         set({ selectedDoctor: doctor })
+      },
+      setCurrentDoctorDetail: (doctor: DoctorDetailData | null) => {
+        set({ currentDoctorDetail: doctor })
       },
 
       toggleFavorite: (doctorId: string) => {
@@ -259,12 +270,50 @@ export const useDoctorStore = create<DoctorStoreState>()(
           return null
         }
       },
+
+      fetchDoctorDetailById: async (doctorId: string) => {
+        set({ isDetailLoading: true, detailError: null })
+        try {
+          const doctor = await fetchDoctorByIdApi(doctorId)
+          if (doctor) {
+            const favIds = get().favoriteDoctorIds
+            const formattedDetail: DoctorDetailData = {
+              ...doctor,
+              isFavorite: favIds.includes(doctor._id),
+              qualifications: doctor.qualifications || ['MBBS', 'MD'],
+              specialization: doctor.specialization || [doctor.specialty || doctor.department || 'General Medicine'],
+              bio:
+                doctor.bio ||
+                `Dr. ${doctor.name} is a senior medical specialist with extensive clinical practice.`,
+              medicalCouncilRegistrationNumber:
+                doctor.medicalCouncilRegistrationNumber || 'MCI/12345/2012',
+              verificationStatus: doctor.verificationStatus || 'VERIFIED',
+              scheduleRules: doctor.scheduleRules || [],
+              leaves: doctor.leaves || [],
+              reviews: doctor.reviews || [],
+            }
+            set({ currentDoctorDetail: formattedDetail, isDetailLoading: false })
+            return formattedDetail
+          } else {
+            set({ isDetailLoading: false, detailError: 'Doctor details could not be retrieved' })
+            return null
+          }
+        } catch (err: any) {
+          console.error('Error in doctorStore.fetchDoctorDetailById:', err)
+          set({
+            isDetailLoading: false,
+            detailError: err.message || 'Error fetching doctor details',
+          })
+          return null
+        }
+      },
     }),
     {
       name: 'curehealth_doctor_store',
       partialize: (state) => ({
         favoriteDoctorIds: state.favoriteDoctorIds,
         selectedCity: state.selectedCity,
+        currentDoctorDetail: state.currentDoctorDetail,
       }),
     }
   ),

@@ -10,6 +10,7 @@ import {
   Settings,
   X,
   ChevronRight,
+  PanelLeftClose,
 } from 'lucide-react'
 import { useHospitalAdminStore } from '@/store/hospitalAdminStore'
 
@@ -24,7 +25,7 @@ export const HospitalAdminSidebar: FC<HospitalAdminSidebarProps> = ({
 }) => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { kpis, topHospitals, selectedHospitalId } = useHospitalAdminStore()
+  const { kpis, topHospitals, selectedHospitalId, setIsSidebarCollapsed } = useHospitalAdminStore()
 
   const currentPath = location.pathname
 
@@ -102,13 +103,22 @@ export const HospitalAdminSidebar: FC<HospitalAdminSidebarProps> = ({
             </div>
           </div>
 
-          {isMobileDrawer && (
+          {isMobileDrawer ? (
             <button
               onClick={onCloseDrawer}
               className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
               title="Close Navigation"
             >
               <X className="size-5" />
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsSidebarCollapsed(true)}
+              className="hidden lg:flex p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
+              title="Collapse Sidebar"
+              aria-label="Collapse Sidebar"
+            >
+              <PanelLeftClose className="size-4.5" />
             </button>
           )}
         </div>

@@ -1,4 +1,13 @@
-export type RoleType = 'patient' | 'doctor' | 'hospital_admin'
+export const UserRole = {
+  PATIENT: 'PATIENT',
+  DOCTOR: 'DOCTOR',
+  HOSPITAL_ADMIN: 'HOSPITAL_ADMIN',
+  SUPER_ADMIN: 'SUPER_ADMIN',
+} as const
+
+export type UserRole = (typeof UserRole)[keyof typeof UserRole]
+
+export type RoleType = UserRole
 
 export interface PatientRegisterPayload {
   name: string
@@ -67,7 +76,7 @@ export interface AuthUser {
   name: string
   email: string
   phoneNumber?: string
-  role: 'patient' | 'doctor' | 'hospital_admin' | 'super_admin'
+  role: UserRole
   isAccountApproved?: boolean
   avatar?: string
 }
@@ -77,4 +86,3 @@ export interface LoginResponse {
   profile: any
   token: string
 }
-

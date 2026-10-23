@@ -4,6 +4,7 @@ import { AuthLayout } from '@/components/auth/AuthLayout'
 import { DoctorRegisterForm } from '@/components/auth/forms/DoctorRegisterForm'
 import { CheckCircle2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { UserRole } from '@/types/auth'
 
 export const DoctorRegisterPage: FC = () => {
   const navigate = useNavigate()
@@ -40,7 +41,7 @@ export const DoctorRegisterPage: FC = () => {
 
   return (
     <AuthLayout
-      currentRole="doctor"
+      currentRole={UserRole.DOCTOR}
       title="Register as Doctor"
       subtitle="Join CarePlus verified medical network and consult patients"
     >

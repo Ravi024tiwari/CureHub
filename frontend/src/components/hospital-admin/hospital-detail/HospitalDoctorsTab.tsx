@@ -15,15 +15,20 @@ import drNehaImg from '@/assets/dr-sneha-patel.jpg'
 import drRajeshImg from '@/assets/dr-rajesh-verma.jpg'
 import drPriyaImg from '@/assets/dr-priya-sharma.jpg'
 
+import { HospitalDoctorDetailModal } from './HospitalDoctorDetailModal'
+
 interface HospitalDoctorsTabProps {
   hospitalId: string
   departmentsList?: string[]
+  onSelectDoctorProfile?: (doc: any) => void
 }
 
 export const HospitalDoctorsTab: FC<HospitalDoctorsTabProps> = ({
   hospitalId,
   departmentsList = [],
+  onSelectDoctorProfile,
 }) => {
+  const [selectedDoctorForModal, setSelectedDoctorForModal] = useState<any | null>(null)
   // Read state and actions directly from the dedicated hospital store
   const {
     doctors,
@@ -222,7 +227,11 @@ export const HospitalDoctorsTab: FC<HospitalDoctorsTabProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      alert(`Doctor Profile: ${doc.userId.name}\nDepartment: ${doc.department}\nExperience: ${doc.experienceYears} Years\nConsultation Fee: ₹${doc.consultationFee}`)
+                      if (onSelectDoctorProfile) {
+                        onSelectDoctorProfile(doc)
+                      } else {
+                        setSelectedDoctorForModal(doc)
+                      }
                     }}
                     className="px-3.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-all shadow-2xs cursor-pointer"
                   >
@@ -285,6 +294,24 @@ export const HospitalDoctorsTab: FC<HospitalDoctorsTabProps> = ({
           </div>
         </div>
       )}
+
+      {/* Doctor Profile Detail Modal (fetches full live data from DB) */}
+      <HospitalDoctorDetailModal
+        doctorId={selectedDoctorForModal?._id || null}
+        isOpen={Boolean(selectedDoctorForModal)}
+        onClose={() => setSelectedDoctorForModal(null)}
+        initialData={
+          selectedDoctorForModal
+            ? {
+                name: selectedDoctorForModal.userId?.name,
+                department: selectedDoctorForModal.department,
+                avatar: selectedDoctorForModal.userId?.avatar,
+                experienceYears: selectedDoctorForModal.experienceYears,
+                consultationFee: selectedDoctorForModal.consultationFee,
+              }
+            : undefined
+        }
+      />
     </div>
   )
 }

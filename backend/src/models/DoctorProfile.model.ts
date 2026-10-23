@@ -14,6 +14,14 @@ export interface IDoctorLeave {
   createdAt: Date;
 }
 
+export interface IDoctorExperience {
+  title: string;
+  institution: string;
+  period: string;
+  duration?: string;
+  description?: string;
+}
+
 export interface IDoctorProfile extends Document {
   userId: mongoose.Types.ObjectId;
   hospitalId?: mongoose.Types.ObjectId;
@@ -24,6 +32,7 @@ export interface IDoctorProfile extends Document {
   medicalCouncilRegistrationNumber: string;
   licenseDocumentUrl?: string;
   experienceYears: number;
+  experiences?: IDoctorExperience[];
   consultationFee: number;
   bio?: string;
   scheduleRules: IDoctorScheduleRule[];
@@ -107,6 +116,35 @@ const DoctorProfileSchema = new Schema<IDoctorProfile>(
       min: [0, "Experience cannot be negative"],
       default: 0,
     },
+    experiences: [
+      {
+        title: {
+          type: String,
+          required: [true, "Job title / role is required"],
+          trim: true,
+        },
+        institution: {
+          type: String,
+          required: [true, "Hospital / institution name is required"],
+          trim: true,
+        },
+        period: {
+          type: String,
+          required: [true, "Period is required (e.g. 2019 - Present)"],
+          trim: true,
+        },
+        duration: {
+          type: String,
+          trim: true,
+          default: "",
+        },
+        description: {
+          type: String,
+          trim: true,
+          default: "",
+        },
+      },
+    ],
     consultationFee: {
       type: Number,
       min: [0, "Consultation fee cannot be negative"],
