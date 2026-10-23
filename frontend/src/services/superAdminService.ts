@@ -50,6 +50,110 @@ export const superAdminService = {
     })
     return (res as any)?.data || res
   },
+
+  // Fetch real doctors list for verification with filters, search, and pagination
+  getDoctorsForVerification: async (params?: {
+    page?: number
+    limit?: number
+    status?: string
+    search?: string
+    hospitalId?: string
+    specialization?: string
+    dateFilter?: string
+    sortBy?: string
+  }): Promise<any> => {
+    try {
+      const query = new URLSearchParams()
+      if (params?.page) query.append('page', String(params.page))
+      if (params?.limit) query.append('limit', String(params.limit))
+      if (params?.status && params.status !== 'ALL') query.append('status', params.status)
+      if (params?.search && params.search.trim()) query.append('search', params.search.trim())
+      if (params?.hospitalId && params.hospitalId !== 'ALL') query.append('hospitalId', params.hospitalId)
+      if (params?.specialization && params.specialization !== 'ALL') query.append('specialization', params.specialization)
+      if (params?.dateFilter && params.dateFilter !== 'ALL') query.append('dateFilter', params.dateFilter)
+      if (params?.sortBy) query.append('sortBy', params.sortBy)
+
+      const qs = query.toString() ? `?${query.toString()}` : ''
+      const res = await apiClient.get<{ data: any }>(`/admin/verifications/doctors${qs}`)
+      return (res as any)?.data || res
+    } catch (err) {
+      console.error('Failed to fetch doctors for verification:', err)
+      throw err
+    }
+  },
+
+  // Fetch single doctor verification detail
+  getDoctorVerificationDetails: async (doctorId: string): Promise<any> => {
+    try {
+      const res = await apiClient.get<{ data: any }>(`/admin/verifications/doctors/${doctorId}`)
+      return (res as any)?.data || res
+    } catch (err) {
+      console.error(`Failed to fetch doctor ${doctorId} verification details:`, err)
+      throw err
+    }
+  },
+
+  // Fetch list of registered hospitals for filtering dropdown
+  getHospitals: async (): Promise<any> => {
+    try {
+      const res = await apiClient.get('/hospitals?limit=100')
+      return (res as any)?.data || res
+    } catch (err) {
+      console.warn('Hospitals API query failed:', err)
+      return []
+    }
+  },
+
+  // Fetch all doctors directory for Super Admin
+  getAllDoctors: async (params?: {
+    page?: number
+    limit?: number
+    search?: string
+    status?: string
+    accountStatus?: string
+    hospitalId?: string
+    department?: string
+    specialization?: string
+    sortBy?: string
+  }): Promise<any> => {
+    try {
+      const query = new URLSearchParams()
+      if (params?.page) query.append('page', String(params.page))
+      if (params?.limit) query.append('limit', String(params.limit))
+      if (params?.search && params.search.trim()) query.append('search', params.search.trim())
+      if (params?.status && params.status !== 'ALL') query.append('status', params.status)
+      if (params?.accountStatus && params.accountStatus !== 'all') query.append('accountStatus', params.accountStatus)
+      if (params?.hospitalId && params.hospitalId !== 'ALL') query.append('hospitalId', params.hospitalId)
+      if (params?.department && params.department !== 'ALL') query.append('department', params.department)
+      if (params?.specialization && params.specialization !== 'ALL') query.append('specialization', params.specialization)
+      if (params?.sortBy) query.append('sortBy', params.sortBy)
+
+      const qs = query.toString() ? `?${query.toString()}` : ''
+      const res = await apiClient.get<{ data: any }>(`/admin/doctors${qs}`)
+      return (res as any)?.data || res
+    } catch (err) {
+      console.error('Failed to fetch doctors directory:', err)
+      throw err
+    }
+  },
+
+  // Toggle Doctor Active / Disabled Status
+  toggleDoctorStatus: async (
+    doctorId: string,
+    isActive: boolean,
+    reason?: string
+  ): Promise<any> => {
+    try {
+      const res = await apiClient.patch<{ data: any }>(`/admin/doctors/${doctorId}/status`, {
+        isActive,
+        reason,
+      })
+      return (res as any)?.data || res
+    } catch (err) {
+      console.error(`Failed to update doctor ${doctorId} status:`, err)
+      throw err
+    }
+  },
 }
 
 export default superAdminService

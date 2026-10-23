@@ -21,7 +21,11 @@ import {
   AddNewHospitalPage,
   HospitalDetailPage,
 } from '@/pages/hospital-admin'
-import { SuperAdminDashboardPage } from '@/pages/super-admin'
+import {
+  SuperAdminDashboardPage,
+  DoctorVerificationPage,
+  SuperAdminDoctorsPage,
+} from '@/pages/super-admin'
 
 function App() {
   return (
@@ -66,6 +70,9 @@ function App() {
 
         {/* Dedicated Super Admin Routes */}
         <Route path="/super-admin/dashboard" element={<SuperAdminDashboardPage />} />
+        <Route path="/super-admin/verifications" element={<DoctorVerificationPage />} />
+        <Route path="/super-admin/doctors/verifications" element={<Navigate to="/super-admin/verifications" replace />} />
+        <Route path="/super-admin/doctors" element={<SuperAdminDoctorsPage />} />
         <Route path="/super-admin" element={<Navigate to="/super-admin/dashboard" replace />} />
 
         {/* Catch-all fallback */}

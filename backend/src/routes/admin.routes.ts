@@ -8,6 +8,8 @@ import {
   getHospitalAdminVerificationDetails,
   getVerificationStats,
   getAdminDashboardAnalytics,
+  getAllDoctorsForAdmin,
+  toggleDoctorAccountStatus,
 } from "../controllers/admin.controller.js";
 import {
   authenticateToken,
@@ -31,9 +33,15 @@ adminRouter.get("/verifications/doctors", getDoctorsForVerification);
 adminRouter.get("/verifications/doctors/:id", getDoctorVerificationDetails);
 adminRouter.patch("/verifications/doctors/:id", verifyDoctor);
 
+// Full Doctor Directory & Management routes
+adminRouter.get("/doctors", getAllDoctorsForAdmin);
+adminRouter.get("/doctors/:id", getDoctorVerificationDetails);
+adminRouter.patch("/doctors/:id/status", toggleDoctorAccountStatus);
+
 // Hospital Admin verification routes
 adminRouter.get("/verifications/hospital-admins", getHospitalAdminsForVerification);
 adminRouter.get("/verifications/hospital-admins/:id",getHospitalAdminVerificationDetails);
 adminRouter.patch("/verifications/hospital-admins/:id", verifyHospitalAdmin);
 
 export default adminRouter;
+

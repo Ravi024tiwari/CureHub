@@ -210,12 +210,15 @@ export const verifyHospitalAdmin = asyncHandler(async (req: Request, res: Respon
  */
 export const getDoctorsForVerification = asyncHandler(async (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const limit = Math.max(1, Math.min(15, parseInt(req.query.limit as string) || 10));
+  const limit = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 20));
   const skip = (page - 1) * limit;
 
   const status = req.query.status as VerificationStatus | undefined;
   const search = req.query.search as string | undefined;
   const hospitalId = req.query.hospitalId as string | undefined;
+  const specialization = req.query.specialization as string | undefined;
+  const dateFilter = req.query.dateFilter as string | undefined;
+  const sortBy = req.query.sortBy as string | undefined;
 
   const query: any = {};
 
@@ -227,8 +230,25 @@ export const getDoctorsForVerification = asyncHandler(async (req: Request, res: 
     query.hospitalId = hospitalId;
   }
 
-  // If searching by name/email/phone, match via User collection first
+  if (specialization && specialization !== "ALL") {
+    query.specialization = specialization;
+  }
 
+  if (dateFilter && dateFilter !== "ALL") {
+    const now = new Date();
+    if (dateFilter === "today") {
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      query.createdAt = { $gte: startOfDay };
+    } else if (dateFilter === "week") {
+      const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      query.createdAt = { $gte: startOfWeek };
+    } else if (dateFilter === "month") {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      query.createdAt = { $gte: startOfMonth };
+    }
+  }
+
+  // If searching by name/email/phone, match via User collection first
   if (search && search.trim()) {
     const searchRegex = new RegExp(search.trim(), "i");
     const matchingUsers = await User.find({
@@ -245,11 +265,19 @@ export const getDoctorsForVerification = asyncHandler(async (req: Request, res: 
     ];
   }
 
+  let sortOptions: any = { createdAt: -1 };
+  if (sortBy === "oldest") {
+    sortOptions = { createdAt: 1 };
+  } else if (sortBy === "experience_desc") {
+    sortOptions = { experienceYears: -1, createdAt: -1 };
+  }
+
   const [doctors, totalDocs] = await Promise.all([
     DoctorProfile.find(query)
       .populate("userId", "name email phoneNumber avatar isAccountApproved isActive createdAt")
-      .populate("hospitalId", "name slug address")
-      .sort({ createdAt: -1 })
+      .populate("hospitalId", "name slug address contactEmail contactPhone")
+      .populate("verifiedBy", "name email role")
+      .sort(sortOptions)
       .skip(skip)
       .limit(limit),
     DoctorProfile.countDocuments(query),
@@ -798,4 +826,190 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
     )
   );
 });
+
+/**
+ * Get all doctors directory for Super Admin with advanced filters, search, and metrics
+ */
+export const getAllDoctorsForAdmin = asyncHandler(async (req: Request, res: Response) => {
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 12));
+  const skip = (page - 1) * limit;
+
+  const search = req.query.search as string | undefined;
+  const status = req.query.status as string | undefined;
+  const accountStatus = req.query.accountStatus as string | undefined;
+  const hospitalId = req.query.hospitalId as string | undefined;
+  const department = req.query.department as string | undefined;
+  const specialization = req.query.specialization as string | undefined;
+  const sortBy = req.query.sortBy as string | undefined;
+
+  const query: any = {};
+
+  // 1. Verification status filter
+  if (status && status !== "ALL" && Object.values(VerificationStatus).includes(status as VerificationStatus)) {
+    query.verificationStatus = status;
+  }
+
+  // 2. Hospital filter
+  if (hospitalId && hospitalId !== "ALL" && isValidObjectId(hospitalId)) {
+    query.hospitalId = hospitalId;
+  }
+
+  // 3. Department filter
+  if (department && department !== "ALL") {
+    query.department = new RegExp(`^${department}$`, "i");
+  }
+
+  // 4. Specialization filter
+  if (specialization && specialization !== "ALL") {
+    query.specialization = specialization;
+  }
+
+  // 5. User matching filter (search name/email/phone & accountStatus active/inactive)
+  const userQuery: any = { role: UserRole.DOCTOR };
+  let hasUserFilter = false;
+
+  if (accountStatus === "active") {
+    userQuery.isActive = true;
+    hasUserFilter = true;
+  } else if (accountStatus === "inactive") {
+    userQuery.isActive = false;
+    hasUserFilter = true;
+  }
+
+  if (search && search.trim()) {
+    hasUserFilter = true;
+    const searchRegex = new RegExp(search.trim(), "i");
+    userQuery.$or = [
+      { name: searchRegex },
+      { email: searchRegex },
+      { phoneNumber: searchRegex },
+    ];
+  }
+
+  if (hasUserFilter) {
+    const matchingUsers = await User.find(userQuery).select("_id");
+    const userIds = matchingUsers.map((u) => u._id);
+
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), "i");
+      query.$or = [
+        { userId: { $in: userIds } },
+        { department: searchRegex },
+        { medicalCouncilRegistrationNumber: searchRegex },
+        { specialization: searchRegex },
+      ];
+    } else {
+      query.userId = { $in: userIds };
+    }
+  }
+
+  // Sorting
+  let sortOptions: any = { createdAt: -1 };
+  if (sortBy === "oldest") {
+    sortOptions = { createdAt: 1 };
+  } else if (sortBy === "experience_desc") {
+    sortOptions = { experienceYears: -1, createdAt: -1 };
+  } else if (sortBy === "rating_desc") {
+    sortOptions = { ratingAverage: -1, reviewCount: -1 };
+  } else if (sortBy === "fee_desc") {
+    sortOptions = { consultationFee: -1 };
+  } else if (sortBy === "fee_asc") {
+    sortOptions = { consultationFee: 1 };
+  }
+
+  // Fetch doctors and global counts for directory stats
+  const [doctors, totalDocs, totalAll, totalActive, totalDisabled, totalPending] = await Promise.all([
+    DoctorProfile.find(query)
+      .populate("userId", "name email phoneNumber avatar isAccountApproved isActive role createdAt")
+      .populate("hospitalId", "name slug address contactEmail contactPhone ratingAverage")
+      .populate("verifiedBy", "name email role")
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limit),
+    DoctorProfile.countDocuments(query),
+    DoctorProfile.countDocuments(),
+    DoctorProfile.countDocuments({ verificationStatus: VerificationStatus.APPROVED }),
+    User.countDocuments({ role: UserRole.DOCTOR, isActive: false }),
+    DoctorProfile.countDocuments({ verificationStatus: VerificationStatus.PENDING }),
+  ]);
+
+  const pagination = buildPaginationMeta(totalDocs, page, limit);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        doctors,
+        pagination,
+        stats: {
+          total: totalAll,
+          active: totalActive,
+          disabled: totalDisabled,
+          pending: totalPending,
+        },
+      },
+      "Doctors retrieved successfully"
+    )
+  );
+});
+
+/**
+ * Toggle Doctor Active/Disabled Status (Freeze/Unfreeze account with optional reason)
+ */
+export const toggleDoctorAccountStatus = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { isActive, reason } = req.body;
+  const adminId = req.user?.userId;
+
+  if (!isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid doctor ID format");
+  }
+
+  const doctorProfile = await DoctorProfile.findOne({
+    $or: [{ _id: id }, { userId: id }],
+  });
+
+  if (!doctorProfile) {
+    throw new ApiError(404, "Doctor profile not found");
+  }
+
+  const doctorUser = await User.findById(doctorProfile.userId);
+  if (!doctorUser) {
+    throw new ApiError(404, "Associated user account for doctor not found");
+  }
+
+  const nextActiveState = typeof isActive === "boolean" ? isActive : !doctorUser.isActive;
+
+  doctorUser.isActive = nextActiveState;
+  if (!nextActiveState) {
+    // If disabling, record suspension/disable reason
+    doctorProfile.rejectionReason = reason?.trim() || "Account disabled by Super Admin";
+    doctorProfile.verificationStatus = VerificationStatus.SUSPENDED;
+    doctorUser.isAccountApproved = false;
+  } else {
+    // Re-enabling
+    doctorUser.isAccountApproved = true;
+    doctorProfile.verificationStatus = VerificationStatus.APPROVED;
+    doctorProfile.rejectionReason = "";
+  }
+
+  doctorProfile.verifiedBy = new mongoose.Types.ObjectId(adminId);
+  doctorProfile.verifiedAt = new Date();
+
+  await Promise.all([doctorUser.save(), doctorProfile.save()]);
+
+  const populatedProfile = await DoctorProfile.findById(doctorProfile._id)
+    .populate("userId", "name email phoneNumber avatar isAccountApproved isActive role")
+    .populate("hospitalId", "name slug address contactEmail contactPhone");
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      populatedProfile,
+      `Doctor account has been ${nextActiveState ? "activated" : "disabled"} successfully`
+    )
+  );
+});
+
 

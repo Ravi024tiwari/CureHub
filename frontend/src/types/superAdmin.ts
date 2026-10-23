@@ -110,3 +110,100 @@ export interface SuperAdminDashboardData {
   pendingVerifications: PendingVerificationItem[]
   recentActivities: AdminActivityTimelineItem[]
 }
+
+export interface DoctorVerificationUser {
+  _id: string
+  name: string
+  email: string
+  phoneNumber?: string
+  avatar?: string
+  isAccountApproved: boolean
+  isActive: boolean
+  createdAt: string
+}
+
+export interface DoctorVerificationHospital {
+  _id: string
+  name: string
+  slug: string
+  address?: {
+    street?: string
+    city?: string
+    state?: string
+    country?: string
+    zipCode?: string
+  }
+  contactEmail?: string
+  contactPhone?: string
+}
+
+export interface DoctorVerificationExperience {
+  title: string
+  institution: string
+  period: string
+  duration?: string
+  description?: string
+}
+
+export interface DoctorVerificationScheduleRule {
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  slotDurationMinutes: number
+}
+
+export interface DoctorVerificationLeave {
+  date: string
+  reason?: string
+  createdAt: string
+}
+
+export interface DoctorVerificationRecord {
+  _id: string
+  userId: DoctorVerificationUser
+  hospitalId?: DoctorVerificationHospital | null
+  hospitalAffiliationStatus: 'NOT_AFFILIATED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED'
+  department: string
+  specialization: string[]
+  qualifications: string[]
+  medicalCouncilRegistrationNumber: string
+  licenseDocumentUrl?: string
+  experienceYears: number
+  experiences?: DoctorVerificationExperience[]
+  consultationFee: number
+  bio?: string
+  scheduleRules?: DoctorVerificationScheduleRule[]
+  leaves?: DoctorVerificationLeave[]
+  verificationStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED'
+  verifiedBy?: {
+    _id: string
+    name: string
+    email: string
+    role: string
+  } | null
+  verifiedAt?: string
+  rejectionReason?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface DoctorVerificationStats {
+  pending: number
+  approved: number
+  rejected: number
+  total: number
+  newToday?: number
+  newThisMonth?: number
+}
+
+export interface DoctorVerificationFilters {
+  search: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL'
+  hospitalId: string
+  specialization: string
+  dateFilter: 'all' | 'today' | 'week' | 'month'
+  sortBy: 'newest' | 'oldest' | 'experience_desc'
+  page: number
+  limit: number
+}
+

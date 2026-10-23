@@ -1,0 +1,118 @@
+import { type FC } from 'react'
+import { Clock, CheckCircle2, XCircle, Users } from 'lucide-react'
+import { useDoctorVerificationStore } from '@/store/doctorVerificationStore'
+
+export const DoctorVerificationKpiGrid: FC = () => {
+  const { stats, filters, setFilters } = useDoctorVerificationStore()
+
+  const cards = [
+    {
+      id: 'pending',
+      title: 'Pending Verification',
+      count: stats.pending,
+      subtext: '+5 new today',
+      icon: Clock,
+      statusValue: 'PENDING' as const,
+      color: 'amber',
+      bgGrad: 'from-amber-500/10 via-amber-500/5 to-transparent',
+      borderColor: 'border-amber-200/80',
+      iconBg: 'bg-amber-100 text-amber-600',
+      textColor: 'text-amber-900',
+      badgeColor: 'text-amber-600',
+      isActive: filters.status === 'PENDING',
+    },
+    {
+      id: 'approved',
+      title: 'Approved',
+      count: stats.approved,
+      subtext: '+12 this month',
+      icon: CheckCircle2,
+      statusValue: 'APPROVED' as const,
+      color: 'emerald',
+      bgGrad: 'from-emerald-500/10 via-emerald-500/5 to-transparent',
+      borderColor: 'border-emerald-200/80',
+      iconBg: 'bg-emerald-100 text-emerald-600',
+      textColor: 'text-emerald-900',
+      badgeColor: 'text-emerald-600',
+      isActive: filters.status === 'APPROVED',
+    },
+    {
+      id: 'rejected',
+      title: 'Rejected',
+      count: stats.rejected,
+      subtext: '+3 this month',
+      icon: XCircle,
+      statusValue: 'REJECTED' as const,
+      color: 'rose',
+      bgGrad: 'from-rose-500/10 via-rose-500/5 to-transparent',
+      borderColor: 'border-rose-200/80',
+      iconBg: 'bg-rose-100 text-rose-600',
+      textColor: 'text-rose-900',
+      badgeColor: 'text-rose-600',
+      isActive: filters.status === 'REJECTED',
+    },
+    {
+      id: 'total',
+      title: 'Total Requests',
+      count: stats.total,
+      subtext: 'All time',
+      icon: Users,
+      statusValue: 'ALL' as const,
+      color: 'purple',
+      bgGrad: 'from-purple-500/10 via-purple-500/5 to-transparent',
+      borderColor: 'border-purple-200/80',
+      iconBg: 'bg-purple-100 text-purple-600',
+      textColor: 'text-purple-900',
+      badgeColor: 'text-purple-600',
+      isActive: filters.status === 'ALL',
+    },
+  ]
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {cards.map((card) => {
+        const Icon = card.icon
+        return (
+          <div
+            key={card.id}
+            onClick={() => setFilters({ status: card.statusValue })}
+            className={`bg-white rounded-2xl border p-4 sm:p-5 transition-all cursor-pointer relative overflow-hidden group select-none shadow-2xs hover:shadow-md ${
+              card.isActive
+                ? `${card.borderColor} ring-2 ring-blue-500/30 shadow-sm`
+                : 'border-slate-200/80 hover:border-slate-300'
+            }`}
+          >
+            {/* Ambient background glow */}
+            <div
+              className={`absolute inset-0 bg-gradient-to-br ${card.bgGrad} pointer-events-none opacity-40 group-hover:opacity-70 transition-opacity`}
+            />
+
+            <div className="relative flex items-center justify-between gap-3">
+              <div className="space-y-1">
+                <span className="text-[11px] sm:text-xs font-bold text-slate-500 block tracking-tight">
+                  {card.title}
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-2xl sm:text-3xl font-black tracking-tight ${card.textColor}`}>
+                    {card.count.toLocaleString()}
+                  </span>
+                </div>
+                <span className={`text-[11px] font-semibold block ${card.badgeColor}`}>
+                  {card.subtext}
+                </span>
+              </div>
+
+              <div
+                className={`size-11 sm:size-12 rounded-2xl ${card.iconBg} flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform`}
+              >
+                <Icon className="size-5 sm:size-6 stroke-[2.2]" />
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export default DoctorVerificationKpiGrid
