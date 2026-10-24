@@ -25,13 +25,11 @@ apiClient.interceptors.request.use(
   }
 )
 
-// Response Interceptor: Standardize error messages & response data extraction
 apiClient.interceptors.response.use(
   (response) => {
     return response.data
   },
   (error: AxiosError<{ message?: string; success?: boolean }>) => {
-    // Extract backend error message if available
     const backendMessage = error.response?.data?.message
     const errorMessage =
       backendMessage ||
