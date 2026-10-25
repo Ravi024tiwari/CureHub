@@ -161,6 +161,7 @@ export const FindDoctorsPage: FC = () => {
     activeSpecialtyPill,
     selectedSpecializations,
     selectedHospitals,
+    selectedCity,
     selectedConsultationType,
     selectedAvailability,
     maxFee,

@@ -281,6 +281,7 @@ export async function fetchDoctorsListApi(params: {
   search?: string
   specialty?: string
   hospital?: string
+  city?: string
   minFee?: number
   maxFee?: number
   sort?: string
@@ -295,6 +296,7 @@ export async function fetchDoctorsListApi(params: {
         search: params.search,
         specialty: params.specialty,
         hospital: params.hospital,
+        city: params.city,
         minFee: params.minFee,
         maxFee: params.maxFee,
         sort: params.sort,

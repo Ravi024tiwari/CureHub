@@ -61,6 +61,8 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
 
         {/* Dedicated Doctor Onboarding & Verification Routes */}
+        <Route path="/doctor/dashboard" element={<DashboardPage />} />
+        <Route path="/doctor" element={<Navigate to="/dashboard" replace />} />
         <Route path="/doctor/verification" element={<DoctorVerificationOnboardingPage />} />
         <Route path="/doctor/onboarding" element={<Navigate to="/doctor/verification" replace />} />
         <Route path="/doctor/complete-profile" element={<Navigate to="/doctor/verification" replace />} />

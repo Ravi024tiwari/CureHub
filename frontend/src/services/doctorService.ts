@@ -60,6 +60,122 @@ export interface UpdateDoctorProfilePayload {
   isSubmit?: boolean
 }
 
+export interface DoctorDashboardData {
+  doctorInfo: {
+    id: string
+    name: string
+    email: string
+    phoneNumber?: string
+    avatar?: string | null
+    ratingAverage: number
+    reviewCount: number
+    department: string
+    specialization: string[]
+    consultationFee: number
+    experienceYears: number
+    medicalCouncilRegistrationNumber: string
+    hospitalAffiliationStatus: string
+    hospital: {
+      id: string
+      name: string
+      city: string
+      state: string
+    } | null
+  }
+  kpis: {
+    today: {
+      total: number
+      completed: number
+      pending: number
+      cancelled: number
+    }
+    lifetime: {
+      totalAppointments: number
+      totalCompleted: number
+      totalPatientsTreated: number
+      totalRevenue: number
+    }
+  }
+  nextUpcomingAppointment?: {
+    _id: string
+    appointmentNumber: string
+    date: string
+    startTime: string
+    endTime: string
+    symptoms?: string
+    consultationFee: number
+    patientId: {
+      _id: string
+      name: string
+      email: string
+      phoneNumber?: string
+      avatar?: string
+    }
+  } | null
+  recentConsultations: Array<{
+    _id: string
+    appointmentNumber: string
+    date: string
+    startTime: string
+    endTime: string
+    symptoms?: string
+    consultationFee: number
+    status: string
+    patientId: {
+      _id: string
+      name: string
+      email: string
+      phoneNumber?: string
+      avatar?: string
+    }
+  }>
+  reviewsSummary: {
+    average: number
+    total: number
+    ratingBreakdown: {
+      5: number
+      4: number
+      3: number
+      2: number
+      1: number
+    }
+    recentReviews: Array<{
+      _id: string
+      rating: number
+      comment: string
+      createdAt: string
+      patientId?: {
+        name: string
+        avatar?: string
+      }
+    }>
+  }
+  upcomingLeaves: Array<{
+    _id?: string
+    startDate: string
+    endDate: string
+    reason?: string
+    status: string
+  }>
+  analytics: {
+    currentYear: number
+    monthlyStats: Array<{
+      month: string
+      monthNumber: number
+      appointments: number
+      completed: number
+      cancelled: number
+      revenue: number
+    }>
+    yearlyStats: Array<{
+      year: number
+      appointments: number
+      revenue: number
+    }>
+    statusDistribution: Record<string, number>
+  }
+}
+
 export const doctorService = {
   getMyDoctorProfile: async (): Promise<DoctorProfileData> => {
     const res: any = await apiClient.get('/doctors/profile')
@@ -70,6 +186,11 @@ export const doctorService = {
     payload: UpdateDoctorProfilePayload
   ): Promise<DoctorProfileData> => {
     const res: any = await apiClient.patch('/doctors/profile', payload)
+    return res?.data || res
+  },
+
+  getDoctorDashboardData: async (): Promise<DoctorDashboardData> => {
+    const res: any = await apiClient.get('/doctors/dashboard')
     return res?.data || res
   },
 }

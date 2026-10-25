@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
 import type { DoctorCardData, DoctorDetailData } from '@/types/patient'
 import { fetchDoctorsListApi, fetchDoctorByIdApi } from '@/services/patientService'
+import { doctorService, type DoctorDashboardData } from '@/services/doctorService'
 
 export interface DoctorFilterParams {
   searchQuery: string
@@ -64,6 +65,14 @@ export interface DoctorStoreState {
   fetchNextPage: () => Promise<void>
   fetchDoctorById: (doctorId: string) => Promise<DoctorCardData | null>
   fetchDoctorDetailById: (doctorId: string) => Promise<DoctorDetailData | null>
+
+  // Logged-in Doctor Portal Practice Dashboard State & Actions
+  dashboardData: DoctorDashboardData | null
+  isDashboardLoading: boolean
+  dashboardError: string | null
+  fetchDoctorDashboard: () => Promise<DoctorDashboardData | null>
+  setDashboardData: (data: DoctorDashboardData | null) => void
+  clearDashboardData: () => void
 }
 
 const DEFAULT_FILTERS = {
@@ -88,7 +97,7 @@ export const useDoctorStore = create<DoctorStoreState>()(
       page: 1,
       limit: 10,
       hasMore: true,
-      isLoadingInitial: true,
+      isLoadingInitial: false,
       isLoadingMore: false,
       error: null,
       selectedDoctor: null,
@@ -96,6 +105,11 @@ export const useDoctorStore = create<DoctorStoreState>()(
       isDetailLoading: false,
       detailError: null,
       favoriteDoctorIds: [],
+
+      // Doctor Practice Dashboard State
+      dashboardData: null,
+      isDashboardLoading: false,
+      dashboardError: null,
 
       // Initial Filters
       ...DEFAULT_FILTERS,
@@ -160,7 +174,6 @@ export const useDoctorStore = create<DoctorStoreState>()(
       fetchDoctors: async (pageNumber = 1, isNewFilter = false) => {
         const state = get()
         if (isNewFilter || pageNumber === 1) {
-          if (state.isLoadingInitial) return
           set({ isLoadingInitial: true, error: null })
         } else {
           if (state.isLoadingMore || !state.hasMore) return
@@ -183,6 +196,7 @@ export const useDoctorStore = create<DoctorStoreState>()(
             search: state.searchQuery.trim() || undefined,
             specialty: combinedSpecialties.length > 0 ? combinedSpecialties.join(',') : undefined,
             hospital: state.selectedHospitals.length > 0 ? state.selectedHospitals.join(',') : undefined,
+            city: state.selectedCity && state.selectedCity !== 'All Cities' && !state.selectedCity.toLowerCase().includes('all') ? state.selectedCity : undefined,
             maxFee: state.maxFee < 3000 ? state.maxFee : undefined,
             sort: state.sortBy !== 'relevance' ? state.sortBy : undefined,
             mode: state.selectedConsultationType !== 'all' ? state.selectedConsultationType : undefined,
@@ -307,6 +321,30 @@ export const useDoctorStore = create<DoctorStoreState>()(
           return null
         }
       },
+
+      // Logged-in Doctor Dashboard Actions
+      setDashboardData: (data: DoctorDashboardData | null) => {
+        set({ dashboardData: data })
+      },
+
+      clearDashboardData: () => {
+        set({ dashboardData: null, dashboardError: null })
+      },
+
+      fetchDoctorDashboard: async () => {
+        set({ isDashboardLoading: true, dashboardError: null })
+        try {
+          const data = await doctorService.getDoctorDashboardData()
+          set({ dashboardData: data, isDashboardLoading: false })
+          return data
+        } catch (err: any) {
+          console.error('Error in doctorStore.fetchDoctorDashboard:', err)
+          const errorMsg =
+            err?.response?.data?.message || err?.message || 'Failed to fetch doctor dashboard data'
+          set({ dashboardError: errorMsg, isDashboardLoading: false })
+          return null
+        }
+      },
     }),
     {
       name: 'curehealth_doctor_store',
@@ -314,9 +352,13 @@ export const useDoctorStore = create<DoctorStoreState>()(
         favoriteDoctorIds: state.favoriteDoctorIds,
         selectedCity: state.selectedCity,
         currentDoctorDetail: state.currentDoctorDetail,
+        dashboardData: state.dashboardData,
       }),
     }
   ),
   { name: 'DoctorStore' }
 )
 )
+
+export const useDoctorPortalStore = useDoctorStore
+

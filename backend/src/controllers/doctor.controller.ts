@@ -168,17 +168,25 @@ export const getDoctorDashboard = asyncHandler(async (req: Request, res: Respons
   const userId = req.user?.userId;
   if (!userId) throw new ApiError(401, "Unauthorized");
 
-  const doctor = await getDoctorProfileByUserId(userId);
+  const doctor = await DoctorProfile.findOne({ userId })
+    .populate("userId", "name email phoneNumber avatar")
+    .populate("hospitalId", "name address logo");
+
+  if (!doctor) {
+    throw new ApiError(404, "Doctor profile not found for this account.");
+  }
 
   const todayStr = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
   const currentYear = new Date().getFullYear();
 
-  // 1. Parallel execution for primary KPI counters
+  // 1. Parallel execution for primary KPI counters & recent clinical records
   const [
     todayAppointments,
     allAppointments,
     distinctPatients,
     nextUpcomingAppointment,
+    recentConsultations,
+    doctorReviews,
   ] = await Promise.all([
     // Today's appointments
     Appointment.find({ doctorId: doctor._id, date: todayStr }),
@@ -197,6 +205,19 @@ export const getDoctorDashboard = asyncHandler(async (req: Request, res: Respons
     })
       .sort({ startTime: 1 })
       .populate("patientId", "name email phoneNumber avatar"),
+    // Recent treated OPD consultations (physical clinic)
+    Appointment.find({
+      doctorId: doctor._id,
+      status: AppointmentStatus.COMPLETED,
+    })
+      .sort({ date: -1, startTime: -1 })
+      .limit(5)
+      .populate("patientId", "name email phoneNumber avatar"),
+    // Recent patient reviews and feedback
+    Review.find({ doctorId: doctor._id })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate("patientId", "name avatar"),
   ]);
 
   // Today's KPI calculations
@@ -292,16 +313,57 @@ export const getDoctorDashboard = asyncHandler(async (req: Request, res: Respons
   });
   const yearlyStats = Object.values(yearlyStatsMap);
 
+  // 4. Rating Breakdown (5-star down to 1-star)
+  const ratingBreakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  doctorReviews.forEach((rev) => {
+    const r = Math.round(rev.rating);
+    if (r >= 1 && r <= 5) {
+      ratingBreakdown[r as 1 | 2 | 3 | 4 | 5]++;
+    }
+  });
+
+  // 5. Upcoming Approved Leaves
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+  const upcomingLeaves = (doctor.leaves || [])
+    .filter((l: any) => new Date(l.endDate) >= todayDate)
+    .slice(0, 3);
+
+  // Extract User info
+  const userDoc = doctor.userId as any;
+  const rawDoctorName = userDoc?.name || "Doctor";
+  const doctorName = rawDoctorName.startsWith("Dr.") ? rawDoctorName : `Dr. ${rawDoctorName}`;
+
+  // Extract Hospital info
+  const hospitalDoc = doctor.hospitalId as any;
+  const hospitalInfo = hospitalDoc
+    ? {
+        id: hospitalDoc._id,
+        name: hospitalDoc.name,
+        city: hospitalDoc.address?.city || "",
+        state: hospitalDoc.address?.state || "",
+      }
+    : null;
+
   return res.status(200).json(
     new ApiResponse(
       200,
       {
         doctorInfo: {
           id: doctor._id,
-          ratingAverage: doctor.ratingAverage,
-          reviewCount: doctor.reviewCount,
-          department: doctor.department,
+          name: doctorName,
+          email: userDoc?.email || "",
+          phoneNumber: userDoc?.phoneNumber || "",
+          avatar: userDoc?.avatar || null,
+          ratingAverage: doctor.ratingAverage || 0,
+          reviewCount: doctor.reviewCount || 0,
+          department: doctor.department || "General Medicine",
+          specialization: doctor.specialization || [],
+          consultationFee: doctor.consultationFee || 0,
+          experienceYears: doctor.experienceYears || 0,
+          medicalCouncilRegistrationNumber: doctor.medicalCouncilRegistrationNumber || "",
           hospitalAffiliationStatus: doctor.hospitalAffiliationStatus,
+          hospital: hospitalInfo,
         },
         kpis: {
           today: {
@@ -318,6 +380,14 @@ export const getDoctorDashboard = asyncHandler(async (req: Request, res: Respons
           },
         },
         nextUpcomingAppointment,
+        recentConsultations,
+        reviewsSummary: {
+          average: doctor.ratingAverage || 0,
+          total: doctor.reviewCount || 0,
+          ratingBreakdown,
+          recentReviews: doctorReviews.slice(0, 3),
+        },
+        upcomingLeaves,
         analytics: {
           currentYear,
           monthlyStats,
@@ -1362,8 +1432,9 @@ export const getPublicDoctors = asyncHandler(async (req: Request, res: Response)
   const sort = (req.query.sort as string) || "relevance";
   const mode = ((req.query.mode as string) || "").trim().toLowerCase();
   const availability = ((req.query.availability as string) || "").trim().toLowerCase();
+  const city = ((req.query.city as string) || "").trim().toLowerCase();
 
-  // 1. Fetch any registered doctors in database
+  // 1. Fetch registered doctors from database
   let dbDoctors: any[] = [];
   try {
     const doctorsFromDb = await DoctorProfile.find({ isActive: { $ne: false } })
@@ -1371,11 +1442,14 @@ export const getPublicDoctors = asyncHandler(async (req: Request, res: Response)
       .populate("hospitalId", "name address slug logo")
       .lean();
 
-    dbDoctors = doctorsFromDb.map((doc: any) => ({
-      _id: String(doc._id),
-      name: doc.userId?.name || "Dr. Specialist",
-      specialty: doc.specialization?.[0] || doc.department || "General Physician",
-      department: doc.department || "General Medicine",
+    dbDoctors = doctorsFromDb.map((doc: any) => {
+      const rawName = doc.userId?.name || "Specialist";
+      const formattedName = rawName.startsWith("Dr.") ? rawName : `Dr. ${rawName}`;
+      return {
+        _id: String(doc._id),
+        name: formattedName,
+        specialty: doc.specialization?.[0] || doc.department || "General Physician",
+        department: doc.department || "General Medicine",
       qualifications: (doc.qualifications && doc.qualifications.length > 0) ? doc.qualifications : ["MBBS", "MD"],
       specialization: (doc.specialization && doc.specialization.length > 0) ? doc.specialization : [doc.department || "General Medicine"],
       bio: doc.bio || `Senior Specialist with ${doc.experienceYears || 8}+ years of extensive clinical practice in ${doc.department || 'General Medicine'}.`,
@@ -1393,9 +1467,10 @@ export const getPublicDoctors = asyncHandler(async (req: Request, res: Response)
       availableStatus: "Available Today",
       modes: ["In-clinic", "Video"],
       distance: "2.3 km",
-      email: doc.userId?.email || undefined,
-      phoneNumber: doc.userId?.phoneNumber || undefined,
-    }));
+        email: doc.userId?.email || undefined,
+        phoneNumber: doc.userId?.phoneNumber || undefined,
+      };
+    });
   } catch (err) {
     console.warn("DB query for doctors fallback:", err);
   }
@@ -1445,10 +1520,17 @@ export const getPublicDoctors = asyncHandler(async (req: Request, res: Response)
       availability === "all" ||
       (doc.availableStatus && doc.availableStatus.toLowerCase().includes(availability));
 
+    const matchesCity =
+      !city ||
+      city === "all" ||
+      city.includes("all") ||
+      (doc.hospitalLocation && doc.hospitalLocation.toLowerCase().includes(city));
+
     return (
       matchesSearch &&
       matchesSpecialty &&
       matchesHospital &&
+      matchesCity &&
       matchesFee &&
       matchesMode &&
       matchesAvailability
