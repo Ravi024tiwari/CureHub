@@ -4,7 +4,7 @@ import { User } from "../models/User.model.js";
 import { PatientProfile } from "../models/PatientProfile.model.js";
 import { DoctorProfile } from "../models/DoctorProfile.model.js";
 import { HospitalAdminProfile } from "../models/HospitalAdminProfile.model.js";
-import { UserRole } from "../constants/index.js";
+import { UserRole, VerificationStatus } from "../constants/index.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -261,13 +261,22 @@ export const updateDoctorProfile = asyncHandler(async (req: Request, res: Respon
     department,
     specialization,
     qualifications,
+    medicalCouncilRegistrationNumber,
+    licenseDocumentUrl,
     experienceYears,
     consultationFee,
     bio,
     scheduleRules,
+    isSubmit,
   } = req.body;
 
   if (department && department.trim()) profile.department = department.trim();
+  if (medicalCouncilRegistrationNumber && medicalCouncilRegistrationNumber.trim()) {
+    profile.medicalCouncilRegistrationNumber = medicalCouncilRegistrationNumber.trim();
+  }
+  if (licenseDocumentUrl && licenseDocumentUrl.trim()) {
+    profile.licenseDocumentUrl = licenseDocumentUrl.trim();
+  }
 
   const parsedSpec = safeParse(specialization);
   if (Array.isArray(parsedSpec)) profile.specialization = parsedSpec;
@@ -282,13 +291,55 @@ export const updateDoctorProfile = asyncHandler(async (req: Request, res: Respon
   const parsedRules = safeParse(scheduleRules);
   if (Array.isArray(parsedRules)) profile.scheduleRules = parsedRules;
 
+  const shouldSubmit = isSubmit === true || isSubmit === "true";
+
+  if (shouldSubmit) {
+    if (profile.verificationStatus === VerificationStatus.APPROVED) {
+      throw new ApiError(400, "Your doctor profile is already verified and approved by the Super Admin.");
+    }
+
+    const missingFields: string[] = [];
+    if (!profile.department || !profile.department.trim()) missingFields.push("Department");
+    if (!profile.medicalCouncilRegistrationNumber || !profile.medicalCouncilRegistrationNumber.trim()) {
+      missingFields.push("Medical Council Registration Number");
+    }
+    if (!profile.licenseDocumentUrl || !profile.licenseDocumentUrl.trim()) {
+      missingFields.push("License / Registration Proof Document");
+    }
+    if (!Array.isArray(profile.specialization) || profile.specialization.length === 0) {
+      missingFields.push("At least one Specialization");
+    }
+    if (!Array.isArray(profile.qualifications) || profile.qualifications.length === 0) {
+      missingFields.push("At least one Qualification / Degree");
+    }
+    if (profile.consultationFee === undefined || profile.consultationFee < 0) {
+      missingFields.push("Valid Consultation Fee");
+    }
+
+    if (missingFields.length > 0) {
+      throw new ApiError(
+        400,
+        `Cannot submit for verification. Please complete the following required fields: ${missingFields.join(", ")}`
+      );
+    }
+
+    profile.verificationStatus = VerificationStatus.PENDING;
+    profile.isSubmitted = true;
+    profile.submittedAt = new Date();
+    profile.rejectionReason = "";
+  }
+
   await profile.save();
+
+  const message = shouldSubmit
+    ? "Doctor profile submitted for Super Admin verification successfully."
+    : "Doctor profile updated successfully.";
 
   return res.status(200).json(
     new ApiResponse(
       200,
       { user, profile },
-      "Doctor profile updated successfully"
+      message
     )
   );
 });

@@ -73,11 +73,6 @@ export const DoctorRegisterForm: React.FC<DoctorRegisterFormProps> = ({
       .then((data) => {
         if (data && data.length > 0) {
           setHospitals(data)
-          // Default to the first registered hospital
-          setFormData((prev) => ({
-            ...prev,
-            hospitalId: prev.hospitalId || data[0]._id,
-          }))
         }
       })
       .finally(() => {
@@ -143,10 +138,6 @@ export const DoctorRegisterForm: React.FC<DoctorRegisterFormProps> = ({
 
     if (!formData.department.trim()) {
       newErrors.department = 'Department is required'
-    }
-
-    if (!formData.hospitalId.trim()) {
-      newErrors.hospitalId = 'Please select a registered hospital from the list'
     }
 
     if (!formData.password) {
@@ -266,11 +257,11 @@ export const DoctorRegisterForm: React.FC<DoctorRegisterFormProps> = ({
         </div>
       </div>
 
-      {/* Registered Hospital Selection (Searchable & Scrollable Combobox) */}
+      {/* Affiliated Hospital Selection (Optional) */}
       <div className="space-y-1.5 pt-2 border-t border-slate-100">
         <div className="flex items-center justify-between">
-          <Label htmlFor="hospitalId" required>Affiliated Hospital</Label>
-          <span className="text-[11px] text-slate-400">Must be a registered facility</span>
+          <Label htmlFor="hospitalId">Affiliated Hospital <span className="text-xs font-normal text-slate-400">(Optional)</span></Label>
+          <span className="text-[11px] text-slate-400">Can affiliate later</span>
         </div>
         <HospitalSelect
           hospitals={hospitals}

@@ -11,6 +11,8 @@ export const errorHandler = (
   let message = err.message || "Internal Server Error";
   let errors = err.errors || [];
 
+  console.error(`[API ERROR ${statusCode}]`, message, errors.length ? errors : "");
+
   // Mongoose duplicate key error (code 11000)
   if (err.code === 11000) {
     statusCode = 409;

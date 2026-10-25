@@ -38,6 +38,8 @@ export interface IDoctorProfile extends Document {
   scheduleRules: IDoctorScheduleRule[];
   leaves: IDoctorLeave[];
   verificationStatus: VerificationStatus;
+  isSubmitted: boolean;
+  submittedAt?: Date;
   verifiedBy?: mongoose.Types.ObjectId;
   verifiedAt?: Date;
   rejectionReason?: string;
@@ -184,8 +186,17 @@ const DoctorProfileSchema = new Schema<IDoctorProfile>(
     verificationStatus: {
       type: String,
       enum: Object.values(VerificationStatus),
-      default: VerificationStatus.PENDING,
+      default: VerificationStatus.INCOMPLETE,
       index: true,
+    },
+    isSubmitted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    submittedAt: {
+      type: Date,
+      default: null,
     },
     verifiedBy: {
       type: Schema.Types.ObjectId,

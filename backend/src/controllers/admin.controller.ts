@@ -71,6 +71,9 @@ export const verifyDoctor = asyncHandler(async (req: Request, res: Response) => 
   doctorProfile.verifiedAt = new Date();
   doctorProfile.rejectionReason =
     status === VerificationStatus.REJECTED ? rejectionReason.trim() : "";
+  if (status === VerificationStatus.REJECTED) {
+    doctorProfile.isSubmitted = false;
+  }
 
   await doctorProfile.save();
 
@@ -224,6 +227,9 @@ export const getDoctorsForVerification = asyncHandler(async (req: Request, res: 
 
   if (status && Object.values(VerificationStatus).includes(status)) {
     query.verificationStatus = status;
+  } else {
+    // Exclude incomplete/unsubmitted profiles from Super Admin verification queue
+    query.verificationStatus = { $ne: VerificationStatus.INCOMPLETE };
   }
 
   if (hospitalId && isValidObjectId(hospitalId)) {

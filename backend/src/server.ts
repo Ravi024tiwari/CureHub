@@ -80,6 +80,7 @@ app.use("/api/appointments", appointmentRouter);
 app.use("/api/patients", patientRouter);
 app.use("/api/reviews", reviewRouter);
 app.use("/api/doctors", doctorRouter);
+app.use("/api/doctor", doctorRouter);
 app.use("/api/hospital-admin", hospitalAdminRouter);
 app.use("/api/upload", uploadRouter);
 

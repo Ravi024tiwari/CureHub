@@ -16,6 +16,7 @@ import { useAuthStore } from '@/store/authStore'
 import { PatientHomePage } from '@/pages/patient'
 import { HospitalAdminDashboardPage } from '@/pages/hospital-admin'
 import { SuperAdminDashboardPage } from '@/pages/super-admin'
+import { DoctorVerificationOnboardingPage } from '@/pages/doctor'
 import { UserRole } from '@/types/auth'
 
 export const DashboardPage: FC = () => {
@@ -57,6 +58,11 @@ export const DashboardPage: FC = () => {
   // If super admin, render the dedicated production-grade Super Admin Dashboard
   if (user.role === UserRole.SUPER_ADMIN) {
     return <SuperAdminDashboardPage />
+  }
+
+  // If doctor and not yet approved, render dedicated Onboarding & Verification Page
+  if (user.role === UserRole.DOCTOR && !user.isAccountApproved) {
+    return <DoctorVerificationOnboardingPage />
   }
 
   const getRoleDetails = (role: UserRole) => {

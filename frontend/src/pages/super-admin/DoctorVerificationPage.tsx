@@ -180,7 +180,7 @@ export const DoctorVerificationPage: FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
             {/* Left Column: Doctor Requests List */}
             <div
-              className={`lg:col-span-6 xl:col-span-5 space-y-3 flex flex-col ${
+              className={`lg:col-span-5 xl:col-span-4 space-y-3 flex flex-col ${
                 mobileActiveView === 'detail' ? 'hidden lg:flex' : 'flex'
               }`}
             >
@@ -287,13 +287,13 @@ export const DoctorVerificationPage: FC = () => {
 
             {/* Right Column: Doctor Detail Panel */}
             <div
-              className={`lg:col-span-6 xl:col-span-7 h-auto lg:sticky lg:top-20 ${
+              className={`lg:col-span-7 xl:col-span-8 h-auto lg:sticky lg:top-20 ${
                 mobileActiveView === 'list' ? 'hidden lg:block' : 'block'
               }`}
             >
               <DoctorVerificationDetailPanel
                 doctor={selectedDoctor}
-                isMobileView={true}
+                isMobileView={mobileActiveView === 'detail'}
                 onBack={() => setMobileActiveView('list')}
               />
             </div>

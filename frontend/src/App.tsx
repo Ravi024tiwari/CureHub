@@ -26,6 +26,7 @@ import {
   DoctorVerificationPage,
   SuperAdminDoctorsPage,
 } from '@/pages/super-admin'
+import { DoctorVerificationOnboardingPage } from '@/pages/doctor'
 
 function App() {
   return (
@@ -58,6 +59,12 @@ function App() {
 
         {/* Logged in Dashboard */}
         <Route path="/dashboard" element={<DashboardPage />} />
+
+        {/* Dedicated Doctor Onboarding & Verification Routes */}
+        <Route path="/doctor/verification" element={<DoctorVerificationOnboardingPage />} />
+        <Route path="/doctor/onboarding" element={<Navigate to="/doctor/verification" replace />} />
+        <Route path="/doctor/complete-profile" element={<Navigate to="/doctor/verification" replace />} />
+        <Route path="/doctor/profile/complete" element={<Navigate to="/doctor/verification" replace />} />
 
         {/* Dedicated Hospital Admin Routes */}
         <Route path="/hospital-admin/dashboard" element={<HospitalAdminDashboardPage />} />

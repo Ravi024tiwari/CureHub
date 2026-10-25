@@ -25,6 +25,7 @@ import {
 import {
   authenticateToken,
   authorizeRoles,
+  requireApprovedAccount,
 } from "../middleware/auth.middleware.js";
 import { UserRole } from "../constants/index.js";
 
@@ -50,6 +51,7 @@ doctorRouter.get(
   "/dashboard",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   getDoctorDashboard
 );
 
@@ -58,6 +60,7 @@ doctorRouter.get(
   "/appointments",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   getDoctorAppointments
 );
 
@@ -65,6 +68,7 @@ doctorRouter.get(
   "/appointments/:id",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   getDoctorAppointmentById
 );
 
@@ -72,6 +76,7 @@ doctorRouter.patch(
   "/appointments/:id/status",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   updateAppointmentStatus
 );
 
@@ -79,6 +84,7 @@ doctorRouter.post(
   "/appointments/:id/complete",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   completeAppointmentWithPrescription
 );
 
@@ -87,6 +93,7 @@ doctorRouter.post(
   "/leaves",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   applyDoctorLeave
 );
 
@@ -94,6 +101,7 @@ doctorRouter.get(
   "/leaves",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   getDoctorLeaves
 );
 
@@ -101,6 +109,7 @@ doctorRouter.delete(
   "/leaves/:date",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   cancelDoctorLeave
 );
 
@@ -109,6 +118,7 @@ doctorRouter.get(
   "/slots",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   getDoctorSlots
 );
 
@@ -116,6 +126,7 @@ doctorRouter.post(
   "/slots/generate",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   generateDoctorSlots
 );
 
@@ -123,6 +134,7 @@ doctorRouter.patch(
   "/slots/:slotId/toggle",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   toggleSlotAvailability
 );
 
@@ -131,6 +143,7 @@ doctorRouter.get(
   "/hospitals/available",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   getAvailableHospitals
 );
 
@@ -138,6 +151,7 @@ doctorRouter.post(
   "/hospitals/join-request",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   sendHospitalJoinRequest
 );
 
@@ -145,6 +159,7 @@ doctorRouter.get(
   "/hospitals/my-affiliation",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
   getMyHospitalAffiliation
 );
 

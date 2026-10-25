@@ -18,10 +18,18 @@ export const LoginPage: FC = () => {
   const navigate = useNavigate()
 
   const handleLoginSuccess = (user: AuthUser) => {
-    if (user?.role === UserRole.HOSPITAL_ADMIN) {
+    if (user?.role === UserRole.SUPER_ADMIN) {
+      navigate('/super-admin/dashboard')
+    } else if (user?.role === UserRole.HOSPITAL_ADMIN) {
       navigate('/hospital-admin/dashboard')
     } else if (user?.role === UserRole.PATIENT) {
       navigate('/patient/home')
+    } else if (user?.role === UserRole.DOCTOR) {
+      if (!user.isAccountApproved) {
+        navigate('/doctor/verification')
+      } else {
+        navigate('/dashboard')
+      }
     } else {
       navigate('/dashboard')
     }

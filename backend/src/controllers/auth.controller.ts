@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import { User } from "../models/User.model.js";
 import { PatientProfile } from "../models/PatientProfile.model.js";
 import { DoctorProfile } from "../models/DoctorProfile.model.js";
@@ -90,17 +91,17 @@ export const registerDoctor = asyncHandler(async (req: Request, res: Response) =
     throw new ApiError(400, "Name, email, password, and phone number are required.");
   }
 
-  if (!hospitalId || !department || !medicalCouncilRegistrationNumber) {
+  if (!department || !medicalCouncilRegistrationNumber) {
     throw new ApiError(
       400,
-      "Doctor onboarding requires: hospitalId, department, and medicalCouncilRegistrationNumber."
+      "Doctor registration requires: department and medicalCouncilRegistrationNumber."
     );
   }
 
-  // Verify affiliated hospital exists
-  const targetHospital = await Hospital.findById(hospitalId);
-  if (!targetHospital) {
-    throw new ApiError(404, "The specified affiliated hospital was not found.");
+  // If hospitalId is provided, verify it exists (optional)
+  let targetHospital = null;
+  if (hospitalId && mongoose.Types.ObjectId.isValid(hospitalId)) {
+    targetHospital = await Hospital.findById(hospitalId);
   }
 
   // Check if medical council registration number is unique
@@ -131,10 +132,12 @@ export const registerDoctor = asyncHandler(async (req: Request, res: Response) =
     // 2. Initialize Doctor Profile with onboarding essentials
     profile = await DoctorProfile.create({
       userId: user._id,
-      hospitalId,
+      hospitalId: targetHospital ? targetHospital._id : null,
+      hospitalAffiliationStatus: targetHospital ? "PENDING_APPROVAL" : "NOT_AFFILIATED",
       department: department.trim(),
       medicalCouncilRegistrationNumber: medicalCouncilRegistrationNumber.trim(),
-      verificationStatus: VerificationStatus.PENDING,
+      verificationStatus: VerificationStatus.INCOMPLETE,
+      isSubmitted: false,
     });
   } catch (error) {
     await User.findByIdAndDelete(user._id);
@@ -154,7 +157,7 @@ export const registerDoctor = asyncHandler(async (req: Request, res: Response) =
     new ApiResponse(
       201,
       { user, profile, token },
-      "Doctor registered successfully. Account is pending Super Admin verification."
+      "Doctor registered successfully. Please complete your professional profile and submit for verification."
     )
   );
 });

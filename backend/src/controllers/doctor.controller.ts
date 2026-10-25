@@ -68,6 +68,8 @@ export const updateDoctorProfile = asyncHandler(async (req: Request, res: Respon
     department,
     specialization,
     qualifications,
+    medicalCouncilRegistrationNumber,
+    licenseDocumentUrl,
     experienceYears,
     experiences,
     consultationFee,
@@ -75,20 +77,27 @@ export const updateDoctorProfile = asyncHandler(async (req: Request, res: Respon
     scheduleRules,
     name,
     phoneNumber,
+    avatar,
+    isSubmit,
   } = req.body;
 
   // Update base User fields if provided
-  if (name || phoneNumber) {
+  if (name || phoneNumber || avatar) {
     const user = await User.findById(userId);
     if (user) {
       if (name && name.trim()) user.name = name.trim();
       if (phoneNumber && phoneNumber.trim()) user.phoneNumber = phoneNumber.trim();
+      if (avatar && avatar.trim()) user.avatar = avatar.trim();
       await user.save();
     }
   }
 
   // Update DoctorProfile fields
   if (department && department.trim()) doctor.department = department.trim();
+  if (medicalCouncilRegistrationNumber && medicalCouncilRegistrationNumber.trim()) {
+    doctor.medicalCouncilRegistrationNumber = medicalCouncilRegistrationNumber.trim();
+  }
+  if (licenseDocumentUrl !== undefined) doctor.licenseDocumentUrl = licenseDocumentUrl.trim();
   if (Array.isArray(specialization)) doctor.specialization = specialization;
   if (Array.isArray(qualifications)) doctor.qualifications = qualifications;
   if (experienceYears !== undefined) doctor.experienceYears = Math.max(0, Number(experienceYears));
@@ -97,14 +106,57 @@ export const updateDoctorProfile = asyncHandler(async (req: Request, res: Respon
   if (bio !== undefined) doctor.bio = bio.trim();
   if (Array.isArray(scheduleRules)) doctor.scheduleRules = scheduleRules;
 
+  const shouldSubmit = isSubmit === true || isSubmit === "true";
+
+  if (shouldSubmit) {
+    if (doctor.verificationStatus === VerificationStatus.APPROVED) {
+      throw new ApiError(400, "Your doctor profile is already verified and approved by the Super Admin.");
+    }
+
+    // Validation for verification submission
+    const missingFields: string[] = [];
+    if (!doctor.department || !doctor.department.trim()) missingFields.push("Department");
+    if (!doctor.medicalCouncilRegistrationNumber || !doctor.medicalCouncilRegistrationNumber.trim()) {
+      missingFields.push("Medical Council Registration Number");
+    }
+    if (!doctor.licenseDocumentUrl || !doctor.licenseDocumentUrl.trim()) {
+      missingFields.push("License / Registration Proof Document");
+    }
+    if (!Array.isArray(doctor.specialization) || doctor.specialization.length === 0) {
+      missingFields.push("At least one Specialization");
+    }
+    if (!Array.isArray(doctor.qualifications) || doctor.qualifications.length === 0) {
+      missingFields.push("At least one Qualification / Degree");
+    }
+    if (doctor.consultationFee === undefined || doctor.consultationFee < 0) {
+      missingFields.push("Valid Consultation Fee");
+    }
+
+    if (missingFields.length > 0) {
+      throw new ApiError(
+        400,
+        `Cannot submit for verification. Please complete the following required fields: ${missingFields.join(", ")}`
+      );
+    }
+
+    doctor.verificationStatus = VerificationStatus.PENDING;
+    doctor.isSubmitted = true;
+    doctor.submittedAt = new Date();
+    doctor.rejectionReason = "";
+  }
+
   await doctor.save();
 
   const populatedDoctor = await DoctorProfile.findById(doctor._id)
-    .populate("userId", "name email phoneNumber avatar")
+    .populate("userId", "name email phoneNumber avatar isAccountApproved isActive")
     .populate("hospitalId", "name slug address");
 
+  const message = shouldSubmit
+    ? "Doctor profile submitted for Super Admin verification successfully."
+    : "Doctor profile updated successfully.";
+
   return res.status(200).json(
-    new ApiResponse(200, populatedDoctor, "Doctor profile updated successfully")
+    new ApiResponse(200, populatedDoctor, message)
   );
 });
 

@@ -50,52 +50,81 @@ export const DocumentViewerModal: FC<DocumentViewerModalProps> = ({
 
         {/* Content Viewer Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-4">
-          <div className="bg-slate-100/70 border border-slate-200 rounded-2xl p-6 text-center space-y-3">
-            <div className="size-16 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto border border-blue-200/80 shadow-xs">
-              <ShieldCheck className="size-8 stroke-[2]" />
-            </div>
-            <div>
-              <h4 className="text-sm font-black text-slate-800">{title}</h4>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Type: {docType} • Format: Official Certificate / PDF Document
-              </p>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="size-5 stroke-[2.2]" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-black text-slate-800">{title}</h4>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Type: {docType} {councilNumber ? `• Reg No: ${councilNumber}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              {docUrl && (
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <a
+                    href={docUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
+                  >
+                    <ExternalLink className="size-3.5" />
+                    <span>Open in Tab</span>
+                  </a>
+                  <a
+                    href={docUrl}
+                    download
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+                  >
+                    <Download className="size-3.5" />
+                    <span>Download</span>
+                  </a>
+                </div>
+              )}
             </div>
 
-            {/* Document Verification Checklist */}
-            <div className="bg-white rounded-xl p-3 border border-slate-200/80 text-left space-y-2 text-xs">
+            {/* Document Verification Checks */}
+            <div className="bg-white rounded-xl p-3 border border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               <div className="flex items-center gap-2 text-emerald-700 font-semibold">
-                <CheckCircle className="size-3.5 text-emerald-600" />
-                <span>Issuer: State Medical Council / National Medical Commission</span>
+                <CheckCircle className="size-3.5 text-emerald-600 shrink-0" />
+                <span className="truncate">Issuer: Medical Council Registry</span>
               </div>
               <div className="flex items-center gap-2 text-emerald-700 font-semibold">
-                <CheckCircle className="size-3.5 text-emerald-600" />
-                <span>Registration Status: Valid & Active in national registry</span>
+                <CheckCircle className="size-3.5 text-emerald-600 shrink-0" />
+                <span className="truncate">File Status: Certified Upload</span>
               </div>
             </div>
 
+            {/* Live Document Preview Container */}
             {docUrl ? (
-              <div className="pt-2 flex items-center justify-center gap-2">
-                <a
-                  href={docUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
-                >
-                  <ExternalLink className="size-3.5" />
-                  <span>Open Full Document</span>
-                </a>
-                <a
-                  href={docUrl}
-                  download
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
-                >
-                  <Download className="size-3.5" />
-                  <span>Download</span>
-                </a>
+              <div className="w-full h-96 sm:h-[450px] rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-inner flex items-center justify-center relative">
+                {docUrl.match(/\.(jpg|jpeg|png|webp)($|\?)/i) ? (
+                  <img
+                    src={docUrl}
+                    alt={title}
+                    className="size-full object-contain p-2"
+                  />
+                ) : (
+                  <iframe
+                    src={docUrl}
+                    title={title}
+                    className="size-full border-none"
+                  />
+                )}
               </div>
             ) : (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-medium">
-                Digital document preview attached from registration filing.
+              <div className="p-8 rounded-2xl border border-dashed border-amber-300 bg-amber-50/50 text-center space-y-1">
+                <ShieldCheck className="size-8 text-amber-600 mx-auto" />
+                <p className="text-xs font-bold text-amber-900">
+                  Document File Not Attached
+                </p>
+                <p className="text-[11px] text-amber-700">
+                  Doctor has not uploaded a digital copy of their registration certificate.
+                </p>
               </div>
             )}
           </div>
