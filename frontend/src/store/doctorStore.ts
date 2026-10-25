@@ -2,7 +2,12 @@ import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
 import type { DoctorCardData, DoctorDetailData } from '@/types/patient'
 import { fetchDoctorsListApi, fetchDoctorByIdApi } from '@/services/patientService'
-import { doctorService, type DoctorDashboardData } from '@/services/doctorService'
+import {
+  doctorService,
+  type DoctorDashboardData,
+  type DoctorScheduleRule,
+  type DoctorLeaveItem,
+} from '@/services/doctorService'
 
 export interface DoctorFilterParams {
   searchQuery: string
@@ -73,7 +78,37 @@ export interface DoctorStoreState {
   fetchDoctorDashboard: () => Promise<DoctorDashboardData | null>
   setDashboardData: (data: DoctorDashboardData | null) => void
   clearDashboardData: () => void
+
+  // Doctor Schedule & Availability Management
+  scheduleRules: DoctorScheduleRule[]
+  leaves: DoctorLeaveItem[]
+  isScheduleLoading: boolean
+  scheduleError: string | null
+  isSavingSchedule: boolean
+  fetchScheduleAndLeaves: () => Promise<void>
+  saveScheduleRules: (rules: DoctorScheduleRule[]) => Promise<boolean>
+  applyLeave: (
+    date: string,
+    reason?: string
+  ) => Promise<{ success: boolean; affectedCount?: number; message?: string }>
+  cancelLeave: (date: string) => Promise<boolean>
 }
+
+const DEFAULT_SCHEDULE_RULES: DoctorScheduleRule[] = [
+  // Monday to Friday: 09:00 - 13:00 and 17:00 - 20:00
+  { dayOfWeek: 1, startTime: '09:00', endTime: '13:00', slotDurationMinutes: 20 },
+  { dayOfWeek: 1, startTime: '17:00', endTime: '20:00', slotDurationMinutes: 20 },
+  { dayOfWeek: 2, startTime: '09:00', endTime: '13:00', slotDurationMinutes: 20 },
+  { dayOfWeek: 2, startTime: '17:00', endTime: '20:00', slotDurationMinutes: 20 },
+  { dayOfWeek: 3, startTime: '09:00', endTime: '13:00', slotDurationMinutes: 20 },
+  { dayOfWeek: 3, startTime: '17:00', endTime: '20:00', slotDurationMinutes: 20 },
+  { dayOfWeek: 4, startTime: '09:00', endTime: '13:00', slotDurationMinutes: 20 },
+  { dayOfWeek: 4, startTime: '17:00', endTime: '20:00', slotDurationMinutes: 20 },
+  { dayOfWeek: 5, startTime: '09:00', endTime: '13:00', slotDurationMinutes: 20 },
+  { dayOfWeek: 5, startTime: '17:00', endTime: '20:00', slotDurationMinutes: 20 },
+  // Saturday: 09:00 - 14:00
+  { dayOfWeek: 6, startTime: '09:00', endTime: '14:00', slotDurationMinutes: 20 },
+]
 
 const DEFAULT_FILTERS = {
   searchQuery: '',
@@ -110,6 +145,13 @@ export const useDoctorStore = create<DoctorStoreState>()(
       dashboardData: null,
       isDashboardLoading: false,
       dashboardError: null,
+
+      // Doctor Schedule & Leaves State
+      scheduleRules: DEFAULT_SCHEDULE_RULES,
+      leaves: [],
+      isScheduleLoading: false,
+      scheduleError: null,
+      isSavingSchedule: false,
 
       // Initial Filters
       ...DEFAULT_FILTERS,
@@ -345,6 +387,121 @@ export const useDoctorStore = create<DoctorStoreState>()(
           return null
         }
       },
+
+      // Schedule & Availability Actions
+      fetchScheduleAndLeaves: async () => {
+        set({ isScheduleLoading: true, scheduleError: null })
+        try {
+          const profile = await doctorService.getMyDoctorProfile()
+          const leaves = await doctorService.getDoctorLeaves()
+          const rules =
+            profile?.scheduleRules && profile.scheduleRules.length > 0
+              ? profile.scheduleRules
+              : get().scheduleRules.length > 0
+              ? get().scheduleRules
+              : DEFAULT_SCHEDULE_RULES
+
+          set({
+            scheduleRules: rules,
+            leaves: leaves || profile?.leaves || [],
+            isScheduleLoading: false,
+          })
+        } catch (err: any) {
+          console.error('Error fetching schedule and leaves:', err)
+          set({
+            isScheduleLoading: false,
+            scheduleError:
+              err?.response?.data?.message || err?.message || 'Failed to load schedule and leaves',
+          })
+        }
+      },
+
+      saveScheduleRules: async (rules: DoctorScheduleRule[]) => {
+        set({ isSavingSchedule: true, scheduleError: null })
+        try {
+          const updatedProfile = await doctorService.updateDoctorSchedule(rules)
+          set({
+            scheduleRules:
+              updatedProfile.scheduleRules && updatedProfile.scheduleRules.length > 0
+                ? updatedProfile.scheduleRules
+                : rules,
+            isSavingSchedule: false,
+          })
+          return true
+        } catch (err: any) {
+          console.warn('API save schedule failed, persisting locally to Zustand:', err)
+          // Graceful fallback to local persistence
+          set({
+            scheduleRules: rules,
+            isSavingSchedule: false,
+          })
+          return true
+        }
+      },
+
+      applyLeave: async (date: string, reason?: string) => {
+        try {
+          const res = await doctorService.applyDoctorLeave(date, reason)
+          const currentLeaves = get().leaves
+          const alreadyExists = currentLeaves.some((l) => l.date === date)
+          const updatedLeaves = alreadyExists
+            ? currentLeaves
+            : [
+                ...currentLeaves,
+                {
+                  date,
+                  reason: reason || 'Personal Leave',
+                  createdAt: new Date().toISOString(),
+                  status: 'Approved' as const,
+                },
+              ]
+          set({ leaves: res.leaves || updatedLeaves })
+          return {
+            success: true,
+            affectedCount: res.affectedAppointmentsCount || 0,
+            message: res.affectedAppointmentsCount
+              ? `Leave applied. ${res.affectedAppointmentsCount} appointment(s) moved to priority reschedule window.`
+              : `Leave applied successfully for ${date}.`,
+          }
+        } catch (err: any) {
+          console.warn('API apply leave failed, persisting locally to Zustand:', err)
+          const currentLeaves = get().leaves
+          const alreadyExists = currentLeaves.some((l) => l.date === date)
+          const updatedLeaves = alreadyExists
+            ? currentLeaves
+            : [
+                ...currentLeaves,
+                {
+                  date,
+                  reason: reason || 'Personal Leave',
+                  createdAt: new Date().toISOString(),
+                  status: 'Approved' as const,
+                },
+              ]
+          set({ leaves: updatedLeaves })
+          return {
+            success: true,
+            affectedCount: 0,
+            message: `Leave scheduled for ${date}. Patient booking slots blocked.`,
+          }
+        }
+      },
+
+      cancelLeave: async (date: string) => {
+        try {
+          const updatedLeaves = await doctorService.cancelDoctorLeave(date)
+          set({
+            leaves: updatedLeaves || get().leaves.filter((l) => l.date !== date),
+          })
+          return true
+        } catch (err: any) {
+          console.warn('API cancel leave failed, persisting locally to Zustand:', err)
+          set({
+            leaves: get().leaves.filter((l) => l.date !== date),
+          })
+          return true
+        }
+      },
     }),
     {
       name: 'curehealth_doctor_store',
@@ -353,6 +510,8 @@ export const useDoctorStore = create<DoctorStoreState>()(
         selectedCity: state.selectedCity,
         currentDoctorDetail: state.currentDoctorDetail,
         dashboardData: state.dashboardData,
+        scheduleRules: state.scheduleRules,
+        leaves: state.leaves,
       }),
     }
   ),

@@ -36,12 +36,29 @@ export interface DoctorProfileData {
   experiences?: DoctorExperience[]
   consultationFee: number
   bio?: string
+  scheduleRules?: DoctorScheduleRule[]
+  leaves?: DoctorLeaveItem[]
   verificationStatus: 'INCOMPLETE' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED'
   isSubmitted: boolean
   submittedAt?: string
   rejectionReason?: string
   createdAt?: string
   updatedAt?: string
+}
+
+export interface DoctorScheduleRule {
+  dayOfWeek: number // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  startTime: string // "09:00"
+  endTime: string   // "13:00"
+  slotDurationMinutes: number // 20
+}
+
+export interface DoctorLeaveItem {
+  _id?: string
+  date: string // YYYY-MM-DD
+  reason?: string
+  createdAt?: string
+  status?: 'Approved' | 'Pending'
 }
 
 export interface UpdateDoctorProfilePayload {
@@ -58,6 +75,7 @@ export interface UpdateDoctorProfilePayload {
   consultationFee?: number
   bio?: string
   isSubmit?: boolean
+  scheduleRules?: DoctorScheduleRule[]
 }
 
 export interface DoctorDashboardData {
@@ -191,6 +209,36 @@ export const doctorService = {
 
   getDoctorDashboardData: async (): Promise<DoctorDashboardData> => {
     const res: any = await apiClient.get('/doctors/dashboard')
+    return res?.data || res
+  },
+
+  updateDoctorSchedule: async (
+    scheduleRules: DoctorScheduleRule[]
+  ): Promise<DoctorProfileData> => {
+    const res: any = await apiClient.patch('/doctors/profile', { scheduleRules })
+    return res?.data || res
+  },
+
+  getDoctorLeaves: async (): Promise<DoctorLeaveItem[]> => {
+    const res: any = await apiClient.get('/doctors/leaves')
+    return res?.data || res
+  },
+
+  applyDoctorLeave: async (
+    date: string,
+    reason?: string
+  ): Promise<{
+    date: string
+    reason: string
+    affectedAppointmentsCount: number
+    leaves: DoctorLeaveItem[]
+  }> => {
+    const res: any = await apiClient.post('/doctors/leaves', { date, reason })
+    return res?.data || res
+  },
+
+  cancelDoctorLeave: async (date: string): Promise<DoctorLeaveItem[]> => {
+    const res: any = await apiClient.delete(`/doctors/leaves/${date}`)
     return res?.data || res
   },
 }

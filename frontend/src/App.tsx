@@ -26,11 +26,16 @@ import {
   DoctorVerificationPage,
   SuperAdminDoctorsPage,
 } from '@/pages/super-admin'
-import { DoctorVerificationOnboardingPage } from '@/pages/doctor'
+import {
+  DoctorVerificationOnboardingPage,
+  DoctorSchedulePage,
+} from '@/pages/doctor'
+import { ToastContainer } from '@/components/common'
 
 function App() {
   return (
     <BrowserRouter>
+      <ToastContainer />
       <Routes>
         {/* Default route redirects to Login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
@@ -63,6 +68,8 @@ function App() {
         {/* Dedicated Doctor Onboarding & Verification Routes */}
         <Route path="/doctor/dashboard" element={<DashboardPage />} />
         <Route path="/doctor" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/doctor/schedule" element={<DoctorSchedulePage />} />
+        <Route path="/doctor/leaves" element={<DoctorSchedulePage initialTab="leaves" />} />
         <Route path="/doctor/verification" element={<DoctorVerificationOnboardingPage />} />
         <Route path="/doctor/onboarding" element={<Navigate to="/doctor/verification" replace />} />
         <Route path="/doctor/complete-profile" element={<Navigate to="/doctor/verification" replace />} />
