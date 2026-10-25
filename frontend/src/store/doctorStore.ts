@@ -7,6 +7,8 @@ import {
   type DoctorDashboardData,
   type DoctorScheduleRule,
   type DoctorLeaveItem,
+  type DoctorAppointmentItem,
+  type DoctorAppointmentCounts,
 } from '@/services/doctorService'
 
 export interface DoctorFilterParams {
@@ -92,6 +94,51 @@ export interface DoctorStoreState {
     reason?: string
   ) => Promise<{ success: boolean; affectedCount?: number; message?: string }>
   cancelLeave: (date: string) => Promise<boolean>
+
+  // Doctor Appointments Management
+  appointments: DoctorAppointmentItem[]
+  recentCompletedAppointments: DoctorAppointmentItem[]
+  appointmentCounts: DoctorAppointmentCounts
+  selectedAppointment: DoctorAppointmentItem | null
+  isAppointmentsLoading: boolean
+  appointmentError: string | null
+  appointmentTab: 'today' | 'upcoming' | 'past'
+  appointmentSelectedDate: string | null
+  appointmentSearchQuery: string
+  appointmentPage: number
+  appointmentTotalPages: number
+  appointmentTotalDocs: number
+  fetchDoctorAppointments: (overrides?: {
+    tab?: string
+    date?: string
+    status?: string
+    search?: string
+    page?: number
+  }) => Promise<void>
+  setSelectedAppointment: (appt: DoctorAppointmentItem | null) => void
+  setAppointmentTab: (tab: 'today' | 'upcoming' | 'past') => void
+  setAppointmentSelectedDate: (date: string | null) => void
+  setAppointmentSearchQuery: (query: string) => void
+  updateAppointmentStatusAction: (
+    id: string,
+    status: string,
+    reason?: string
+  ) => Promise<boolean>
+  completeAppointmentAction: (
+    id: string,
+    prescriptionData: {
+      diagnosis: string
+      advice?: string
+      medicines?: Array<{
+        name: string
+        dosage: string
+        frequency: string
+        duration: string
+        instructions?: string
+      }>
+      followUpDate?: string
+    }
+  ) => Promise<boolean>
 }
 
 const DEFAULT_SCHEDULE_RULES: DoctorScheduleRule[] = [
@@ -152,6 +199,29 @@ export const useDoctorStore = create<DoctorStoreState>()(
       isScheduleLoading: false,
       scheduleError: null,
       isSavingSchedule: false,
+
+      // Doctor Appointments State
+      appointments: [],
+      recentCompletedAppointments: [],
+      appointmentCounts: {
+        today: 0,
+        todayWaiting: 0,
+        todayInProgress: 0,
+        todayCompleted: 0,
+        todayCancelled: 0,
+        upcoming: 0,
+        completed: 0,
+        cancelled: 0,
+      },
+      selectedAppointment: null,
+      isAppointmentsLoading: false,
+      appointmentError: null,
+      appointmentTab: 'today',
+      appointmentSelectedDate: null,
+      appointmentSearchQuery: '',
+      appointmentPage: 1,
+      appointmentTotalPages: 1,
+      appointmentTotalDocs: 0,
 
       // Initial Filters
       ...DEFAULT_FILTERS,
@@ -500,6 +570,123 @@ export const useDoctorStore = create<DoctorStoreState>()(
             leaves: get().leaves.filter((l) => l.date !== date),
           })
           return true
+        }
+      },
+
+      setSelectedAppointment: (appt) => {
+        set({ selectedAppointment: appt })
+      },
+
+      setAppointmentTab: (tab) => {
+        set({ appointmentTab: tab, appointmentPage: 1 })
+        get().fetchDoctorAppointments({ tab, page: 1 })
+      },
+
+      setAppointmentSelectedDate: (date) => {
+        set({ appointmentSelectedDate: date, appointmentPage: 1 })
+        get().fetchDoctorAppointments({ date: date || undefined, page: 1 })
+      },
+
+      setAppointmentSearchQuery: (query) => {
+        set({ appointmentSearchQuery: query })
+      },
+
+      fetchDoctorAppointments: async (overrides = {}) => {
+        set({ isAppointmentsLoading: true, appointmentError: null })
+        try {
+          const tab = overrides.tab ?? get().appointmentTab
+          const date =
+            overrides.date !== undefined
+              ? overrides.date
+              : get().appointmentSelectedDate || undefined
+          const search =
+            overrides.search !== undefined
+              ? overrides.search
+              : get().appointmentSearchQuery || undefined
+          const page = overrides.page ?? get().appointmentPage
+
+          const res = await doctorService.getDoctorAppointments({
+            tab,
+            date,
+            search,
+            page,
+            limit: 15,
+            status: overrides.status,
+          })
+
+          const appointments = res?.appointments || []
+          const counts = res?.counts || get().appointmentCounts
+          const recentCompleted = res?.recentCompleted || []
+          const pagination = res?.pagination || {
+            totalDocs: appointments.length,
+            totalPages: 1,
+            currentPage: 1,
+          }
+
+          const currentSelected = get().selectedAppointment
+          let nextSelected = currentSelected
+          if (!currentSelected && appointments.length > 0) {
+            nextSelected = appointments[0]
+          } else if (currentSelected) {
+            const found = appointments.find((a) => a._id === currentSelected._id)
+            if (found) nextSelected = found
+            else if (appointments.length > 0) nextSelected = appointments[0]
+          }
+
+          set({
+            appointments,
+            recentCompletedAppointments: recentCompleted,
+            appointmentCounts: counts,
+            selectedAppointment: nextSelected,
+            isAppointmentsLoading: false,
+            appointmentPage: pagination.currentPage,
+            appointmentTotalPages: pagination.totalPages,
+            appointmentTotalDocs: pagination.totalDocs,
+          })
+        } catch (err: any) {
+          console.error('Failed to fetch doctor appointments:', err)
+          set({
+            isAppointmentsLoading: false,
+            appointmentError:
+              err?.response?.data?.message ||
+              err?.message ||
+              'Unable to load appointments from server.',
+          })
+        }
+      },
+
+      updateAppointmentStatusAction: async (id, status, reason) => {
+        try {
+          const updated = await doctorService.updateAppointmentStatus(id, status, reason)
+          set((state) => {
+            const updatedList = state.appointments.map((a) =>
+              a._id === id ? { ...a, status: updated.status || (status as any) } : a
+            )
+            const updatedSelected =
+              state.selectedAppointment?._id === id
+                ? { ...state.selectedAppointment, status: updated.status || (status as any) }
+                : state.selectedAppointment
+            return {
+              appointments: updatedList,
+              selectedAppointment: updatedSelected,
+            }
+          })
+          get().fetchDoctorAppointments()
+          return true
+        } catch (err: any) {
+          console.error('Failed to update appointment status:', err)
+          return false
+        }
+      },
+
+      completeAppointmentAction: async (id, data) => {
+        try {
+          await doctorService.completeAppointment(id, data)
+          get().fetchDoctorAppointments()
+          return true
+        } catch (err: any) {
+          console.error('Failed to complete appointment:', err)
+          return false
         }
       },
     }),

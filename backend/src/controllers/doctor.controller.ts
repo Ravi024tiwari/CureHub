@@ -6,6 +6,7 @@ import { TimeSlot } from "../models/TimeSlot.model.js";
 import { Hospital } from "../models/Hospital.model.js";
 import { User } from "../models/User.model.js";
 import { Review } from "../models/Review.model.js";
+import { PatientProfile } from "../models/PatientProfile.model.js";
 import {
   HospitalJoinRequest,
   JoinRequestStatus,
@@ -427,7 +428,7 @@ export const getDoctorAppointments = asyncHandler(async (req: Request, res: Resp
       { date: { $gt: todayStr } },
       {
         date: todayStr,
-        status: { $in: [AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS] },
+        status: { $in: [AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS, AppointmentStatus.CHECKED_IN] },
       },
     ];
   } else if (tab === "past") {
@@ -447,8 +448,9 @@ export const getDoctorAppointments = asyncHandler(async (req: Request, res: Resp
   }
 
   // 2. Exact date override if provided
-  if (date && typeof date === "string") {
+  if (date && typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
     query.date = date;
+    delete query.$or;
   }
 
   // 3. Specific status filter
@@ -456,24 +458,158 @@ export const getDoctorAppointments = asyncHandler(async (req: Request, res: Resp
     query.status = status;
   }
 
+  // 4. Search filter (Patient name, appointment token, symptoms)
+  if (search && typeof search === "string" && search.trim()) {
+    const searchRegex = new RegExp(search.trim(), "i");
+    const matchingUsers = await User.find({ name: searchRegex }).select("_id");
+    const userIds = matchingUsers.map((u) => u._id);
+
+    query.$and = [
+      {
+        $or: [
+          { appointmentNumber: searchRegex },
+          { symptoms: searchRegex },
+          { "patientDetails.fullName": searchRegex },
+          { patientId: { $in: userIds } },
+        ],
+      },
+    ];
+  }
+
   // Determine sorting strategy:
-  // For 'today' and 'upcoming': sort earliest time slot first
-  // For 'past' and 'all': sort most recent date on top
   const sortOption: any =
     tab === "today" || tab === "upcoming"
       ? { date: 1, startTime: 1 }
       : { date: -1, startTime: -1 };
 
-  const [appointments, totalDocs] = await Promise.all([
+  // Fetch paginated appointments and real-time dashboard counts in parallel
+  const [
+    appointments,
+    totalDocs,
+    todayTotal,
+    todayWaiting,
+    todayInProgress,
+    todayCompleted,
+    todayCancelled,
+    upcomingCount,
+    allCompletedCount,
+    allCancelledCount,
+    recentCompleted,
+  ] = await Promise.all([
     Appointment.find(query)
-      .populate("patientId", "name email phoneNumber avatar")
+      .populate("patientId", "name email phoneNumber avatar dateOfBirth gender bloodGroup")
       .populate("hospitalId", "name slug address")
       .populate("slotId", "startTime endTime status")
       .sort(sortOption)
       .skip(skip)
-      .limit(limit),
+      .limit(limit)
+      .lean(),
     Appointment.countDocuments(query),
+    // Today's total appointments
+    Appointment.countDocuments({ doctorId: doctor._id, date: todayStr }),
+    // Today's waiting (CONFIRMED or CHECKED_IN)
+    Appointment.countDocuments({
+      doctorId: doctor._id,
+      date: todayStr,
+      status: { $in: [AppointmentStatus.CONFIRMED, AppointmentStatus.CHECKED_IN] },
+    }),
+    // Today's currently in consultation
+    Appointment.countDocuments({
+      doctorId: doctor._id,
+      date: todayStr,
+      status: AppointmentStatus.IN_PROGRESS,
+    }),
+    // Today's completed consultations
+    Appointment.countDocuments({
+      doctorId: doctor._id,
+      date: todayStr,
+      status: AppointmentStatus.COMPLETED,
+    }),
+    // Today's cancelled / no-shows
+    Appointment.countDocuments({
+      doctorId: doctor._id,
+      date: todayStr,
+      status: {
+        $in: [
+          AppointmentStatus.CANCELLED_BY_PATIENT,
+          AppointmentStatus.CANCELLED_BY_DOCTOR,
+          AppointmentStatus.NO_SHOW,
+        ],
+      },
+    }),
+    // Upcoming appointments count
+    Appointment.countDocuments({
+      doctorId: doctor._id,
+      $or: [
+        { date: { $gt: todayStr } },
+        {
+          date: todayStr,
+          status: { $in: [AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS, AppointmentStatus.CHECKED_IN] },
+        },
+      ],
+    }),
+    // Total completed lifetime
+    Appointment.countDocuments({
+      doctorId: doctor._id,
+      status: AppointmentStatus.COMPLETED,
+    }),
+    // Total cancelled lifetime
+    Appointment.countDocuments({
+      doctorId: doctor._id,
+      status: {
+        $in: [
+          AppointmentStatus.CANCELLED_BY_PATIENT,
+          AppointmentStatus.CANCELLED_BY_DOCTOR,
+          AppointmentStatus.NO_SHOW,
+        ],
+      },
+    }),
+    // Recent 5 completed consultations for bottom table
+    Appointment.find({
+      doctorId: doctor._id,
+      status: AppointmentStatus.COMPLETED,
+    })
+      .populate("patientId", "name email phoneNumber avatar")
+      .populate("hospitalId", "name slug address")
+      .sort({ date: -1, startTime: -1 })
+      .limit(5)
+      .lean(),
   ]);
+
+  // Enrich each appointment with patient's previous visit count, last visit date, and allergies
+  const enrichedAppointments = await Promise.all(
+    appointments.map(async (appt: any) => {
+      const patientUserId = appt.patientId?._id || appt.patientId;
+      const [prevVisitsCount, lastVisitAppt, patientProfile] = await Promise.all([
+        Appointment.countDocuments({
+          doctorId: doctor._id,
+          patientId: patientUserId,
+          status: AppointmentStatus.COMPLETED,
+          _id: { $ne: appt._id },
+        }),
+        Appointment.findOne({
+          doctorId: doctor._id,
+          patientId: patientUserId,
+          status: AppointmentStatus.COMPLETED,
+          _id: { $ne: appt._id },
+        })
+          .sort({ date: -1 })
+          .select("date"),
+        PatientProfile.findOne({ userId: patientUserId })
+          .select("allergies chronicDiseases bloodGroup")
+          .lean(),
+      ]);
+
+      return {
+        ...appt,
+        previousVisitsCount: prevVisitsCount || 0,
+        lastVisitDate: lastVisitAppt?.date || null,
+        allergies: patientProfile?.allergies || [],
+        chronicDiseases: patientProfile?.chronicDiseases || [],
+        bloodGroup: patientProfile?.bloodGroup || null,
+      };
+    })
+  );
 
   const totalPages = Math.ceil(totalDocs / limit) || 1;
 
@@ -481,7 +617,18 @@ export const getDoctorAppointments = asyncHandler(async (req: Request, res: Resp
     new ApiResponse(
       200,
       {
-        appointments,
+        appointments: enrichedAppointments,
+        recentCompleted,
+        counts: {
+          today: todayTotal,
+          todayWaiting,
+          todayInProgress,
+          todayCompleted,
+          todayCancelled,
+          upcoming: upcomingCount,
+          completed: allCompletedCount,
+          cancelled: allCancelledCount,
+        },
         pagination: {
           totalDocs,
           totalPages,

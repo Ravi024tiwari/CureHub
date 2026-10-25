@@ -396,4 +396,50 @@ export async function deletePatientReportApi(reportId: string) {
   return res?.data || res
 }
 
+// ============================================================================
+// Appointment Booking & Slot Availability APIs
+// ============================================================================
+
+// Fetch real-time available slots for a doctor on a specific date
+export async function fetchDoctorAvailableSlotsApi(doctorId: string, date: string) {
+  try {
+    const res: any = await apiClient.get(`/doctors/${doctorId}/available-slots?date=${date}`)
+    return res?.data?.data || res?.data || res
+  } catch (error) {
+    console.warn(`Could not fetch slots for doctor ${doctorId} on ${date}:`, error)
+    return null
+  }
+}
+
+// Initiate appointment booking (locks slot for 5 mins & creates Razorpay test order)
+export async function initiateAppointmentBookingApi(payload: {
+  doctorId: string
+  date: string
+  startTime: string
+  symptoms: string
+  patientDetails?: {
+    fullName: string
+    age?: number
+    gender?: string
+    isDependent?: boolean
+    relationship?: string
+  }
+}) {
+  const res: any = await apiClient.post('/appointments/initiate', {
+    ...payload,
+    type: 'In-person',
+  })
+  return res?.data?.data || res?.data || res
+}
+
+// Verify payment and finalize appointment confirmation
+export async function verifyAppointmentPaymentApi(payload: {
+  razorpay_order_id: string
+  razorpay_payment_id: string
+  razorpay_signature: string
+}) {
+  const res: any = await apiClient.post('/appointments/verify-payment', payload)
+  return res?.data?.data || res?.data || res
+}
+
 

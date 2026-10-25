@@ -194,6 +194,88 @@ export interface DoctorDashboardData {
   }
 }
 
+export interface DoctorAppointmentItem {
+  _id: string
+  appointmentNumber: string
+  doctorId: string
+  patientId: {
+    _id: string
+    name: string
+    email: string
+    phoneNumber?: string
+    avatar?: string
+    dateOfBirth?: string
+    gender?: string
+    bloodGroup?: string
+  }
+  hospitalId?: {
+    _id: string
+    name: string
+    slug?: string
+    address?: string
+  }
+  slotId?: {
+    _id: string
+    startTime: string
+    endTime: string
+    status: string
+  }
+  type: string
+  status:
+    | 'CONFIRMED'
+    | 'CHECKED_IN'
+    | 'IN_PROGRESS'
+    | 'COMPLETED'
+    | 'CANCELLED_BY_PATIENT'
+    | 'CANCELLED_BY_DOCTOR'
+    | 'NO_SHOW'
+  date: string
+  startTime: string
+  endTime: string
+  consultationFee: number
+  paymentStatus: 'PENDING' | 'PAID' | 'REFUNDED'
+  paymentMethod?: string
+  symptoms?: string
+  patientDetails?: {
+    fullName?: string
+    age?: number
+    gender?: string
+    isDependent?: boolean
+    relationship?: string
+  }
+  previousVisitsCount?: number
+  lastVisitDate?: string | null
+  allergies?: string[]
+  chronicDiseases?: string[]
+  bloodGroup?: string
+  createdAt?: string
+}
+
+export interface DoctorAppointmentCounts {
+  today: number
+  todayWaiting: number
+  todayInProgress: number
+  todayCompleted: number
+  todayCancelled: number
+  upcoming: number
+  completed: number
+  cancelled: number
+}
+
+export interface DoctorAppointmentsResponse {
+  appointments: DoctorAppointmentItem[]
+  recentCompleted: DoctorAppointmentItem[]
+  counts: DoctorAppointmentCounts
+  pagination: {
+    totalDocs: number
+    totalPages: number
+    currentPage: number
+    limit: number
+    hasNextPage: boolean
+    hasPrevPage: boolean
+  }
+}
+
 export const doctorService = {
   getMyDoctorProfile: async (): Promise<DoctorProfileData> => {
     const res: any = await apiClient.get('/doctors/profile')
@@ -241,6 +323,53 @@ export const doctorService = {
     const res: any = await apiClient.delete(`/doctors/leaves/${date}`)
     return res?.data || res
   },
+
+  getDoctorAppointments: async (params?: {
+    tab?: string
+    date?: string
+    status?: string
+    search?: string
+    page?: number
+    limit?: number
+  }): Promise<DoctorAppointmentsResponse> => {
+    const res: any = await apiClient.get('/doctors/appointments', { params })
+    return res?.data || res
+  },
+
+  updateAppointmentStatus: async (
+    id: string,
+    status: string,
+    reason?: string
+  ): Promise<DoctorAppointmentItem> => {
+    const res: any = await apiClient.patch(`/doctors/appointments/${id}/status`, {
+      status,
+      reason,
+    })
+    return res?.data || res
+  },
+
+  completeAppointment: async (
+    id: string,
+    prescriptionData: {
+      diagnosis: string
+      advice?: string
+      medicines?: Array<{
+        name: string
+        dosage: string
+        frequency: string
+        duration: string
+        instructions?: string
+      }>
+      followUpDate?: string
+    }
+  ): Promise<DoctorAppointmentItem> => {
+    const res: any = await apiClient.post(
+      `/doctors/appointments/${id}/complete`,
+      prescriptionData
+    )
+    return res?.data || res
+  },
 }
 
 export default doctorService
+

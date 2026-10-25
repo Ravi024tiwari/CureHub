@@ -31,6 +31,14 @@ export interface IRescheduleHistory {
   rescheduledAt: Date;
 }
 
+export interface IPatientDetails {
+  fullName: string;
+  age?: number;
+  gender?: string;
+  isDependent?: boolean;
+  relationship?: string;
+}
+
 export interface IAppointment extends Document {
   appointmentNumber: string; // e.g., "APT-20261010-8472"
   patientId: mongoose.Types.ObjectId; // Ref: User
@@ -44,6 +52,7 @@ export interface IAppointment extends Document {
   status: AppointmentStatus;
   symptoms: string;
   consultationFee: number; // Stored snapshot of fee at booking time
+  patientDetails?: IPatientDetails;
   prescription?: IPrescription;
   cancellation?: ICancellationDetails;
   rescheduleDeadline?: Date | null;
@@ -119,6 +128,13 @@ const AppointmentSchema = new Schema<IAppointment>(
       type: Number,
       required: true,
       min: 0,
+    },
+    patientDetails: {
+      fullName: { type: String, trim: true },
+      age: { type: Number },
+      gender: { type: String, trim: true },
+      isDependent: { type: Boolean, default: false },
+      relationship: { type: String, trim: true },
     },
     prescription: {
       diagnosis: { type: String, trim: true },

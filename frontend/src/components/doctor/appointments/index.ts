@@ -1,0 +1,7 @@
+export * from './DoctorAppointmentsHeader'
+export * from './DoctorAppointmentsKpiCards'
+export * from './DoctorAppointmentsQueue'
+export * from './DoctorAppointmentsCalendarNav'
+export * from './DoctorPatientDossier'
+export * from './DoctorPrescriptionModal'
+export * from './DoctorRecentConsultationsTable'
