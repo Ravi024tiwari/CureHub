@@ -269,10 +269,10 @@ export const DoctorVerificationDetailPanel: FC<DoctorVerificationDetailPanelProp
             key={tab.key}
             type="button"
             onClick={() => setActiveTab(tab.key)}
-            className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all duration-150 cursor-pointer whitespace-nowrap select-none active:scale-[0.98] focus-visible:outline-none ${
               activeTab === tab.key
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-400 hover:text-slate-700'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-slate-400 hover:text-slate-900 hover:border-slate-300'
             }`}
           >
             {tab.label}

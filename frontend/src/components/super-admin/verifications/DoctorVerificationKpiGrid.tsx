@@ -75,8 +75,16 @@ export const DoctorVerificationKpiGrid: FC = () => {
         return (
           <div
             key={card.id}
+            role="button"
+            tabIndex={0}
             onClick={() => setFilters({ status: card.statusValue })}
-            className={`bg-white rounded-2xl border p-4 sm:p-5 transition-all cursor-pointer relative overflow-hidden group select-none shadow-2xs hover:shadow-md ${
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setFilters({ status: card.statusValue })
+              }
+            }}
+            className={`bg-white rounded-2xl border p-4 sm:p-5 transition-all duration-200 cursor-pointer relative overflow-hidden group select-none shadow-2xs hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 ${
               card.isActive
                 ? `${card.borderColor} ring-2 ring-blue-500/30 shadow-sm`
                 : 'border-slate-200/80 hover:border-slate-300'

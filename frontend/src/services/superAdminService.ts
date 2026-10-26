@@ -51,6 +51,43 @@ export const superAdminService = {
     return (res as any)?.data || res
   },
 
+  // Fetch real hospital admins list for verification with filters, search, and pagination
+  getHospitalAdminsForVerification: async (params?: {
+    page?: number
+    limit?: number
+    status?: string
+    search?: string
+    designation?: string
+    sortBy?: string
+  }): Promise<{ hospitalAdmins: any[]; pagination: any }> => {
+    try {
+      const query = new URLSearchParams()
+      if (params?.page) query.append('page', String(params.page))
+      if (params?.limit) query.append('limit', String(params.limit))
+      if (params?.status && params.status !== 'ALL') query.append('status', params.status)
+      if (params?.search && params.search.trim()) query.append('search', params.search.trim())
+      if (params?.sortBy) query.append('sortBy', params.sortBy)
+
+      const qs = query.toString() ? `?${query.toString()}` : ''
+      const res = await apiClient.get<{ data: any }>(`/admin/verifications/hospital-admins${qs}`)
+      return (res as any)?.data || res
+    } catch (err) {
+      console.error('Failed to fetch hospital admins for verification:', err)
+      throw err
+    }
+  },
+
+  // Fetch single hospital admin verification detail
+  getHospitalAdminVerificationDetails: async (adminId: string): Promise<any> => {
+    try {
+      const res = await apiClient.get<{ data: any }>(`/admin/verifications/hospital-admins/${adminId}`)
+      return (res as any)?.data || res
+    } catch (err) {
+      console.error(`Failed to fetch hospital admin ${adminId} verification details:`, err)
+      throw err
+    }
+  },
+
   // Fetch real doctors list for verification with filters, search, and pagination
   getDoctorsForVerification: async (params?: {
     page?: number

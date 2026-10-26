@@ -207,3 +207,77 @@ export interface DoctorVerificationFilters {
   limit: number
 }
 
+export interface HospitalAdminVerificationUser {
+  _id: string
+  name: string
+  email: string
+  phoneNumber?: string
+  avatar?: string
+  isAccountApproved: boolean
+  isActive: boolean
+  createdAt: string
+}
+
+export interface HospitalAdminVerificationHospital {
+  _id: string
+  name: string
+  slug: string
+  address?: {
+    street?: string
+    city?: string
+    state?: string
+    country?: string
+    zipCode?: string
+  }
+  contactEmail?: string
+  contactPhone?: string
+  verificationStatus?: string
+}
+
+export interface HospitalAdminVerificationRecord {
+  _id: string
+  userId: HospitalAdminVerificationUser
+  hospitalId?: HospitalAdminVerificationHospital | null
+  hospitalName?: string
+  hospitalRegistrationNumber?: string
+  designation: string
+  hospitalType?: string
+  hospitalAddress?: string
+  numberOfBeds?: number
+  governmentIdType?: string
+  governmentIdNumber?: string
+  identityProofUrl?: string
+  authorizationLetterUrl?: string
+  additionalDocUrl?: string
+  qualifications?: string[]
+  verificationStatus: 'INCOMPLETE' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED'
+  isSubmitted?: boolean
+  submittedAt?: string
+  verifiedBy?: {
+    _id: string
+    name: string
+    email: string
+    role: string
+  } | null
+  verifiedAt?: string
+  rejectionReason?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface HospitalAdminVerificationStats {
+  pending: number
+  approved: number
+  rejected: number
+  total: number
+}
+
+export interface HospitalAdminVerificationFilters {
+  search: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL'
+  designation: string
+  sortBy: 'newest' | 'oldest'
+  page: number
+  limit: number
+}
+
