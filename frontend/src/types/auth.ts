@@ -79,6 +79,8 @@ export interface AuthUser {
   role: UserRole
   isAccountApproved?: boolean
   avatar?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface LoginResponse {

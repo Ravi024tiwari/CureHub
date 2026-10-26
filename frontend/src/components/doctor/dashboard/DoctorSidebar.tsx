@@ -12,7 +12,15 @@ import {
   Headphones,
   HeartPulse,
   ExternalLink,
+  type LucideIcon,
 } from 'lucide-react'
+
+interface NavItem {
+  label: string
+  icon: LucideIcon
+  path: string
+  badge?: string | number
+}
 
 interface DoctorSidebarProps {
   onCloseMobile?: () => void
@@ -22,7 +30,7 @@ export const DoctorSidebar: FC<DoctorSidebarProps> = ({ onCloseMobile }) => {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { label: 'Appointments', icon: Calendar, path: '/doctor/appointments' },
     { label: 'My Schedule', icon: Clock, path: '/doctor/schedule' },
@@ -85,6 +93,11 @@ export const DoctorSidebar: FC<DoctorSidebarProps> = ({ onCloseMobile }) => {
                   />
                   <span>{item.label}</span>
                 </div>
+                {item.badge && (
+                  <span className="size-5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+                    {item.badge}
+                  </span>
+                )}
               </button>
             )
           })}

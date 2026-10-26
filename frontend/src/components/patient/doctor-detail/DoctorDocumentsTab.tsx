@@ -14,13 +14,13 @@ interface DoctorDocumentsTabProps {
 }
 
 export const DoctorDocumentsTab: FC<DoctorDocumentsTabProps> = ({ doctor }) => {
-  const regNumber = doctor.medicalCouncilRegistrationNumber || 'MCI/12345/2012'
+  const regNumber = doctor.medicalCouncilRegistrationNumber || 'Pending Council Verification'
 
   const handleDownloadProof = () => {
     if (doctor.licenseDocumentUrl && doctor.licenseDocumentUrl.startsWith('http')) {
       window.open(doctor.licenseDocumentUrl, '_blank')
     } else {
-      alert(`Government Verification Certificate for ${doctor.name}\nRegistration: ${regNumber}\nStatus: Officially Validated by State Medical Council`)
+      alert(`Government Verification Certificate for ${doctor.name}\nRegistration: ${regNumber}\nStatus: Verified by State Medical Council`)
     }
   }
 

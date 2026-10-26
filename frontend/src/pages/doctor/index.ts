@@ -3,3 +3,5 @@ export { DoctorVerificationOnboardingPage } from './DoctorVerificationOnboarding
 export { DoctorDashboardPage } from './DoctorDashboardPage'
 export { DoctorSchedulePage } from './DoctorSchedulePage'
 export { DoctorAppointmentsPage } from './DoctorAppointmentsPage'
+export { DoctorProfilePage } from './DoctorProfilePage'
+

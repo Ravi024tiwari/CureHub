@@ -37,7 +37,10 @@ export interface DoctorProfileData {
   consultationFee: number
   bio?: string
   scheduleRules?: DoctorScheduleRule[]
-  leaves?: DoctorLeaveItem[]
+  hospitalAffiliationStatus?: 'NOT_AFFILIATED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED'
+  ratingAverage?: number
+  reviewCount?: number
+  isActive?: boolean
   verificationStatus: 'INCOMPLETE' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED'
   isSubmitted: boolean
   submittedAt?: string
@@ -45,6 +48,7 @@ export interface DoctorProfileData {
   createdAt?: string
   updatedAt?: string
 }
+
 
 export interface DoctorScheduleRule {
   dayOfWeek: number // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
@@ -369,7 +373,31 @@ export const doctorService = {
     )
     return res?.data || res
   },
+
+  getAvailableHospitals: async (): Promise<any[]> => {
+    const res: any = await apiClient.get('/doctors/hospitals/available')
+    return res?.data || res
+  },
+
+  sendHospitalJoinRequest: async (
+    hospitalId: string,
+    department: string,
+    message?: string
+  ): Promise<any> => {
+    const res: any = await apiClient.post('/doctors/hospitals/join-request', {
+      hospitalId,
+      department,
+      message,
+    })
+    return res?.data || res
+  },
+
+  getMyHospitalAffiliation: async (): Promise<any> => {
+    const res: any = await apiClient.get('/doctors/hospitals/my-affiliation')
+    return res?.data || res
+  },
 }
 
 export default doctorService
+
 

@@ -9,6 +9,9 @@ import {
   type DoctorLeaveItem,
   type DoctorAppointmentItem,
   type DoctorAppointmentCounts,
+  type DoctorProfileData,
+  type UpdateDoctorProfilePayload,
+  type DoctorExperience,
 } from '@/services/doctorService'
 
 export interface DoctorFilterParams {
@@ -72,6 +75,15 @@ export interface DoctorStoreState {
   fetchNextPage: () => Promise<void>
   fetchDoctorById: (doctorId: string) => Promise<DoctorCardData | null>
   fetchDoctorDetailById: (doctorId: string) => Promise<DoctorDetailData | null>
+
+  // Logged-in Doctor Profile State & Actions
+  myDoctorProfile: DoctorProfileData | null
+  isProfileLoading: boolean
+  isSavingProfile: boolean
+  profileError: string | null
+  fetchMyDoctorProfile: () => Promise<DoctorProfileData | null>
+  updateMyDoctorProfile: (payload: UpdateDoctorProfilePayload) => Promise<DoctorProfileData | null>
+  setMyDoctorProfile: (profile: DoctorProfileData | null) => void
 
   // Logged-in Doctor Portal Practice Dashboard State & Actions
   dashboardData: DoctorDashboardData | null
@@ -187,6 +199,12 @@ export const useDoctorStore = create<DoctorStoreState>()(
       isDetailLoading: false,
       detailError: null,
       favoriteDoctorIds: [],
+
+      // Doctor Profile State
+      myDoctorProfile: null,
+      isProfileLoading: false,
+      isSavingProfile: false,
+      profileError: null,
 
       // Doctor Practice Dashboard State
       dashboardData: null,
@@ -431,6 +449,41 @@ export const useDoctorStore = create<DoctorStoreState>()(
             detailError: err.message || 'Error fetching doctor details',
           })
           return null
+        }
+      },
+
+      // Logged-in Doctor Profile Actions
+      setMyDoctorProfile: (profile) => {
+        set({ myDoctorProfile: profile })
+      },
+
+      fetchMyDoctorProfile: async () => {
+        set({ isProfileLoading: true, profileError: null })
+        try {
+          const profile = await doctorService.getMyDoctorProfile()
+          set({ myDoctorProfile: profile, isProfileLoading: false })
+          return profile
+        } catch (err: any) {
+          console.error('Error in doctorStore.fetchMyDoctorProfile:', err)
+          const errorMsg =
+            err?.response?.data?.message || err?.message || 'Failed to fetch doctor profile'
+          set({ profileError: errorMsg, isProfileLoading: false })
+          return null
+        }
+      },
+
+      updateMyDoctorProfile: async (payload: UpdateDoctorProfilePayload) => {
+        set({ isSavingProfile: true, profileError: null })
+        try {
+          const updated = await doctorService.updateDoctorProfile(payload)
+          set({ myDoctorProfile: updated, isSavingProfile: false })
+          return updated
+        } catch (err: any) {
+          console.error('Error in doctorStore.updateMyDoctorProfile:', err)
+          const errorMsg =
+            err?.response?.data?.message || err?.message || 'Failed to update doctor profile'
+          set({ profileError: errorMsg, isSavingProfile: false })
+          throw err
         }
       },
 
@@ -696,6 +749,7 @@ export const useDoctorStore = create<DoctorStoreState>()(
         favoriteDoctorIds: state.favoriteDoctorIds,
         selectedCity: state.selectedCity,
         currentDoctorDetail: state.currentDoctorDetail,
+        myDoctorProfile: state.myDoctorProfile,
         dashboardData: state.dashboardData,
         scheduleRules: state.scheduleRules,
         leaves: state.leaves,

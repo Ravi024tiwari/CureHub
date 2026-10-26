@@ -30,6 +30,7 @@ import {
   DoctorVerificationOnboardingPage,
   DoctorSchedulePage,
   DoctorAppointmentsPage,
+  DoctorProfilePage,
 } from '@/pages/doctor'
 import { ToastContainer } from '@/components/common'
 
@@ -69,6 +70,8 @@ function App() {
         {/* Dedicated Doctor Onboarding & Verification Routes */}
         <Route path="/doctor/dashboard" element={<DashboardPage />} />
         <Route path="/doctor" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/doctor/profile" element={<DoctorProfilePage />} />
+        <Route path="/doctor/profile/edit" element={<DoctorProfilePage />} />
         <Route path="/doctor/appointments" element={<DoctorAppointmentsPage />} />
         <Route path="/doctor/schedule" element={<DoctorSchedulePage />} />
         <Route path="/doctor/leaves" element={<DoctorSchedulePage initialTab="leaves" />} />
