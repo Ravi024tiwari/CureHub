@@ -14,9 +14,11 @@ import { EditHospitalModal } from '@/components/hospital-admin/hospitals/EditHos
 import { MobileFilterDrawer } from '@/components/hospital-admin/hospitals/MobileFilterDrawer'
 import { useHospitalBranchesStore } from '@/store/hospitalBranchesStore'
 import { useHospitalAdminStore } from '@/store/hospitalAdminStore'
+import { useAuthStore } from '@/store/authStore'
 
 export const HospitalAdminHospitalsPage: FC = () => {
   const navigate = useNavigate()
+  const { user } = useAuthStore()
   const { isMobileSidebarOpen, setIsMobileSidebarOpen, isSidebarCollapsed, toggleSidebar } = useHospitalAdminStore()
   const {
     hospitals,
@@ -27,8 +29,12 @@ export const HospitalAdminHospitalsPage: FC = () => {
   } = useHospitalBranchesStore()
 
   useEffect(() => {
+    if (user && !user.isAccountApproved) {
+      navigate('/hospital-admin/verification', { replace: true })
+      return
+    }
     fetchHospitals()
-  }, [])
+  }, [user, navigate, fetchHospitals])
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex selection:bg-blue-100 selection:text-blue-700 antialiased">

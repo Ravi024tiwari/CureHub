@@ -347,6 +347,45 @@ export const updateDoctorProfile = asyncHandler(async (req: Request, res: Respon
 /**
  * HOSPITAL ADMIN: Update Profile (Personal info, identity proof, designation)
  */
+/**
+ * HOSPITAL ADMIN: Get Profile
+ */
+export const getHospitalAdminProfile = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?.userId;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User account not found");
+    }
+
+    let profile = await HospitalAdminProfile.findOne({ userId })
+      .populate("hospitalId")
+      .populate("userId", "name email phoneNumber avatar isAccountApproved");
+    if (!profile) {
+      profile = await HospitalAdminProfile.create({
+        userId: user._id,
+        designation: "Hospital Administrator",
+        verificationStatus: VerificationStatus.PENDING,
+      });
+      profile = await HospitalAdminProfile.findById(profile._id)
+        .populate("hospitalId")
+        .populate("userId", "name email phoneNumber avatar isAccountApproved");
+    }
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        { user, profile },
+        "Hospital Admin profile retrieved successfully"
+      )
+    );
+  }
+);
+
+/**
+ * HOSPITAL ADMIN: Update Profile / Onboarding Details
+ */
 export const updateHospitalAdminProfile = asyncHandler(
   async (req: Request, res: Response) => {
     const userId = req.user?.userId;
@@ -356,9 +395,13 @@ export const updateHospitalAdminProfile = asyncHandler(
       throw new ApiError(404, "User account not found");
     }
 
-    const profile = await HospitalAdminProfile.findOne({ userId });
+    let profile = await HospitalAdminProfile.findOne({ userId });
     if (!profile) {
-      throw new ApiError(404, "Hospital admin profile not found");
+      profile = await HospitalAdminProfile.create({
+        userId: user._id,
+        designation: "Hospital Administrator",
+        verificationStatus: VerificationStatus.PENDING,
+      });
     }
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
@@ -405,32 +448,75 @@ export const updateHospitalAdminProfile = asyncHandler(
       profile.authorizationLetterUrl = authResult.url;
     }
 
-    // 4. Update User fields
-    const { name, phoneNumber } = req.body;
+    // 4. Upload Additional Document if provided
+    if (files?.additionalDoc && files.additionalDoc[0]) {
+      const addDocResult = await uploadFileToS3(
+        files.additionalDoc[0],
+        "proofs/hospital-admins",
+        `add-doc-${userId}`
+      );
+      if (
+        profile.additionalDocUrl &&
+        profile.additionalDocUrl.includes("amazonaws.com")
+      ) {
+        await deleteFileFromS3(profile.additionalDocUrl);
+      }
+      profile.additionalDocUrl = addDocResult.url;
+    }
+
+    // 5. Update User fields (Single Source of Truth for identity and contact)
+    const { name, phoneNumber, phone, avatarUrl } = req.body;
     if (name && name.trim()) user.name = name.trim();
-    if (phoneNumber && phoneNumber.trim()) user.phoneNumber = phoneNumber.trim();
+    const contactPhone = (phoneNumber || phone || "").trim();
+    if (contactPhone) user.phoneNumber = contactPhone;
+    if (avatarUrl && avatarUrl.trim()) user.avatar = avatarUrl.trim();
     await user.save();
 
-    // 5. Update HospitalAdminProfile fields
+    // 6. Update HospitalAdminProfile fields (Hospital & Verification specific)
     const {
       hospitalName,
+      hospitalRegistrationNumber,
+      hospitalType,
+      hospitalAddress,
+      numberOfBeds,
       designation,
       governmentIdType,
       governmentIdNumber,
-      phone,
-      email,
+      identityProofUrl,
+      authorizationLetterUrl,
+      additionalDocUrl,
       qualifications,
+      isSubmitted,
     } = req.body;
 
-    if (hospitalName && hospitalName.trim()) profile.hospitalName = hospitalName.trim();
+    if (hospitalName !== undefined) profile.hospitalName = hospitalName.trim();
+    if (hospitalRegistrationNumber !== undefined) {
+      profile.hospitalRegistrationNumber = hospitalRegistrationNumber.trim() || undefined;
+    }
+    if (hospitalType !== undefined) profile.hospitalType = hospitalType.trim();
+    if (hospitalAddress !== undefined) profile.hospitalAddress = hospitalAddress.trim();
+    if (numberOfBeds !== undefined && numberOfBeds !== "") {
+      profile.numberOfBeds = Number(numberOfBeds) || undefined;
+    }
     if (designation && designation.trim()) profile.designation = designation.trim();
     if (governmentIdType !== undefined) profile.governmentIdType = governmentIdType.trim();
     if (governmentIdNumber !== undefined) profile.governmentIdNumber = governmentIdNumber.trim();
-    if (phone !== undefined) profile.phone = phone.trim();
-    if (email !== undefined) profile.email = email.toLowerCase().trim();
+    if (identityProofUrl && identityProofUrl.trim()) profile.identityProofUrl = identityProofUrl.trim();
+    if (authorizationLetterUrl && authorizationLetterUrl.trim()) {
+      profile.authorizationLetterUrl = authorizationLetterUrl.trim();
+    }
+    if (additionalDocUrl && additionalDocUrl.trim()) {
+      profile.additionalDocUrl = additionalDocUrl.trim();
+    }
 
     const parsedQual = safeParse(qualifications);
     if (Array.isArray(parsedQual)) profile.qualifications = parsedQual;
+
+    if (isSubmitted === true || isSubmitted === "true") {
+      profile.isSubmitted = true;
+      profile.submittedAt = new Date();
+      profile.verificationStatus = VerificationStatus.PENDING;
+    }
 
     await profile.save();
 

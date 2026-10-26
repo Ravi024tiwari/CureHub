@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { updatePatientProfile, uploadPatientReport, deletePatientReport, updateDoctorProfile, updateHospitalAdminProfile,
+import { updatePatientProfile, uploadPatientReport, deletePatientReport, updateDoctorProfile, updateHospitalAdminProfile, getHospitalAdminProfile,
 } from "../controllers/profile.controller.js";
 import { authenticateToken, authorizeRoles } from "../middleware/auth.middleware.js";
 
@@ -42,6 +42,12 @@ profileRouter.patch(
 );
 
 // ================= HOSPITAL ADMIN PROFILE ROUTES =================
+profileRouter.get(
+  "/hospital-admin",
+  authorizeRoles(UserRole.HOSPITAL_ADMIN),
+  getHospitalAdminProfile
+);
+
 profileRouter.patch(
   "/hospital-admin",
   authorizeRoles(UserRole.HOSPITAL_ADMIN),

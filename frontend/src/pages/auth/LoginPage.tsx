@@ -21,7 +21,11 @@ export const LoginPage: FC = () => {
     if (user?.role === UserRole.SUPER_ADMIN) {
       navigate('/super-admin/dashboard')
     } else if (user?.role === UserRole.HOSPITAL_ADMIN) {
-      navigate('/hospital-admin/dashboard')
+      if (!user.isAccountApproved) {
+        navigate('/hospital-admin/verification')
+      } else {
+        navigate('/hospital-admin/dashboard')
+      }
     } else if (user?.role === UserRole.PATIENT) {
       navigate('/patient/home')
     } else if (user?.role === UserRole.DOCTOR) {

@@ -233,4 +233,65 @@ export interface HospitalDoctorsResponse {
   pagination: HospitalBranchPagination
 }
 
+export interface HospitalAdminProfileData {
+  _id: string
+  userId: {
+    _id: string
+    name: string
+    email: string
+    phoneNumber?: string
+    avatar?: string
+    role: string
+    isAccountApproved?: boolean
+    createdAt?: string
+  }
+  hospitalId?: {
+    _id: string
+    name: string
+    slug: string
+    address?: any
+  } | null
+  hospitalName?: string
+  hospitalRegistrationNumber?: string
+  hospitalType?: string
+  hospitalAddress?: string
+  numberOfBeds?: number
+  designation: string
+  governmentIdType?: string
+  governmentIdNumber?: string
+  identityProofUrl?: string
+  authorizationLetterUrl?: string
+  additionalDocUrl?: string
+  qualifications?: string[]
+  verificationStatus: 'INCOMPLETE' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED'
+  isSubmitted?: boolean
+  submittedAt?: string
+  verifiedBy?: any
+  verifiedAt?: string
+  rejectionReason?: string
+  isActive?: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface HospitalAdminProfileUpdatePayload {
+  name?: string
+  phoneNumber?: string
+  phone?: string
+  avatarUrl?: string
+  hospitalName?: string
+  hospitalRegistrationNumber?: string
+  hospitalType?: string
+  hospitalAddress?: string
+  numberOfBeds?: number
+  designation?: string
+  governmentIdType?: string
+  governmentIdNumber?: string
+  identityProofUrl?: string
+  authorizationLetterUrl?: string
+  additionalDocUrl?: string
+  qualifications?: string[]
+  isSubmitted?: boolean
+}
+
 

@@ -36,6 +36,7 @@ import { ReviewSubmitSection } from '@/components/hospital-admin/add-hospital/Re
 import { MobilePreviewDrawer } from '@/components/hospital-admin/add-hospital/MobilePreviewDrawer'
 import { useHospitalBranchesStore } from '@/store/hospitalBranchesStore'
 import { useHospitalAdminStore } from '@/store/hospitalAdminStore'
+import { useAuthStore } from '@/store/authStore'
 import { hospitalAdminService } from '@/services/hospitalAdminService'
 import type { AddHospitalFormData } from '@/types/hospitalAdmin'
 
@@ -74,8 +75,15 @@ export const AddNewHospitalPage: FC = () => {
   const { id } = useParams<{ id?: string }>()
   const isEditMode = Boolean(id)
   const navigate = useNavigate()
+  const { user } = useAuthStore()
   const { isMobileSidebarOpen, setIsMobileSidebarOpen, isSidebarCollapsed, toggleSidebar } = useHospitalAdminStore()
   const { createHospital, updateHospital, isSubmitting } = useHospitalBranchesStore()
+
+  useEffect(() => {
+    if (user && !user.isAccountApproved) {
+      navigate('/hospital-admin/verification', { replace: true })
+    }
+  }, [user, navigate])
 
   // Stepper state
   const [currentStep, setCurrentStep] = useState<number>(1)

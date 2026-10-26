@@ -29,11 +29,19 @@ import { HospitalDoctorDetailModal } from '@/components/hospital-admin/hospital-
 import { useHospitalDetailStore } from '@/store/hospitalDetailStore'
 import { useHospitalBranchesStore } from '@/store/hospitalBranchesStore'
 import { useHospitalAdminStore } from '@/store/hospitalAdminStore'
+import { useAuthStore } from '@/store/authStore'
 import { hospitalAdminService } from '@/services/hospitalAdminService'
 
 export const HospitalDetailPage: FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuthStore()
+
+  useEffect(() => {
+    if (user && !user.isAccountApproved) {
+      navigate('/hospital-admin/verification', { replace: true })
+    }
+  }, [user, navigate])
 
   // App-level sidebar drawer state
   const { isMobileSidebarOpen, setIsMobileSidebarOpen, isSidebarCollapsed, toggleSidebar } = useHospitalAdminStore()

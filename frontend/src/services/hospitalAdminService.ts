@@ -137,4 +137,17 @@ export const hospitalAdminService = {
     )
     return (response as any)?.data || response
   },
+
+  // Get hospital admin profile
+  getMyProfile: async (): Promise<{ user: any; profile: HospitalAdminProfileData }> => {
+    const response = await apiClient.get('/profile/hospital-admin')
+    return (response as any)?.data || response
+  },
+
+  // Update hospital admin profile (supports FormData or JSON)
+  updateProfile: async (data: FormData | any): Promise<{ user: any; profile: HospitalAdminProfileData }> => {
+    const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+    const response = await apiClient.patch('/profile/hospital-admin', data, { headers })
+    return (response as any)?.data || response
+  },
 }

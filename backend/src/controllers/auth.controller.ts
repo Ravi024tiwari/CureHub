@@ -182,7 +182,8 @@ export const registerHospitalAdmin = asyncHandler(async (req: Request, res: Resp
     hospitalId,
   } = req.body;
 
-  if (!name || !email || !password || !phoneNumber) {
+  const contactPhone = (phoneNumber || phone || "").trim();
+  if (!name || !email || !password || !contactPhone) {
     throw new ApiError(400, "Name, email, password, and phone number are required.");
   }
 
@@ -193,7 +194,7 @@ export const registerHospitalAdmin = asyncHandler(async (req: Request, res: Resp
     );
   }
 
-  await checkDuplicateUser(email, phoneNumber);
+  await checkDuplicateUser(email, contactPhone);
 
   // Check if hospital registration number is unique
   const existingHospitalReg = await HospitalAdminProfile.findOne({
@@ -218,7 +219,7 @@ export const registerHospitalAdmin = asyncHandler(async (req: Request, res: Resp
     name: name.trim(),
     email: email.toLowerCase().trim(),
     password,
-    phoneNumber: phoneNumber.trim(),
+    phoneNumber: contactPhone,
     role: UserRole.HOSPITAL_ADMIN,
     avatar: avatar || "",
     isAccountApproved: false, // Requires Super Admin approval
@@ -236,8 +237,6 @@ export const registerHospitalAdmin = asyncHandler(async (req: Request, res: Resp
       governmentIdNumber: governmentIdNumber?.trim() || "",
       identityProofUrl: identityProofUrl || "",
       authorizationLetterUrl: authorizationLetterUrl || "",
-      email: email.toLowerCase().trim(),
-      phone: phone?.trim() || phoneNumber.trim(),
       qualifications: Array.isArray(qualifications)
         ? qualifications
         : qualifications

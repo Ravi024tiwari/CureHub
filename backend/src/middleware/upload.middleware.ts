@@ -94,6 +94,7 @@ export const uploadHospitalAdminFiles = uploadDocument.fields([
   { name: "avatar", maxCount: 1 },
   { name: "identityProof", maxCount: 1 },
   { name: "authorizationLetter", maxCount: 1 },
+  { name: "additionalDoc", maxCount: 1 },
 ]);
 
 export const uploadHospitalImages = uploadImage.fields([

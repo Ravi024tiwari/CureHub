@@ -107,7 +107,11 @@ export const LoginForm: FC<LoginFormProps> = ({ onSuccess }) => {
         onSuccess(user)
       } else {
         if (user?.role === UserRole.HOSPITAL_ADMIN) {
-          navigate('/hospital-admin/dashboard')
+          if (!user.isAccountApproved) {
+            navigate('/hospital-admin/verification')
+          } else {
+            navigate('/hospital-admin/dashboard')
+          }
         } else if (user?.role === UserRole.PATIENT) {
           navigate('/patient/home')
         } else {

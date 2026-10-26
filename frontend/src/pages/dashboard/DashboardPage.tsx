@@ -2,7 +2,7 @@ import { useEffect, type FC } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { PatientHomePage } from '@/pages/patient'
-import { HospitalAdminDashboardPage } from '@/pages/hospital-admin'
+import { HospitalAdminDashboardPage, HospitalAdminVerificationPage } from '@/pages/hospital-admin'
 import { SuperAdminDashboardPage } from '@/pages/super-admin'
 import { DoctorVerificationOnboardingPage, DoctorDashboardPage } from '@/pages/doctor'
 import { UserRole } from '@/types/auth'
@@ -35,6 +35,9 @@ export const DashboardPage: FC = () => {
 
   // 2. Hospital Admin Portal
   if (user.role === UserRole.HOSPITAL_ADMIN) {
+    if (!user.isAccountApproved) {
+      return <HospitalAdminVerificationPage />
+    }
     return <HospitalAdminDashboardPage />
   }
 

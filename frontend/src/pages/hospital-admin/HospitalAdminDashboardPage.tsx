@@ -1,4 +1,5 @@
 import { useEffect, useState, type FC } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Calendar, ChevronDown, CheckCircle2, X } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useHospitalAdminStore } from '@/store/hospitalAdminStore'
@@ -17,6 +18,7 @@ import { DoctorApplicationModal } from '@/components/hospital-admin/DoctorApplic
 import { HospitalAdminMobileNav } from '@/components/hospital-admin/HospitalAdminMobileNav'
 
 export const HospitalAdminDashboardPage: FC = () => {
+  const navigate = useNavigate()
   const { user } = useAuthStore()
   const {
     fetchDashboard,
@@ -33,8 +35,12 @@ export const HospitalAdminDashboardPage: FC = () => {
   const [isDateMenuOpen, setIsDateMenuOpen] = useState(false)
 
   useEffect(() => {
+    if (user && !user.isAccountApproved) {
+      navigate('/hospital-admin/verification', { replace: true })
+      return
+    }
     fetchDashboard()
-  }, [fetchDashboard])
+  }, [user, fetchDashboard, navigate])
 
   const dateOptions = ['Oct 2026', 'Sep 2026', 'Aug 2026', 'Q3 2026', 'Year 2026']
 

@@ -4,17 +4,21 @@ import { VerificationStatus } from "../constants/index.js";
 export interface IHospitalAdminProfile extends Document {
   userId: mongoose.Types.ObjectId;
   hospitalId?: mongoose.Types.ObjectId;
-  hospitalName: string;
-  hospitalRegistrationNumber: string;
+  hospitalName?: string;
+  hospitalRegistrationNumber?: string;
   designation: string;
+  hospitalType?: string;
+  hospitalAddress?: string;
+  numberOfBeds?: number;
   governmentIdType?: string;
   governmentIdNumber?: string;
   identityProofUrl?: string;
   authorizationLetterUrl?: string;
-  email?: string;
-  phone?: string;
+  additionalDocUrl?: string;
   qualifications?: string[];
   verificationStatus: VerificationStatus;
+  isSubmitted?: boolean;
+  submittedAt?: Date;
   verifiedBy?: mongoose.Types.ObjectId;
   verifiedAt?: Date;
   rejectionReason?: string;
@@ -40,28 +44,42 @@ const HospitalAdminProfileSchema = new Schema<IHospitalAdminProfile>(
     },
     hospitalName: {
       type: String,
-      required: [true, "Hospital name is required"],
       trim: true,
       maxlength: [150, "Hospital name cannot exceed 150 characters"],
+      default: "",
       index: true,
     },
     hospitalRegistrationNumber: {
       type: String,
-      required: [true, "Hospital government registration/license number is required"],
-      unique: true,
       trim: true,
+      default: undefined,
+      sparse: true,
       index: true,
+    },
+    hospitalType: {
+      type: String,
+      trim: true,
+      default: "Private Hospital",
+    },
+    hospitalAddress: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    numberOfBeds: {
+      type: Number,
+      default: null,
     },
     designation: {
       type: String,
-      required: [true, "Hospital Admin designation is required"],
       trim: true,
+      default: "Hospital Administrator",
       maxlength: [100, "Designation cannot exceed 100 characters"],
     },
     governmentIdType: {
       type: String,
       trim: true,
-      default: "",
+      default: "Aadhaar Card",
     },
     governmentIdNumber: {
       type: String,
@@ -76,15 +94,8 @@ const HospitalAdminProfileSchema = new Schema<IHospitalAdminProfile>(
       type: String,
       default: "",
     },
-    email: {
+    additionalDocUrl: {
       type: String,
-      lowercase: true,
-      trim: true,
-      default: "",
-    },
-    phone: {
-      type: String,
-      trim: true,
       default: "",
     },
     qualifications: {
@@ -96,6 +107,14 @@ const HospitalAdminProfileSchema = new Schema<IHospitalAdminProfile>(
       enum: Object.values(VerificationStatus),
       default: VerificationStatus.PENDING,
       index: true,
+    },
+    isSubmitted: {
+      type: Boolean,
+      default: false,
+    },
+    submittedAt: {
+      type: Date,
+      default: null,
     },
     verifiedBy: {
       type: Schema.Types.ObjectId,

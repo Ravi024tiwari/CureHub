@@ -20,6 +20,7 @@ import {
   HospitalAdminHospitalsPage,
   AddNewHospitalPage,
   HospitalDetailPage,
+  HospitalAdminVerificationPage,
 } from '@/pages/hospital-admin'
 import {
   SuperAdminDashboardPage,
@@ -81,6 +82,10 @@ function App() {
         <Route path="/doctor/profile/complete" element={<Navigate to="/doctor/verification" replace />} />
 
         {/* Dedicated Hospital Admin Routes */}
+        <Route path="/hospital-admin/verification" element={<HospitalAdminVerificationPage />} />
+        <Route path="/hospital-admin/onboarding" element={<Navigate to="/hospital-admin/verification" replace />} />
+        <Route path="/hospital-admin/profile" element={<HospitalAdminVerificationPage />} />
+        <Route path="/hospital-admin/complete-profile" element={<Navigate to="/hospital-admin/verification" replace />} />
         <Route path="/hospital-admin/dashboard" element={<HospitalAdminDashboardPage />} />
         <Route path="/hospital-admin/hospitals" element={<HospitalAdminHospitalsPage />} />
         <Route path="/hospital-admin/hospitals/new" element={<AddNewHospitalPage />} />
