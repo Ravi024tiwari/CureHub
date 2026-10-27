@@ -10,6 +10,10 @@ import {
   getAdminDashboardAnalytics,
   getAllDoctorsForAdmin,
   toggleDoctorAccountStatus,
+  getAllHospitalAdminsForAdmin,
+  getHospitalAdminDetailsForAdmin,
+  toggleHospitalAdminAccountStatus,
+  exportHospitalAdminsList,
 } from "../controllers/admin.controller.js";
 import {
   authenticateToken,
@@ -40,8 +44,14 @@ adminRouter.patch("/doctors/:id/status", toggleDoctorAccountStatus);
 
 // Hospital Admin verification routes
 adminRouter.get("/verifications/hospital-admins", getHospitalAdminsForVerification);
-adminRouter.get("/verifications/hospital-admins/:id",getHospitalAdminVerificationDetails);
+adminRouter.get("/verifications/hospital-admins/:id", getHospitalAdminVerificationDetails);
 adminRouter.patch("/verifications/hospital-admins/:id", verifyHospitalAdmin);
+
+// Full Hospital Admin Directory & Management routes
+adminRouter.get("/hospital-admins", getAllHospitalAdminsForAdmin);
+adminRouter.get("/hospital-admins/export", exportHospitalAdminsList);
+adminRouter.get("/hospital-admins/:id", getHospitalAdminDetailsForAdmin);
+adminRouter.patch("/hospital-admins/:id/status", toggleHospitalAdminAccountStatus);
 
 export default adminRouter;
 

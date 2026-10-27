@@ -1019,3 +1019,366 @@ export const toggleDoctorAccountStatus = asyncHandler(async (req: Request, res: 
 });
 
 
+export const getAllHospitalAdminsForAdmin = asyncHandler(async (req: Request, res: Response) => {
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.max(1, Math.min(10, parseInt(req.query.limit as string) || 10)); 
+  const skip = (page - 1) * limit;
+
+  const status = req.query.status as string | undefined;
+  const hospitalType = req.query.hospitalType as string | undefined;
+  const state = req.query.state as string | undefined;
+  const search = req.query.search as string | undefined;
+  const accountStatus = req.query.accountStatus as string | undefined;
+  const sortBy = req.query.sortBy as string | undefined;
+
+  const query: any = {};
+
+  // 1. Verification status filter
+  if (status && status !== "ALL") {
+    const normalizedStatus =
+      status.toUpperCase() === "VERIFIED" ? VerificationStatus.APPROVED : status;
+    if (Object.values(VerificationStatus).includes(normalizedStatus as VerificationStatus)) {
+      query.verificationStatus = normalizedStatus;
+    }
+  }
+
+  // 2. Hospital Type filter
+  if (hospitalType && hospitalType !== "ALL") {
+    query.hospitalType = new RegExp(`^${hospitalType.trim()}$`, "i");
+  }
+
+  // 3. State / Location filter
+  if (state && state !== "ALL" && state.trim()) {
+    const stateRegex = new RegExp(state.trim(), "i");
+    const stateHospitals = await Hospital.find({
+      $or: [{ "address.state": stateRegex }, { "address.city": stateRegex }],
+    }).select("_id hospitalAdminId");
+
+    const stateHospitalIds = stateHospitals.map((h) => h._id);
+    const stateAdminUserIds = stateHospitals.map((h) => h.hospitalAdminId);
+
+    query.$and = query.$and || [];
+    query.$and.push({
+      $or: [
+        { hospitalAddress: stateRegex },
+        { hospitalId: { $in: stateHospitalIds } },
+        { userId: { $in: stateAdminUserIds } },
+      ],
+    });
+  }
+
+  // 4. Account active/inactive status filter
+  if (accountStatus && accountStatus !== "ALL") {
+    const isActiveBool = accountStatus === "active";
+    const statusUsers = await User.find({
+      role: UserRole.HOSPITAL_ADMIN,
+      isActive: isActiveBool,
+    }).select("_id");
+    const userIds = statusUsers.map((u) => u._id);
+
+    query.$and = query.$and || [];
+    query.$and.push({ userId: { $in: userIds } });
+  }
+
+  // 5. Global text search (Name, Email, Phone, Hospital Name, Registration, Designation)
+  if (search && search.trim()) {
+    const searchRegex = new RegExp(search.trim(), "i");
+
+    const [matchingUsers, matchingHospitals] = await Promise.all([
+      User.find({
+        role: UserRole.HOSPITAL_ADMIN,
+        $or: [{ name: searchRegex }, { email: searchRegex }, { phoneNumber: searchRegex }],
+      }).select("_id"),
+      Hospital.find({
+        $or: [
+          { name: searchRegex },
+          { licenseNumber: searchRegex },
+          { "address.city": searchRegex },
+          { "address.state": searchRegex },
+        ],
+      }).select("_id hospitalAdminId"),
+    ]);
+
+    const userIds = matchingUsers.map((u) => u._id);
+    const matchedHospitalIds = matchingHospitals.map((h) => h._id);
+    const matchedAdminUserIdsFromHospital = matchingHospitals.map((h) => h.hospitalAdminId);
+
+    query.$and = query.$and || [];
+    query.$and.push({
+      $or: [
+        { userId: { $in: [...userIds, ...matchedAdminUserIdsFromHospital] } },
+        { hospitalId: { $in: matchedHospitalIds } },
+        { hospitalName: searchRegex },
+        { hospitalRegistrationNumber: searchRegex },
+        { designation: searchRegex },
+        { hospitalAddress: searchRegex },
+      ],
+    });
+  }
+
+  // Sorting
+  let sortOptions: any = { createdAt: -1 };
+  if (sortBy === "oldest") {
+    sortOptions = { createdAt: 1 };
+  } else if (sortBy === "verified_desc") {
+    sortOptions = { verifiedAt: -1, createdAt: -1 };
+  } else if (sortBy === "name_asc") {
+    sortOptions = { hospitalName: 1 };
+  } else if (sortBy === "name_desc") {
+    sortOptions = { hospitalName: -1 };
+  }
+
+  // Time boundaries for growth metrics (last 30 days vs 30-60 days ago)
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+  // Parallel fetch: data + counts + month-over-month analytics
+  const [
+    rawHospitalAdmins,
+    totalDocs,
+    totalVerified,
+    totalPending,
+    totalRejected,
+    totalAll,
+    totalHospitalsManaged,
+    verifiedLast30,
+    verifiedPrev30,
+    hospitalsLast30,
+    hospitalsPrev30,
+  ] = await Promise.all([
+    HospitalAdminProfile.find(query)
+      .populate("userId", "name email phoneNumber avatar isAccountApproved isActive role createdAt")
+      .populate("hospitalId", "name slug address contactEmail contactPhone images hospitalType totalBeds licenseNumber verificationStatus")
+      .populate("verifiedBy", "name email role")
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limit),
+    HospitalAdminProfile.countDocuments(query),
+    HospitalAdminProfile.countDocuments({ verificationStatus: VerificationStatus.APPROVED }),
+    HospitalAdminProfile.countDocuments({ verificationStatus: VerificationStatus.PENDING }),
+    HospitalAdminProfile.countDocuments({ verificationStatus: VerificationStatus.REJECTED }),
+    HospitalAdminProfile.countDocuments(),
+    Hospital.countDocuments({ verificationStatus: VerificationStatus.APPROVED }),
+    HospitalAdminProfile.countDocuments({
+      verificationStatus: VerificationStatus.APPROVED,
+      verifiedAt: { $gte: thirtyDaysAgo },
+    }),
+    HospitalAdminProfile.countDocuments({
+      verificationStatus: VerificationStatus.APPROVED,
+      verifiedAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo },
+    }),
+    Hospital.countDocuments({
+      createdAt: { $gte: thirtyDaysAgo },
+    }),
+    Hospital.countDocuments({
+      createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo },
+    }),
+  ]);
+
+  // Fallback affiliation: link Hospital if profile.hospitalId is unlinked
+  const unlinkedAdminUserIds = rawHospitalAdmins
+    .filter((admin) => !admin.hospitalId && admin.userId?._id)
+    .map((admin) => (admin.userId as any)._id);
+
+  let unlinkedHospitalsMap: Record<string, any> = {};
+  if (unlinkedAdminUserIds.length > 0) {
+    const foundHospitals = await Hospital.find({
+      hospitalAdminId: { $in: unlinkedAdminUserIds },
+    }).select("name slug address contactEmail contactPhone images hospitalType totalBeds licenseNumber verificationStatus hospitalAdminId");
+
+    foundHospitals.forEach((h) => {
+      unlinkedHospitalsMap[h.hospitalAdminId.toString()] = h;
+    });
+  }
+
+  const hospitalAdmins = rawHospitalAdmins.map((admin) => {
+    const adminObj = admin.toObject();
+    if (!adminObj.hospitalId && adminObj.userId?._id) {
+      const fallbackHospital = unlinkedHospitalsMap[adminObj.userId._id.toString()];
+      if (fallbackHospital) {
+        adminObj.hospitalId = fallbackHospital;
+      }
+    }
+    return adminObj;
+  });
+
+  const calcGrowth = (current: number, prev: number) => {
+    if (prev === 0) return current > 0 ? 100 : 0;
+    return Math.round(((current - prev) / prev) * 100);
+  };
+
+  const pagination = buildPaginationMeta(totalDocs, page, limit);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        hospitalAdmins,
+        pagination,
+        stats: {
+          totalVerified,
+          verifiedGrowth: calcGrowth(verifiedLast30, verifiedPrev30),
+          hospitalsManaged: totalHospitalsManaged,
+          hospitalsGrowth: calcGrowth(hospitalsLast30, hospitalsPrev30),
+          pendingVerifications: totalPending,
+          rejectedRequests: totalRejected,
+          totalAll,
+        },
+      },
+      "Hospital admins retrieved successfully"
+    )
+  );
+});
+
+/**
+ * Get single Hospital Admin full details for drawer panel
+ */
+export const getHospitalAdminDetailsForAdmin = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid hospital admin ID format");
+  }
+
+  const hospitalAdmin = await HospitalAdminProfile.findOne({
+    $or: [{ _id: id }, { userId: id }],
+  })
+    .populate("userId", "name email phoneNumber avatar isAccountApproved isActive role createdAt")
+    .populate("hospitalId", "name slug address contactEmail contactPhone images hospitalType totalBeds licenseNumber verificationStatus openingTime closingTime isEmergency24x7 departments")
+    .populate("verifiedBy", "name email role");
+
+  if (!hospitalAdmin) {
+    throw new ApiError(404, "Hospital admin profile not found");
+  }
+
+  // Find affiliated hospital record if not directly populated
+  let affiliatedHospital = hospitalAdmin.hospitalId;
+  if (!affiliatedHospital) {
+    affiliatedHospital = (await Hospital.findOne({
+      hospitalAdminId: hospitalAdmin.userId,
+    })) as any;
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        hospitalAdmin,
+        hospital: affiliatedHospital,
+      },
+      "Hospital admin details retrieved successfully"
+    )
+  );
+});
+
+/**
+ * Toggle Hospital Admin Active/Disabled account status
+ */
+export const toggleHospitalAdminAccountStatus = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { isActive, reason } = req.body;
+  const adminId = req.user?.userId;
+
+  if (!isValidObjectId(id)) {
+    throw new ApiError(400, "Invalid hospital admin ID format");
+  }
+
+  const hospitalAdmin = await HospitalAdminProfile.findOne({
+    $or: [{ _id: id }, { userId: id }],
+  });
+
+  if (!hospitalAdmin) {
+    throw new ApiError(404, "Hospital admin profile not found");
+  }
+
+  const adminUser = await User.findById(hospitalAdmin.userId);
+  if (!adminUser) {
+    throw new ApiError(404, "Associated user account for hospital admin not found");
+  }
+
+  const nextActiveState = typeof isActive === "boolean" ? isActive : !adminUser.isActive;
+
+  adminUser.isActive = nextActiveState;
+  if (!nextActiveState) {
+    hospitalAdmin.rejectionReason = reason?.trim() || "Account disabled by Super Admin";
+    hospitalAdmin.isActive = false;
+    adminUser.isAccountApproved = false;
+  } else {
+    adminUser.isAccountApproved = true;
+    hospitalAdmin.isActive = true;
+    hospitalAdmin.rejectionReason = "";
+  }
+
+  if (adminId && isValidObjectId(adminId)) {
+    hospitalAdmin.verifiedBy = new mongoose.Types.ObjectId(adminId);
+  }
+
+  await Promise.all([adminUser.save(), hospitalAdmin.save()]);
+
+  const populatedProfile = await HospitalAdminProfile.findById(hospitalAdmin._id)
+    .populate("userId", "name email phoneNumber avatar isAccountApproved isActive role")
+    .populate("hospitalId", "name slug address contactEmail contactPhone");
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      populatedProfile,
+      `Hospital admin account has been ${nextActiveState ? "activated" : "disabled"} successfully`
+    )
+  );
+});
+
+/**
+ * Export filtered list of Hospital Admins
+ */
+export const exportHospitalAdminsList = asyncHandler(async (req: Request, res: Response) => {
+  const status = req.query.status as string | undefined;
+  const hospitalType = req.query.hospitalType as string | undefined;
+
+  const query: any = {};
+  if (status && status !== "ALL") {
+    const normalizedStatus =
+      status.toUpperCase() === "VERIFIED" ? VerificationStatus.APPROVED : status;
+    if (Object.values(VerificationStatus).includes(normalizedStatus as VerificationStatus)) {
+      query.verificationStatus = normalizedStatus;
+    }
+  }
+
+  if (hospitalType && hospitalType !== "ALL") {
+    query.hospitalType = new RegExp(`^${hospitalType.trim()}$`, "i");
+  }
+
+  const admins = await HospitalAdminProfile.find(query)
+    .populate("userId", "name email phoneNumber createdAt isActive")
+    .populate("hospitalId", "name slug address licenseNumber")
+    .sort({ createdAt: -1 })
+    .limit(500);
+
+  const exportData = admins.map((admin) => {
+    const user: any = admin.userId || {};
+    const hospital: any = admin.hospitalId || {};
+    return {
+      adminId: admin._id,
+      name: user.name || "N/A",
+      email: user.email || "N/A",
+      phone: user.phoneNumber || "N/A",
+      designation: admin.designation || "Hospital Administrator",
+      hospitalName: hospital.name || admin.hospitalName || "N/A",
+      hospitalType: admin.hospitalType || "Private Hospital",
+      registrationNumber: hospital.licenseNumber || admin.hospitalRegistrationNumber || "N/A",
+      verificationStatus: admin.verificationStatus,
+      accountStatus: user.isActive ? "Active" : "Disabled",
+      verifiedAt: admin.verifiedAt || null,
+      joinedAt: user.createdAt || admin.createdAt,
+    };
+  });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      { admins: exportData, total: exportData.length },
+      "Hospital admins exported successfully"
+    )
+  );
+});
