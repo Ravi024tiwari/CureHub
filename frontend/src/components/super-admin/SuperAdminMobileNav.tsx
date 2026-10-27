@@ -2,9 +2,9 @@ import { type FC } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
-  ShieldCheck,
-  Stethoscope,
+  Building2,
   Building,
+  Stethoscope,
   Menu,
 } from 'lucide-react'
 import { useSuperAdminStore } from '@/store/superAdminStore'
@@ -23,10 +23,16 @@ export const SuperAdminMobileNav: FC = () => {
       path: '/super-admin/dashboard',
     },
     {
-      id: 'verifications',
-      label: 'Verify',
-      icon: ShieldCheck,
-      path: '/super-admin/verifications',
+      id: 'hospitals',
+      label: 'Hospitals',
+      icon: Building2,
+      path: '/super-admin/hospitals',
+    },
+    {
+      id: 'admins',
+      label: 'Admins',
+      icon: Building,
+      path: '/super-admin/hospital-admins',
       badge: kpis.pendingVerifications,
     },
     {
@@ -35,19 +41,16 @@ export const SuperAdminMobileNav: FC = () => {
       icon: Stethoscope,
       path: '/super-admin/doctors',
     },
-    {
-      id: 'hospitals',
-      label: 'Hospitals',
-      icon: Building,
-      path: '/super-admin/hospitals',
-    },
   ]
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-3 py-1.5 shadow-lg flex items-center justify-around">
       {items.map((item) => {
         const Icon = item.icon
-        const isActive = currentPath === item.path
+        const isActive =
+          item.path === '/super-admin/dashboard'
+            ? currentPath === '/super-admin/dashboard' || currentPath === '/super-admin'
+            : currentPath.startsWith(item.path)
 
         return (
           <button

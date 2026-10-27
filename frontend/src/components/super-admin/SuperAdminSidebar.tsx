@@ -1,4 +1,4 @@
-import { useState, type FC } from 'react'
+import { type FC } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Activity,
@@ -6,15 +6,11 @@ import {
   ShieldCheck,
   Stethoscope,
   Building2,
-  Users,
   Building,
-  Calendar,
   BarChart3,
-  Settings,
   FileText,
   Headphones,
   X,
-  ChevronDown,
   PanelLeftClose,
 } from 'lucide-react'
 import { useSuperAdminStore } from '@/store/superAdminStore'
@@ -31,7 +27,6 @@ export const SuperAdminSidebar: FC<SuperAdminSidebarProps> = ({
   const navigate = useNavigate()
   const location = useLocation()
   const { kpis, setIsSidebarCollapsed } = useSuperAdminStore()
-  const [isUsersOpen, setIsUsersOpen] = useState(false)
 
   const currentPath = location.pathname
 
@@ -63,41 +58,16 @@ export const SuperAdminSidebar: FC<SuperAdminSidebarProps> = ({
       path: '/super-admin/hospital-admins',
     },
     {
-      id: 'users',
-      label: 'Users',
-      icon: Users,
-      path: '/super-admin/users',
-      hasSubmenu: true,
-      subItems: [
-        { label: 'All Users', path: '/super-admin/users' },
-        { label: 'Patients', path: '/super-admin/users?role=PATIENT' },
-        { label: 'Doctors', path: '/super-admin/users?role=DOCTOR' },
-        { label: 'Admins', path: '/super-admin/users?role=ADMIN' },
-      ],
-    },
-    {
       id: 'hospitals',
       label: 'Hospitals',
       icon: Building,
       path: '/super-admin/hospitals',
     },
     {
-      id: 'appointments',
-      label: 'Appointments',
-      icon: Calendar,
-      path: '/super-admin/appointments',
-    },
-    {
       id: 'analytics',
       label: 'Reports & Analytics',
       icon: BarChart3,
       path: '/super-admin/analytics',
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: Settings,
-      path: '/super-admin/settings',
     },
     {
       id: 'audit-logs',
@@ -161,45 +131,6 @@ export const SuperAdminSidebar: FC<SuperAdminSidebarProps> = ({
             const isActive =
               currentPath === item.path ||
               (item.alias && item.alias.includes(currentPath))
-
-            if (item.hasSubmenu) {
-              return (
-                <div key={item.id} className="space-y-0.5">
-                  <button
-                    onClick={() => setIsUsersOpen((prev) => !prev)}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                      isActive || currentPath.startsWith('/super-admin/users')
-                        ? 'bg-blue-50/70 text-blue-600 font-bold'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="size-4 text-slate-400" />
-                      <span>{item.label}</span>
-                    </div>
-                    <ChevronDown
-                      className={`size-3.5 text-slate-400 transition-transform duration-200 ${
-                        isUsersOpen ? 'rotate-180 text-blue-600' : ''
-                      }`}
-                    />
-                  </button>
-
-                  {isUsersOpen && (
-                    <div className="pl-9 pr-2 py-1 space-y-1">
-                      {item.subItems?.map((sub) => (
-                        <button
-                          key={sub.label}
-                          onClick={() => handleNavigation(sub.path)}
-                          className="w-full text-left py-1.5 px-2 rounded-lg text-xs font-medium text-slate-500 hover:text-blue-600 hover:bg-blue-50/50 transition-colors cursor-pointer"
-                        >
-                          {sub.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            }
 
             return (
               <button
