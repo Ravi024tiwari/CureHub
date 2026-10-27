@@ -281,3 +281,26 @@ export interface HospitalAdminVerificationFilters {
   limit: number
 }
 
+export interface AdminHospitalAdminsStats {
+  totalVerified: number
+  verifiedGrowth: number
+  hospitalsManaged: number
+  hospitalsGrowth: number
+  pendingVerifications: number
+  rejectedRequests: number
+  totalAll: number
+}
+
+export interface AdminHospitalAdminsFilters {
+  search: string
+  status: 'ALL' | 'APPROVED' | 'PENDING' | 'REJECTED' | 'SUSPENDED'
+  hospitalType: string
+  state: string
+  accountStatus: 'ALL' | 'active' | 'inactive'
+  sortBy: 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'verified_desc'
+  viewMode: 'table' | 'grid'
+  page: number
+  limit: number
+}
+
+

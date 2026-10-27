@@ -26,6 +26,8 @@ import {
   SuperAdminDashboardPage,
   DoctorVerificationPage,
   SuperAdminDoctorsPage,
+  SuperAdminHospitalAdminsPage,
+  SuperAdminHospitalAdminDetailPage,
 } from '@/pages/super-admin'
 import {
   DoctorVerificationOnboardingPage,
@@ -99,6 +101,8 @@ function App() {
         <Route path="/super-admin/verifications" element={<DoctorVerificationPage />} />
         <Route path="/super-admin/doctors/verifications" element={<Navigate to="/super-admin/verifications" replace />} />
         <Route path="/super-admin/doctors" element={<SuperAdminDoctorsPage />} />
+        <Route path="/super-admin/hospital-admins" element={<SuperAdminHospitalAdminsPage />} />
+        <Route path="/super-admin/hospital-admins/:id" element={<SuperAdminHospitalAdminDetailPage />} />
         <Route path="/super-admin" element={<Navigate to="/super-admin/dashboard" replace />} />
 
         {/* Catch-all fallback */}
