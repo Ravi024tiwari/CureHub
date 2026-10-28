@@ -35,6 +35,8 @@ import {
   DoctorSchedulePage,
   DoctorAppointmentsPage,
   DoctorProfilePage,
+  DoctorHospitalsPage,
+  DoctorHospitalDetailPage,
 } from '@/pages/doctor'
 import { ToastContainer } from '@/components/common'
 
@@ -76,6 +78,8 @@ function App() {
         <Route path="/doctor" element={<Navigate to="/dashboard" replace />} />
         <Route path="/doctor/profile" element={<DoctorProfilePage />} />
         <Route path="/doctor/profile/edit" element={<DoctorProfilePage />} />
+        <Route path="/doctor/hospitals" element={<DoctorHospitalsPage />} />
+        <Route path="/doctor/hospitals/:id" element={<DoctorHospitalDetailPage />} />
         <Route path="/doctor/appointments" element={<DoctorAppointmentsPage />} />
         <Route path="/doctor/schedule" element={<DoctorSchedulePage />} />
         <Route path="/doctor/leaves" element={<DoctorSchedulePage initialTab="leaves" />} />

@@ -231,7 +231,6 @@ export interface HospitalAdminVerificationHospital {
   }
   contactEmail?: string
   contactPhone?: string
-  verificationStatus?: string
 }
 
 export interface HospitalAdminVerificationRecord {

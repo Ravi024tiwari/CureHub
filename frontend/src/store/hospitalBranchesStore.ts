@@ -14,7 +14,6 @@ const DEFAULT_DEMO_HOSPITALS: HospitalBranchItem[] = [
     name: 'Apollo Multispeciality Hospital',
     slug: 'apollo-multispeciality-hospital',
     licenseNumber: 'CG-BIL-2018-9842',
-    verificationStatus: 'APPROVED',
     isActive: true,
     images: {
       coverImage: '/src/assets/apollo-hospital.jpg',
@@ -48,7 +47,6 @@ const DEFAULT_DEMO_HOSPITALS: HospitalBranchItem[] = [
     name: 'City Care Hospital',
     slug: 'city-care-hospital',
     licenseNumber: 'CG-BIL-2019-4512',
-    verificationStatus: 'PENDING',
     isActive: true,
     images: {
       coverImage: '/src/assets/city-care-hospital.jpg',
@@ -82,7 +80,6 @@ const DEFAULT_DEMO_HOSPITALS: HospitalBranchItem[] = [
     name: 'Shree Sai Hospital',
     slug: 'shree-sai-hospital',
     licenseNumber: 'CG-BIL-2020-7731',
-    verificationStatus: 'APPROVED',
     isActive: true,
     images: {
       coverImage: '/src/assets/shree-sai-hospital.jpg',
@@ -115,7 +112,6 @@ const DEFAULT_DEMO_HOSPITALS: HospitalBranchItem[] = [
 
 export interface HospitalFilterState {
   search: string
-  status: string // 'ALL' | 'APPROVED' | 'PENDING' | 'REJECTED'
   activeStatus: string // 'ALL' | 'true' | 'false'
   hospitalType: string
   city: string
@@ -161,9 +157,6 @@ export const useHospitalBranchesStore = create<HospitalBranchesState>((set, get)
   hospitals: DEFAULT_DEMO_HOSPITALS,
   kpis: {
     totalHospitals: 3,
-    approvedHospitals: 2,
-    pendingHospitals: 1,
-    rejectedHospitals: 0,
     activeHospitals: 3,
     inactiveHospitals: 0,
     totalBeds: 430,
@@ -178,7 +171,6 @@ export const useHospitalBranchesStore = create<HospitalBranchesState>((set, get)
   },
   filters: {
     search: '',
-    status: 'ALL',
     activeStatus: 'ALL',
     hospitalType: 'ALL',
     city: 'ALL',
@@ -205,7 +197,6 @@ export const useHospitalBranchesStore = create<HospitalBranchesState>((set, get)
         page: filters.page,
         limit: filters.limit,
         search: filters.search.trim() || undefined,
-        status: filters.status,
         city: filters.city,
         isActive: filters.activeStatus,
         hospitalType: filters.hospitalType,
@@ -214,7 +205,7 @@ export const useHospitalBranchesStore = create<HospitalBranchesState>((set, get)
 
       if (response && response.hospitals) {
         // If the database has real hospital records, use them
-        if (response.hospitals.length > 0 || filters.search || filters.status !== 'ALL') {
+        if (response.hospitals.length > 0 || filters.search) {
           set({
             hospitals: response.hospitals,
             kpis: response.kpis || get().kpis,
@@ -227,9 +218,6 @@ export const useHospitalBranchesStore = create<HospitalBranchesState>((set, get)
             hospitals: DEFAULT_DEMO_HOSPITALS,
             kpis: {
               totalHospitals: 3,
-              approvedHospitals: 2,
-              pendingHospitals: 1,
-              rejectedHospitals: 0,
               activeHospitals: 3,
               inactiveHospitals: 0,
               totalBeds: 430,
@@ -271,7 +259,6 @@ export const useHospitalBranchesStore = create<HospitalBranchesState>((set, get)
     set({
       filters: {
         search: '',
-        status: 'ALL',
         activeStatus: 'ALL',
         hospitalType: 'ALL',
         city: 'ALL',

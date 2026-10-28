@@ -49,7 +49,6 @@ export const HospitalFiltersBar: FC = () => {
   )
 
   const activeFiltersCount = [
-    filters.status !== 'ALL',
     filters.activeStatus !== 'ALL',
     filters.hospitalType !== 'ALL',
     filters.city !== 'ALL',
@@ -84,20 +83,6 @@ export const HospitalFiltersBar: FC = () => {
 
         {/* 2. Desktop Filters Cluster */}
         <div className="hidden lg:flex items-center gap-2.5 flex-wrap">
-          {/* Verification Status Selector */}
-          <div className="relative">
-            <select
-              value={filters.status}
-              onChange={(e) => setFilter('status', e.target.value)}
-              className="appearance-none bg-slate-50/70 hover:bg-slate-100/70 border border-slate-200/90 rounded-2xl pl-3 pr-8 py-2 text-xs font-bold text-slate-700 cursor-pointer focus:outline-none focus:border-blue-500 transition-all"
-            >
-              <option value="ALL">All Status</option>
-              <option value="APPROVED">Verified</option>
-              <option value="PENDING">Pending</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
-            <ChevronDown className="size-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
 
           {/* Active Status Selector */}
           <div className="relative">

@@ -33,7 +33,6 @@ export interface HospitalCardData {
   emergencyAvailable?: boolean
   icuAvailable?: boolean
   description?: string
-  verificationStatus?: string
   isFavorite?: boolean
 }
 

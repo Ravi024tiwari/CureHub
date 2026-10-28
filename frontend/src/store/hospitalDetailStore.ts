@@ -192,7 +192,6 @@ const DEMO_APOLLO_DETAIL: HospitalDetailData = {
     name: 'Apollo Multispeciality Hospital',
     slug: 'apollo-multispeciality-hospital',
     licenseNumber: 'MH/123456/2010',
-    verificationStatus: 'APPROVED',
     isActive: true,
     images: {
       coverImage: '/src/assets/apollo-hospital.jpg',

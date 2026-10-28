@@ -95,9 +95,9 @@ export const HospitalSettingsTab: FC<HospitalSettingsTabProps> = ({
               </span>
             </div>
             <div>
-              <span className="text-slate-400 font-semibold block">Regulatory Approval</span>
+              <span className="text-slate-400 font-semibold block">Facility Status</span>
               <span className="font-bold text-emerald-600">
-                {hospital.verificationStatus === 'APPROVED' ? 'Approved & Validated' : 'Pending Verification'}
+                {hospital.isActive !== false ? 'Active & Registered' : 'Inactive'}
               </span>
             </div>
           </div>

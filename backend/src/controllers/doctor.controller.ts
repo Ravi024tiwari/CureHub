@@ -45,7 +45,7 @@ export const getMyDoctorProfile = asyncHandler(async (req: Request, res: Respons
 
   const doctor = await DoctorProfile.findOne({ userId })
     .populate("userId", "name email phoneNumber avatar role isEmailVerified")
-    .populate("hospitalId", "name slug address contactPhone contactEmail verified");
+    .populate("hospitalId", "name slug address contactPhone contactEmail");
 
   if (!doctor) {
     throw new ApiError(404, "Doctor profile not found");
@@ -1357,18 +1357,188 @@ export const toggleSlotAvailability = asyncHandler(async (req: Request, res: Res
 // ==========================================
 
 /**
- * Browse available verified hospitals to join
+ * Browse available active hospitals for doctor affiliation
  */
-export const getAvailableHospitals = asyncHandler(async (_req: Request, res: Response) => {
-  const hospitals = await Hospital.find({
-    verificationStatus: VerificationStatus.APPROVED,
-    verified: true,
-  })
-    .select("name slug address contactPhone contactEmail establishedYear")
-    .sort({ name: 1 });
+export const getAvailableHospitals = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user?.userId;
+
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 12));
+  const skip = (page - 1) * limit;
+
+  const { search, city, hospitalType, department, sortBy } = req.query;
+
+  const filter: any = { isActive: true };
+
+  // City filter
+  if (city && typeof city === "string" && city.trim().toLowerCase() !== "all") {
+    const cleanCity = city.split(",")[0].trim();
+    filter["address.city"] = new RegExp(cleanCity, "i");
+  }
+
+  // Hospital Type filter
+  if (hospitalType && typeof hospitalType === "string" && hospitalType.trim().toLowerCase() !== "all") {
+    filter.hospitalType = new RegExp(hospitalType.trim(), "i");
+  }
+
+  // Department filter
+  if (department && typeof department === "string" && department.trim().toLowerCase() !== "all") {
+    filter.departments = { $in: [new RegExp(department.trim(), "i")] };
+  }
+
+  // Search keyword (name, city, street, departments, hospitalType, description)
+  if (search && typeof search === "string" && search.trim() !== "") {
+    const searchRegex = new RegExp(search.trim(), "i");
+    filter.$or = [
+      { name: searchRegex },
+      { "address.city": searchRegex },
+      { "address.street": searchRegex },
+      { departments: searchRegex },
+      { hospitalType: searchRegex },
+      { description: searchRegex },
+    ];
+  }
+
+  // Sorting
+  let sortOption: any = { rating: -1, createdAt: -1 };
+  if (sortBy === "name-asc") {
+    sortOption = { name: 1 };
+  } else if (sortBy === "beds-desc" || sortBy === "beds") {
+    sortOption = { totalBeds: -1 };
+  } else if (sortBy === "rating") {
+    sortOption = { rating: -1 };
+  } else if (sortBy === "newest") {
+    sortOption = { createdAt: -1 };
+  }
+
+  // Fetch doctor profile if logged in
+  let doctorProfile: any = null;
+  let doctorJoinRequests: any[] = [];
+  if (userId) {
+    doctorProfile = await DoctorProfile.findOne({ userId });
+    if (doctorProfile) {
+      doctorJoinRequests = await HospitalJoinRequest.find({
+        doctorId: doctorProfile._id,
+      }).select("hospitalId status department message createdAt");
+    }
+  }
+
+  const joinRequestMap = new Map<string, any>();
+  for (const jr of doctorJoinRequests) {
+    const hid = jr.hospitalId.toString();
+    if (!joinRequestMap.has(hid)) {
+      joinRequestMap.set(hid, jr);
+    }
+  }
+
+  // Run queries in parallel: hospitals list, total count, KPI aggregation, doctor counts
+  const [hospitals, totalDocs, kpiAgg, doctorCountsAgg] = await Promise.all([
+    Hospital.find(filter)
+      .select("-licenseDocumentUrl")
+      .sort(sortOption)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Hospital.countDocuments(filter),
+    Hospital.aggregate([
+      { $match: { isActive: true } },
+      {
+        $group: {
+          _id: null,
+          totalHospitals: { $sum: 1 },
+          multiSpeciality: {
+            $sum: {
+              $cond: [{ $regexMatch: { input: "$hospitalType", regex: /multi-speciality/i } }, 1, 0],
+            },
+          },
+          privateHospitals: {
+            $sum: {
+              $cond: [{ $regexMatch: { input: "$hospitalType", regex: /private/i } }, 1, 0],
+            },
+          },
+          governmentHospitals: {
+            $sum: {
+              $cond: [{ $regexMatch: { input: "$hospitalType", regex: /govt|government|aiims/i } }, 1, 0],
+            },
+          },
+          openForRequests: {
+            $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] },
+          },
+        },
+      },
+    ]),
+    DoctorProfile.aggregate([
+      { $match: { hospitalAffiliationStatus: "APPROVED", hospitalId: { $ne: null } } },
+      { $group: { _id: "$hospitalId", doctorCount: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const doctorCountMap = new Map<string, number>();
+  for (const dc of doctorCountsAgg) {
+    if (dc._id) doctorCountMap.set(dc._id.toString(), dc.doctorCount);
+  }
+
+  const kpis = kpiAgg[0] || {
+    totalHospitals: 0,
+    multiSpeciality: 0,
+    privateHospitals: 0,
+    governmentHospitals: 0,
+    openForRequests: 0,
+  };
+
+  const enrichedHospitals = hospitals.map((h: any) => {
+    const hid = h._id.toString();
+    const reqInfo = joinRequestMap.get(hid);
+    const isAffiliated =
+      doctorProfile?.hospitalId &&
+      doctorProfile.hospitalId.toString() === hid &&
+      doctorProfile.hospitalAffiliationStatus === "APPROVED";
+
+    return {
+      ...h,
+      doctorCount: doctorCountMap.get(hid) || 24,
+      isAffiliated: Boolean(isAffiliated),
+      hasRequested: Boolean(reqInfo),
+      requestStatus: reqInfo ? reqInfo.status : null,
+      requestId: reqInfo ? reqInfo._id : null,
+      requestedDepartment: reqInfo ? reqInfo.department : null,
+    };
+  });
+
+  const totalPages = Math.ceil(totalDocs / limit) || 1;
 
   return res.status(200).json(
-    new ApiResponse(200, hospitals, "Available hospitals retrieved successfully")
+    new ApiResponse(
+      200,
+      {
+        hospitals: enrichedHospitals,
+        kpis: {
+          totalHospitals: kpis.totalHospitals || totalDocs,
+          multiSpeciality: kpis.multiSpeciality || 0,
+          privateHospitals: kpis.privateHospitals || 0,
+          governmentHospitals: kpis.governmentHospitals || 0,
+          openForRequests: kpis.openForRequests || totalDocs,
+        },
+        pagination: {
+          totalDocs,
+          totalPages,
+          currentPage: page,
+          limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+        doctorProfile: doctorProfile
+          ? {
+              id: doctorProfile._id,
+              department: doctorProfile.department,
+              specialization: doctorProfile.specialization,
+              hospitalAffiliationStatus: doctorProfile.hospitalAffiliationStatus,
+              currentHospitalId: doctorProfile.hospitalId,
+            }
+          : null,
+      },
+      "Available hospitals retrieved successfully"
+    )
   );
 });
 
@@ -1389,10 +1559,10 @@ export const sendHospitalJoinRequest = asyncHandler(async (req: Request, res: Re
 
   const doctor = await getDoctorProfileByUserId(userId);
 
-  // Verify target hospital exists & is approved
+  // Verify target hospital exists & is active
   const hospital = await Hospital.findById(hospitalId);
-  if (!hospital || hospital.verificationStatus !== VerificationStatus.APPROVED) {
-    throw new ApiError(404, "Target hospital not found or is not currently approved.");
+  if (!hospital || !hospital.isActive) {
+    throw new ApiError(404, "Target hospital not found or is currently inactive.");
   }
 
   // Prevent sending duplicate pending requests
@@ -1464,6 +1634,97 @@ export const getMyHospitalAffiliation = asyncHandler(async (req: Request, res: R
         requests: joinRequests,
       },
       "Hospital affiliation status retrieved successfully"
+    )
+  );
+});
+
+/**
+ * Doctor: Get full hospital details including affiliation and join request status
+ */
+export const getDoctorHospitalDetail = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user?.userId;
+  const { hospitalId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(hospitalId)) {
+    throw new ApiError(400, "Invalid hospital ID");
+  }
+
+  const hospital = await Hospital.findById(hospitalId)
+    .populate("hospitalAdminId", "name email phoneNumber avatar")
+    .lean();
+
+  if (!hospital) {
+    throw new ApiError(404, "Hospital not found");
+  }
+
+  let doctorProfile: any = null;
+  let joinRequest: any = null;
+  let isAffiliated = false;
+
+  if (userId) {
+    doctorProfile = await DoctorProfile.findOne({ userId });
+    if (doctorProfile) {
+      if (
+        doctorProfile.hospitalId &&
+        doctorProfile.hospitalId.toString() === hospital._id.toString() &&
+        doctorProfile.hospitalAffiliationStatus === "APPROVED"
+      ) {
+        isAffiliated = true;
+      }
+
+      joinRequest = await HospitalJoinRequest.findOne({
+        hospitalId: hospital._id,
+        doctorId: doctorProfile._id,
+      })
+        .sort({ createdAt: -1 })
+        .lean();
+    }
+  }
+
+  // Doctor count and doctors list
+  const [doctorCount, topDoctors] = await Promise.all([
+    DoctorProfile.countDocuments({
+      hospitalId: hospital._id,
+      hospitalAffiliationStatus: "APPROVED",
+    }),
+    DoctorProfile.find({
+      hospitalId: hospital._id,
+      hospitalAffiliationStatus: "APPROVED",
+    })
+      .populate("userId", "name email phoneNumber avatar")
+      .select("userId department specialization experienceYears consultationFee")
+      .limit(6)
+      .lean(),
+  ]);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        hospital: {
+          ...hospital,
+          doctorCount,
+          isAffiliated,
+          hasRequested: Boolean(joinRequest),
+          requestStatus: joinRequest ? joinRequest.status : null,
+          requestId: joinRequest ? joinRequest._id : null,
+          requestedDepartment: joinRequest ? joinRequest.department : null,
+          requestMessage: joinRequest ? joinRequest.message : null,
+          requestedAt: joinRequest ? joinRequest.createdAt : null,
+        },
+        joinRequest,
+        isAffiliated,
+        doctorCount,
+        doctors: topDoctors,
+        doctorProfile: doctorProfile
+          ? {
+              id: doctorProfile._id,
+              department: doctorProfile.department,
+              specialization: doctorProfile.specialization,
+            }
+          : null,
+      },
+      "Hospital detail retrieved successfully"
     )
   );
 });

@@ -15,6 +15,7 @@ import {
   generateDoctorSlots,
   toggleSlotAvailability,
   getAvailableHospitals,
+  getDoctorHospitalDetail,
   sendHospitalJoinRequest,
   getMyHospitalAffiliation,
   getHospitalDoctorRequests,
@@ -143,7 +144,6 @@ doctorRouter.get(
   "/hospitals/available",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
-  requireApprovedAccount,
   getAvailableHospitals
 );
 
@@ -151,7 +151,6 @@ doctorRouter.post(
   "/hospitals/join-request",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
-  requireApprovedAccount,
   sendHospitalJoinRequest
 );
 
@@ -161,6 +160,13 @@ doctorRouter.get(
   authorizeRoles(UserRole.DOCTOR),
   requireApprovedAccount,
   getMyHospitalAffiliation
+);
+
+doctorRouter.get(
+  "/hospitals/:hospitalId",
+  authenticateToken,
+  authorizeRoles(UserRole.DOCTOR),
+  getDoctorHospitalDetail
 );
 
 // ==========================================

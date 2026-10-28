@@ -175,7 +175,7 @@ export const verifyHospitalAdmin = asyncHandler(async (req: Request, res: Respon
 
   await adminUser.save();
 
-  // If there is an associated hospital, sync its status as well
+  // If there is an associated hospital and the admin account is suspended, deactivate it
   const affiliatedHospital = await Hospital.findOne({
     $or: [
       { hospitalAdminId: hospitalAdminProfile.userId },
@@ -184,20 +184,15 @@ export const verifyHospitalAdmin = asyncHandler(async (req: Request, res: Respon
   });
 
   if (affiliatedHospital) {
-    affiliatedHospital.verificationStatus = status;
-    affiliatedHospital.verifiedBy = new mongoose.Types.ObjectId(adminId);
-    affiliatedHospital.verifiedAt = new Date();
-    if (status === VerificationStatus.REJECTED) {
-      affiliatedHospital.rejectionReason = rejectionReason?.trim() || "";
-    } else if (status === VerificationStatus.SUSPENDED) {
+    if (status === VerificationStatus.SUSPENDED) {
       affiliatedHospital.isActive = false;
+      await affiliatedHospital.save();
     }
-    await affiliatedHospital.save();
   }
 
   const populatedProfile = await HospitalAdminProfile.findById(hospitalAdminProfile._id)
     .populate("userId", "name email phoneNumber avatar isAccountApproved isActive role")
-    .populate("hospitalId", "name slug address verificationStatus");
+    .populate("hospitalId", "name slug address");
 
   return res.status(200).json(
     new ApiResponse(
@@ -396,7 +391,7 @@ export const getHospitalAdminVerificationDetails = asyncHandler(
       $or: [{ _id: id }, { userId: id }],
     })
       .populate("userId", "name email phoneNumber avatar isAccountApproved isActive createdAt")
-      .populate("hospitalId", "name slug address contactEmail contactPhone verificationStatus")
+      .populate("hospitalId", "name slug address contactEmail contactPhone")
       .populate("verifiedBy", "name email role");
 
     if (!hospitalAdmin) {
@@ -1149,7 +1144,7 @@ export const getAllHospitalAdminsForAdmin = asyncHandler(async (req: Request, re
   ] = await Promise.all([
     HospitalAdminProfile.find(query)
       .populate("userId", "name email phoneNumber avatar isAccountApproved isActive role createdAt")
-      .populate("hospitalId", "name slug address contactEmail contactPhone images hospitalType totalBeds licenseNumber verificationStatus")
+      .populate("hospitalId", "name slug address contactEmail contactPhone images hospitalType totalBeds licenseNumber")
       .populate("verifiedBy", "name email role")
       .sort(sortOptions)
       .skip(skip)
@@ -1245,7 +1240,7 @@ export const getHospitalAdminDetailsForAdmin = asyncHandler(async (req: Request,
     $or: [{ _id: id }, { userId: id }],
   })
     .populate("userId", "name email phoneNumber avatar isAccountApproved isActive role createdAt")
-    .populate("hospitalId", "name slug address contactEmail contactPhone images hospitalType totalBeds licenseNumber verificationStatus openingTime closingTime isEmergency24x7 departments")
+    .populate("hospitalId", "name slug address contactEmail contactPhone images hospitalType totalBeds licenseNumber openingTime closingTime isEmergency24x7 departments")
     .populate("verifiedBy", "name email role");
 
   if (!hospitalAdmin) {

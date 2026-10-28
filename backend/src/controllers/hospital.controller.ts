@@ -11,7 +11,6 @@ import {
   JoinRequestStatus,
 } from "../models/HospitalJoinRequest.model.js";
 import {
-  VerificationStatus,
   AppointmentStatus,
   PaymentStatus,
 } from "../constants/index.js";
@@ -141,7 +140,6 @@ export const createHospital = asyncHandler(async (req: Request, res: Response) =
     closingTime: closingTime?.trim() || "23:59",
     isEmergency24x7: isEmergency24x7 !== undefined ? Boolean(isEmergency24x7) : true,
     description: description?.trim() || "",
-    verificationStatus: VerificationStatus.PENDING,
   });
 
   // Link newly created hospital to HospitalAdminProfile
@@ -154,7 +152,7 @@ export const createHospital = asyncHandler(async (req: Request, res: Response) =
     new ApiResponse(
       201,
       hospital,
-      "Hospital profile created successfully. It is pending Super Admin verification."
+      "Hospital profile created successfully."
     )
   );
 });
@@ -164,8 +162,7 @@ export const getMyHospital = asyncHandler(async (req: Request, res: Response) =>
   const adminUserId = req.user?.userId;
 
   const hospital = await Hospital.findOne({ hospitalAdminId: adminUserId })
-    .populate("hospitalAdminId", "name email phoneNumber avatar")
-    .populate("verifiedBy", "name email");
+    .populate("hospitalAdminId", "name email phoneNumber avatar");
 
   if (!hospital) {
     return res.status(200).json(
@@ -196,8 +193,7 @@ export const getHospitalDashboard = asyncHandler(async (req: Request, res: Respo
 
   // 1. Fetch Affiliated Hospital
   const hospital = await Hospital.findOne({ hospitalAdminId: adminUserId })
-    .populate("hospitalAdminId", "name email phoneNumber avatar")
-    .populate("verifiedBy", "name email");
+    .populate("hospitalAdminId", "name email phoneNumber avatar");
 
   if (!hospital) {
     return res.status(200).json(
@@ -494,14 +490,13 @@ export const getHospitalDashboard = asyncHandler(async (req: Request, res: Respo
           id: hospital._id,
           name: hospital.name,
           slug: hospital.slug,
-          verificationStatus: hospital.verificationStatus,
           address: hospital.address,
           totalBeds: hospital.totalBeds,
           departments: hospital.departments,
           contactPhone: hospital.contactPhone,
           contactEmail: hospital.contactEmail,
           isEmergency24x7: hospital.isEmergency24x7,
-          verified: hospital.verificationStatus === VerificationStatus.APPROVED,
+          isActive: hospital.isActive,
         },
 
         // 1. Executive Summary Cards (KPIs)
@@ -651,7 +646,6 @@ export const getAllHospitals = asyncHandler(async (req: Request, res: Response) 
 
   const filter: any = {
     isActive: true,
-    verificationStatus: VerificationStatus.APPROVED,
   };
 
   if (
@@ -714,7 +708,7 @@ export const getAllHospitals = asyncHandler(async (req: Request, res: Response) 
 
   const [hospitals, totalDocs] = await Promise.all([
     Hospital.find(filter)
-      .select("-licenseDocumentUrl -verifiedBy")
+      .select("-licenseDocumentUrl")
       .sort(sortOption)
       .skip(skip)
       .limit(limit),
@@ -773,8 +767,7 @@ export const getHospitalById = asyncHandler(async (req: Request, res: Response) 
   }
 
   const hospital = await Hospital.findById(id)
-    .populate("hospitalAdminId", "name email phoneNumber avatar")
-    .populate("verifiedBy", "name email");
+    .populate("hospitalAdminId", "name email phoneNumber avatar");
 
   if (!hospital) {
     throw new ApiError(404, "Hospital not found");

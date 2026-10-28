@@ -261,17 +261,6 @@ export const HospitalOverviewTab: FC<HospitalOverviewTabProps> = ({
             )}
           </div>
 
-          {/* Verification Status */}
-          <div className="flex items-center justify-between py-2 border-b border-slate-100">
-            <span className="text-slate-500 font-semibold flex items-center gap-2">
-              <CheckCircle2 className="size-4 text-slate-400" /> Verification Status
-            </span>
-            <span className="font-bold text-emerald-600 flex items-center gap-1">
-              <CheckCircle2 className="size-3.5 fill-emerald-100" />
-              {hospital.verificationStatus === 'APPROVED' ? 'Verified' : hospital.verificationStatus}
-            </span>
-          </div>
-
           {/* Active Status */}
           <div className="flex items-center justify-between py-2 border-b border-slate-100">
             <span className="text-slate-500 font-semibold flex items-center gap-2">

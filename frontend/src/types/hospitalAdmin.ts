@@ -101,7 +101,6 @@ export interface HospitalBranchItem {
   name: string
   slug: string
   licenseNumber: string
-  verificationStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED'
   isActive: boolean
   images?: {
     coverImage?: string
@@ -135,12 +134,12 @@ export interface HospitalBranchItem {
 
 export interface HospitalBranchKpis {
   totalHospitals: number
-  approvedHospitals: number
-  pendingHospitals: number
-  rejectedHospitals: number
   activeHospitals: number
   inactiveHospitals: number
   totalBeds?: number
+  approvedHospitals?: number
+  pendingHospitals?: number
+  rejectedHospitals?: number
 }
 
 export interface HospitalBranchPagination {
@@ -213,7 +212,6 @@ export interface HospitalActivityItem {
 export interface HospitalDetailData {
   hospital: HospitalBranchItem & {
     hospitalAdminId?: HospitalDoctorUser
-    verifiedBy?: { _id: string; name: string; email: string }
   }
   stats: {
     totalBeds: number

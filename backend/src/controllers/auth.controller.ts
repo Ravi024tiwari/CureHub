@@ -340,7 +340,7 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
   } else if (user.role === UserRole.DOCTOR) {
     profileData = await DoctorProfile.findOne({ userId: user._id }).populate(
       "hospitalId",
-      "name slug address verificationStatus"
+      "name slug address"
     );
   } else if (user.role === UserRole.HOSPITAL_ADMIN) {
     profileData = await HospitalAdminProfile.findOne({ userId: user._id }).populate("hospitalId");

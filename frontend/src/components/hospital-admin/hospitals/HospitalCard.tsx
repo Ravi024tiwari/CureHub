@@ -7,9 +7,6 @@ import {
   Users,
   Calendar,
   Heart,
-  CheckCircle2,
-  Clock,
-  XCircle,
 } from 'lucide-react'
 import type { HospitalBranchItem } from '@/types/hospitalAdmin'
 import { useHospitalBranchesStore } from '@/store/hospitalBranchesStore'
@@ -90,25 +87,14 @@ export const HospitalCard: FC<HospitalCardProps> = ({ hospital, index = 0 }) => 
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent pointer-events-none" />
 
-        {/* Verification Status Badge (Top-Left) */}
-        <div className="absolute top-3 left-3 z-10">
-          {hospital.verificationStatus === 'APPROVED' ? (
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/90 text-white backdrop-blur-md shadow-sm flex items-center gap-1.5">
-              <CheckCircle2 className="size-3.5" />
-              <span>Verified</span>
+        {/* Status Badge (Top-Left, if inactive) */}
+        {!hospital.isActive && (
+          <div className="absolute top-3 left-3 z-10">
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-900/80 text-white backdrop-blur-md shadow-sm">
+              Inactive
             </span>
-          ) : hospital.verificationStatus === 'PENDING' ? (
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/90 text-white backdrop-blur-md shadow-sm flex items-center gap-1.5">
-              <Clock className="size-3.5" />
-              <span>Pending</span>
-            </span>
-          ) : (
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/90 text-white backdrop-blur-md shadow-sm flex items-center gap-1.5">
-              <XCircle className="size-3.5" />
-              <span>Rejected</span>
-            </span>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Heart / Favorite Button (Top-Right) */}
         <button

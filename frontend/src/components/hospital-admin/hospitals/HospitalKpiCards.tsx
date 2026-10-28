@@ -1,5 +1,5 @@
 import { type FC } from 'react'
-import { Building2, CheckCircle2, Clock, XCircle, ToggleRight, CircleOff } from 'lucide-react'
+import { Building2, ToggleRight, CircleOff, BedDouble } from 'lucide-react'
 import { useHospitalBranchesStore } from '@/store/hospitalBranchesStore'
 
 export const HospitalKpiCards: FC = () => {
@@ -15,63 +15,20 @@ export const HospitalKpiCards: FC = () => {
       bg: 'bg-blue-50',
       border: 'border-blue-100',
       activeRing: 'ring-2 ring-blue-500 bg-blue-50/50',
-      isActiveFilter: filters.status === 'ALL' && filters.activeStatus === 'ALL',
+      isActiveFilter: filters.activeStatus === 'ALL',
       onClick: () => {
-        setFilter('status', 'ALL')
         setFilter('activeStatus', 'ALL')
       },
     },
     {
-      id: 'verified',
-      label: 'Verified',
-      count: kpis.approvedHospitals,
-      icon: CheckCircle2,
+      id: 'active',
+      label: 'Active Facilities',
+      count: kpis.activeHospitals,
+      icon: ToggleRight,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
       border: 'border-emerald-100',
       activeRing: 'ring-2 ring-emerald-500 bg-emerald-50/50',
-      isActiveFilter: filters.status === 'APPROVED',
-      onClick: () => {
-        setFilter('status', filters.status === 'APPROVED' ? 'ALL' : 'APPROVED')
-      },
-    },
-    {
-      id: 'pending',
-      label: 'Pending',
-      count: kpis.pendingHospitals,
-      icon: Clock,
-      color: 'text-amber-600',
-      bg: 'bg-amber-50',
-      border: 'border-amber-100',
-      activeRing: 'ring-2 ring-amber-500 bg-amber-50/50',
-      isActiveFilter: filters.status === 'PENDING',
-      onClick: () => {
-        setFilter('status', filters.status === 'PENDING' ? 'ALL' : 'PENDING')
-      },
-    },
-    {
-      id: 'rejected',
-      label: 'Rejected',
-      count: kpis.rejectedHospitals,
-      icon: XCircle,
-      color: 'text-rose-600',
-      bg: 'bg-rose-50',
-      border: 'border-rose-100',
-      activeRing: 'ring-2 ring-rose-500 bg-rose-50/50',
-      isActiveFilter: filters.status === 'REJECTED',
-      onClick: () => {
-        setFilter('status', filters.status === 'REJECTED' ? 'ALL' : 'REJECTED')
-      },
-    },
-    {
-      id: 'active',
-      label: 'Active',
-      count: kpis.activeHospitals,
-      icon: ToggleRight,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
-      border: 'border-blue-100',
-      activeRing: 'ring-2 ring-blue-500 bg-blue-50/50',
       isActiveFilter: filters.activeStatus === 'true',
       onClick: () => {
         setFilter('activeStatus', filters.activeStatus === 'true' ? 'ALL' : 'true')
@@ -79,7 +36,7 @@ export const HospitalKpiCards: FC = () => {
     },
     {
       id: 'inactive',
-      label: 'Inactive',
+      label: 'Deactivated',
       count: kpis.inactiveHospitals,
       icon: CircleOff,
       color: 'text-slate-500',
@@ -91,10 +48,22 @@ export const HospitalKpiCards: FC = () => {
         setFilter('activeStatus', filters.activeStatus === 'false' ? 'ALL' : 'false')
       },
     },
+    {
+      id: 'beds',
+      label: 'Total Beds',
+      count: kpis.totalBeds ?? 0,
+      icon: BedDouble,
+      color: 'text-indigo-600',
+      bg: 'bg-indigo-50',
+      border: 'border-indigo-100',
+      activeRing: '',
+      isActiveFilter: false,
+      onClick: () => {},
+    },
   ]
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {cards.map((c) => {
         const Icon = c.icon
         return (

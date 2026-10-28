@@ -374,8 +374,51 @@ export const doctorService = {
     return res?.data || res
   },
 
-  getAvailableHospitals: async (): Promise<any[]> => {
-    const res: any = await apiClient.get('/doctors/hospitals/available')
+  getAvailableHospitals: async (params?: {
+    page?: number
+    limit?: number
+    search?: string
+    city?: string
+    hospitalType?: string
+    department?: string
+    sortBy?: string
+  }): Promise<{
+    hospitals: any[]
+    kpis: {
+      totalHospitals: number
+      multiSpeciality: number
+      privateHospitals: number
+      governmentHospitals: number
+      openForRequests: number
+    }
+    pagination: {
+      totalDocs: number
+      totalPages: number
+      currentPage: number
+      limit: number
+      hasNextPage: boolean
+      hasPrevPage: boolean
+    }
+    filterOptions?: {
+      cities: string[]
+      departments: string[]
+    }
+    doctorProfile?: any
+  }> => {
+    const q = new URLSearchParams()
+    if (params?.page) q.append('page', params.page.toString())
+    if (params?.limit) q.append('limit', params.limit.toString())
+    if (params?.search) q.append('search', params.search)
+    if (params?.city && params.city !== 'ALL') q.append('city', params.city)
+    if (params?.hospitalType && params.hospitalType !== 'ALL') {
+      q.append('hospitalType', params.hospitalType)
+    }
+    if (params?.department && params.department !== 'ALL') {
+      q.append('department', params.department)
+    }
+    if (params?.sortBy) q.append('sortBy', params.sortBy)
+
+    const res: any = await apiClient.get(`/doctors/hospitals/available?${q.toString()}`)
     return res?.data || res
   },
 
@@ -394,6 +437,11 @@ export const doctorService = {
 
   getMyHospitalAffiliation: async (): Promise<any> => {
     const res: any = await apiClient.get('/doctors/hospitals/my-affiliation')
+    return res?.data || res
+  },
+
+  getDoctorHospitalDetail: async (hospitalId: string): Promise<any> => {
+    const res: any = await apiClient.get(`/doctors/hospitals/${hospitalId}`)
     return res?.data || res
   },
 }

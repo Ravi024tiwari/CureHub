@@ -106,7 +106,7 @@ export const AddHospitalModal: FC = () => {
                 Add New Hospital Branch
               </h2>
               <p className="text-xs text-slate-500 font-medium">
-                Submit your facility for verification and patient intake
+                Register your facility for patient intake and management
               </p>
             </div>
           </div>

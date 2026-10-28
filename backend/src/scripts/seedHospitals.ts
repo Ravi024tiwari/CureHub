@@ -640,8 +640,19 @@ export const seedHospitalsDatabase = async () => {
 
     console.log(`Starting to seed ${hospitalsSeedData.length} verified hospitals...`);
 
-    // Remove legacy reviewCount field from all hospitals in database
-    await Hospital.updateMany({}, { $unset: { reviewCount: 1 } });
+    // Remove legacy reviewCount and verification fields from all hospitals in database
+    await Hospital.updateMany(
+      {},
+      {
+        $unset: {
+          reviewCount: 1,
+          verificationStatus: 1,
+          verifiedBy: 1,
+          verifiedAt: 1,
+          rejectionReason: 1,
+        },
+      }
+    );
 
     let seededCount = 0;
     for (const data of hospitalsSeedData) {
@@ -650,9 +661,6 @@ export const seedHospitalsDatabase = async () => {
         hospitalAdminId: hospitalAdmin._id,
         licenseDocumentUrl:
           "https://curehealthstore.s3.us-east-1.amazonaws.com/licenses/govt_medical_license_sample.pdf",
-        verificationStatus: VerificationStatus.APPROVED,
-        verifiedBy: superAdmin?._id || hospitalAdmin._id,
-        verifiedAt: new Date(),
         isActive: true,
       };
 

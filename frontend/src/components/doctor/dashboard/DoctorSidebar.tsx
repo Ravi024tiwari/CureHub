@@ -12,6 +12,7 @@ import {
   Headphones,
   HeartPulse,
   ExternalLink,
+  Building2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -33,6 +34,7 @@ export const DoctorSidebar: FC<DoctorSidebarProps> = ({ onCloseMobile }) => {
   const navItems: NavItem[] = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { label: 'Appointments', icon: Calendar, path: '/doctor/appointments' },
+    { label: 'Hospitals', icon: Building2, path: '/doctor/hospitals' },
     { label: 'My Schedule', icon: Clock, path: '/doctor/schedule' },
     { label: 'Prescriptions', icon: FileText, path: '/doctor/prescriptions' },
     { label: 'Medical Reports', icon: FileCheck2, path: '/doctor/reports' },

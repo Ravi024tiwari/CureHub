@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
-import { VerificationStatus } from "../constants/index.js";
 
 export interface IHospitalImages {
   coverImage?: string;
@@ -36,10 +35,6 @@ export interface IHospital extends Document {
   rating?: number;
   distance?: string;
   description?: string;
-  verificationStatus: VerificationStatus;
-  verifiedBy?: mongoose.Types.ObjectId;
-  verifiedAt?: Date;
-  rejectionReason?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -115,7 +110,7 @@ const HospitalSchema = new Schema<IHospital>(
     },
     establishmentYear: {
       type: Number,
-      min: [1800, "Establishment year cannot be before 1800"],
+      min: [1946, "Establishment year cannot be before 1946"],
       max: [new Date().getFullYear() + 1, "Establishment year cannot be in the future"],
     },
     totalBeds: {
@@ -164,25 +159,6 @@ const HospitalSchema = new Schema<IHospital>(
     description: {
       type: String,
       trim: true,
-      default: "",
-    },
-    verificationStatus: {
-      type: String,
-      enum: Object.values(VerificationStatus),
-      default: VerificationStatus.PENDING,
-      index: true,
-    },
-    verifiedBy: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
-    },
-    verifiedAt: {
-      type: Date,
-      default: null,
-    },
-    rejectionReason: {
-      type: String,
       default: "",
     },
     isActive: {

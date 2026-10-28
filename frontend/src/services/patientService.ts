@@ -93,7 +93,6 @@ export async function fetchHospitalsListApi(params?: {
           emergencyAvailable: h.isEmergency24x7 ?? true,
           icuAvailable: (h.facilities || []).some((f: string) => f.toLowerCase().includes('icu')),
           description: h.description || '',
-          verificationStatus: h.verificationStatus || 'APPROVED',
         } as HospitalCardData
       })
       return { hospitals: mapped, total, page: pageNum, limit: limitNum, hasMore }
@@ -149,7 +148,6 @@ export async function fetchHospitalDetailApi(idOrSlug: string): Promise<Hospital
       emergencyAvailable: h.isEmergency24x7 ?? true,
       icuAvailable: (h.facilities || []).some((f: string) => f.toLowerCase().includes('icu')),
       description: h.description || '',
-      verificationStatus: h.verificationStatus || 'APPROVED',
     } as HospitalCardData
   } catch (error) {
     console.error('Failed to fetch hospital detail:', error)

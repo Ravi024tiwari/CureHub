@@ -80,21 +80,16 @@ export const HospitalIdentityBanner: FC<HospitalIdentityBannerProps> = ({
               {hospital.name}
             </h1>
 
-            {/* Verification Status */}
-            {hospital.verificationStatus === 'APPROVED' ? (
+            {/* Active Status Badge */}
+            {hospital.isActive !== false ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
-                <CheckCircle2 className="size-3.5 text-emerald-600" />
-                <span>Verified</span>
-              </span>
-            ) : hospital.verificationStatus === 'PENDING' ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/80">
-                <Clock className="size-3.5 text-amber-600" />
-                <span>Pending Verification</span>
+                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Active</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200/80">
-                <XCircle className="size-3.5 text-rose-600" />
-                <span>Suspended</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                <span className="size-2 rounded-full bg-slate-400" />
+                <span>Inactive</span>
               </span>
             )}
           </div>

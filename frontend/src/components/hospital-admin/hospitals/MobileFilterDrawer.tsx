@@ -13,7 +13,6 @@ export const MobileFilterDrawer: FC = () => {
   } = useHospitalBranchesStore()
 
   // Local state before apply
-  const [localStatus, setLocalStatus] = useState(filters.status)
   const [localActiveStatus, setLocalActiveStatus] = useState(filters.activeStatus)
   const [localType, setLocalType] = useState(filters.hospitalType)
   const [localCity, setLocalCity] = useState(filters.city)
@@ -31,7 +30,6 @@ export const MobileFilterDrawer: FC = () => {
   )
 
   const handleApply = () => {
-    setFilter('status', localStatus)
     setFilter('activeStatus', localActiveStatus)
     setFilter('hospitalType', localType)
     setFilter('city', localCity)
@@ -39,7 +37,6 @@ export const MobileFilterDrawer: FC = () => {
   }
 
   const handleClearAll = () => {
-    setLocalStatus('ALL')
     setLocalActiveStatus('ALL')
     setLocalType('ALL')
     setLocalCity('ALL')
@@ -73,34 +70,7 @@ export const MobileFilterDrawer: FC = () => {
 
         {/* Content matching mobile mockup */}
         <div className="p-5 overflow-y-auto space-y-5 flex-1">
-          {/* 1. Verification Status */}
-          <div>
-            <label className="text-xs font-bold text-slate-800 uppercase tracking-wider block mb-2.5">
-              Verification Status
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { label: 'All', value: 'ALL' },
-                { label: 'Verified', value: 'APPROVED' },
-                { label: 'Pending', value: 'PENDING' },
-                { label: 'Rejected', value: 'REJECTED' },
-              ].map((item) => (
-                <button
-                  key={item.value}
-                  onClick={() => setLocalStatus(item.value)}
-                  className={`py-2 px-1 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
-                    localStatus === item.value
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 2. Active Status */}
+          {/* Active Status */}
           <div>
             <label className="text-xs font-bold text-slate-800 uppercase tracking-wider block mb-2.5">
               Active Status

@@ -323,11 +323,11 @@ export const AdminHospitalAdminDetailDrawer: FC = () => {
 
                   <div className="p-2.5 bg-slate-50 rounded-xl">
                     <span className="text-[10px] font-semibold text-slate-400 block uppercase">
-                      License Status
+                      Facility Status
                     </span>
                     <span className="font-bold text-emerald-600 flex items-center gap-1 mt-0.5">
                       <ShieldCheck className="size-3.5 text-emerald-600" />
-                      {hospital.verificationStatus || 'APPROVED'}
+                      {hospital.isActive !== false ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                 </div>
@@ -479,7 +479,7 @@ export const AdminHospitalAdminDetailDrawer: FC = () => {
                   <p className="text-xs text-slate-400">{hospitalType}</p>
                 </div>
                 <span className="text-xs font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200">
-                  {hospital.verificationStatus || 'APPROVED'}
+                  {hospital.isActive !== false ? 'Active' : 'Inactive'}
                 </span>
               </div>
 

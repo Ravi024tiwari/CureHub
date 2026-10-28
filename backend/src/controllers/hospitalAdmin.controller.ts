@@ -62,11 +62,6 @@ export const getAdminHospitals = asyncHandler(async (req: Request, res: Response
     hospitalAdminId: new mongoose.Types.ObjectId(adminUserId),
   };
 
-  // Status Filter (PENDING, APPROVED, REJECTED, SUSPENDED)
-  if (status && typeof status === "string" && status.toUpperCase() !== "ALL") {
-    filter.verificationStatus = status.toUpperCase();
-  }
-
   // Active / Deactivated toggle
   if (isActive !== undefined && isActive !== "ALL") {
     filter.isActive = isActive === "true";
@@ -117,15 +112,6 @@ export const getAdminHospitals = asyncHandler(async (req: Request, res: Response
         $group: {
           _id: null,
           totalHospitals: { $sum: 1 },
-          approvedHospitals: {
-            $sum: { $cond: [{ $eq: ["$verificationStatus", VerificationStatus.APPROVED] }, 1, 0] },
-          },
-          pendingHospitals: {
-            $sum: { $cond: [{ $eq: ["$verificationStatus", VerificationStatus.PENDING] }, 1, 0] },
-          },
-          rejectedHospitals: {
-            $sum: { $cond: [{ $eq: ["$verificationStatus", VerificationStatus.REJECTED] }, 1, 0] },
-          },
           activeHospitals: {
             $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] },
           },
@@ -140,7 +126,7 @@ export const getAdminHospitals = asyncHandler(async (req: Request, res: Response
     // Lean hospital cards query with display fields
     Hospital.find(filter)
       .select(
-        "name slug licenseNumber verificationStatus isActive images address contactPhone contactEmail departments totalBeds isEmergency24x7 establishmentYear facilities rating hospitalType description website openingTime closingTime createdAt"
+        "name slug licenseNumber isActive images address contactPhone contactEmail departments totalBeds isEmergency24x7 establishmentYear facilities rating hospitalType description website openingTime closingTime createdAt"
       )
       .sort(sortOption)
       .skip(skip)
@@ -152,9 +138,6 @@ export const getAdminHospitals = asyncHandler(async (req: Request, res: Response
 
   const kpis = adminStatsAgg[0] || {
     totalHospitals: 0,
-    approvedHospitals: 0,
-    pendingHospitals: 0,
-    rejectedHospitals: 0,
     activeHospitals: 0,
     inactiveHospitals: 0,
     totalBeds: 0,
@@ -405,7 +388,6 @@ export const createHospitalForAdmin = asyncHandler(async (req: Request, res: Res
       hospitalType: hospitalType?.trim() || "Multispeciality Hospital",
       facilities: Array.isArray(facilities) ? facilities : ["Pharmacy", "Emergency Unit", "Ambulance"],
       description: description?.trim() || "",
-      verificationStatus: VerificationStatus.PENDING,
       isActive: true,
     });
   } catch (error) {
@@ -426,7 +408,7 @@ export const createHospitalForAdmin = asyncHandler(async (req: Request, res: Res
     new ApiResponse(
       201,
       hospital,
-      "Hospital profile created successfully. It is now submitted for Super Admin verification."
+      "Hospital profile created successfully."
     )
   );
 });
@@ -866,7 +848,7 @@ export const getHospitalAdminPortalDashboard = asyncHandler(async (req: Request,
   const adminHospitals = await Hospital.find({
     hospitalAdminId: new mongoose.Types.ObjectId(adminUserId),
   })
-    .select("_id name slug address totalBeds verificationStatus images isActive")
+    .select("_id name slug address totalBeds images isActive")
     .lean();
 
   const totalHospitalsCount = adminHospitals.length;
