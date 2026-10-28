@@ -12,6 +12,8 @@ export interface IHospitalAdminProfile extends Document {
   numberOfBeds?: number;
   governmentIdType?: string;
   governmentIdNumber?: string;
+  alternatePhone?: string;
+  address?: string;
   identityProofUrl?: string;
   authorizationLetterUrl?: string;
   additionalDocUrl?: string;
@@ -82,6 +84,16 @@ const HospitalAdminProfileSchema = new Schema<IHospitalAdminProfile>(
       default: "Aadhaar Card",
     },
     governmentIdNumber: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    alternatePhone: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    address: {
       type: String,
       trim: true,
       default: "",

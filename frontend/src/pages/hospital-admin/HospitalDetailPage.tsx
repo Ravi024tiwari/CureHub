@@ -205,6 +205,7 @@ export const HospitalDetailPage: FC = () => {
               <HospitalIdentityBanner
                 hospital={hospital}
                 totalDoctorsCount={stats.totalDoctors}
+                pendingRequestsCount={hospitalDetail?.pendingRequestsCount || 0}
                 activeTab={activeTab}
                 onSelectTab={setActiveTab}
                 onViewOnMap={handleViewOnMap}

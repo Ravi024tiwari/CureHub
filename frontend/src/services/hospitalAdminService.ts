@@ -1,12 +1,14 @@
 import apiClient from './apiClient'
 import type {
   HospitalAdminDashboardData,
-  DoctorJoinRequestItem,
+  DoctorJoinRequestFull,
   HospitalBranchItem,
   HospitalBranchKpis,
   HospitalBranchPagination,
   HospitalDetailData,
   HospitalDoctorsResponse,
+  HospitalAdminProfileData,
+  HospitalAdminDoctorsResponse,
 } from '@/types/hospitalAdmin'
 
 export const hospitalAdminService = {
@@ -104,17 +106,46 @@ export const hospitalAdminService = {
     return (response as any)?.data || response
   },
 
-  // Fetch doctor join requests
-  getJoinRequests: async (
-    hospitalId?: string,
-    status = 'PENDING'
-  ): Promise<{ requests: DoctorJoinRequestItem[]; total: number }> => {
+  // Fetch all doctors affiliated with hospital admin's hospitals
+  getAffiliatedDoctors: async (params?: {
+    page?: number
+    limit?: number
+    hospitalId?: string
+    department?: string
+    search?: string
+    sortBy?: string
+  }): Promise<HospitalAdminDoctorsResponse> => {
     const q = new URLSearchParams()
-    if (hospitalId && hospitalId !== 'all') q.append('hospitalId', hospitalId)
-    if (status) q.append('status', status)
+    if (params?.page) q.append('page', params.page.toString())
+    if (params?.limit) q.append('limit', params.limit.toString())
+    if (params?.hospitalId && params.hospitalId !== 'all') q.append('hospitalId', params.hospitalId)
+    if (params?.department && params.department !== 'All' && params.department !== 'ALL') q.append('department', params.department)
+    if (params?.search) q.append('search', params.search)
+    if (params?.sortBy) q.append('sortBy', params.sortBy)
+
+    const response = await apiClient.get(`/hospital-admin/doctors?${q.toString()}`)
+    return (response as any)?.data || response
+  },
+
+  // Fetch doctor join requests
+  getJoinRequests: async (params?: {
+    hospitalId?: string
+    status?: string
+  }): Promise<DoctorJoinRequestFull[]> => {
+    const q = new URLSearchParams()
+    if (params?.hospitalId && params.hospitalId !== 'all') q.append('hospitalId', params.hospitalId)
+    if (params?.status && params.status !== 'ALL') q.append('status', params.status)
 
     const response = await apiClient.get(`/hospital-admin/join-requests?${q.toString()}`)
-    return (response as any)?.data || response
+    const payload = (response as any)?.data !== undefined ? (response as any).data : response
+    return Array.isArray(payload) ? payload : []
+  },
+
+  // Fetch single doctor join request by ID
+  getJoinRequestById: async (requestId: string): Promise<DoctorJoinRequestFull> => {
+    const response = await apiClient.get(`/hospital-admin/join-requests/${requestId}`)
+    const payload = (response as any)?.data !== undefined ? (response as any).data : response
+    return payload
   },
 
   // Approve or Reject join request

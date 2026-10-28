@@ -83,6 +83,77 @@ export interface DoctorJoinRequestItem {
   hospitalName?: string
 }
 
+export interface DoctorJoinRequestFull {
+  _id: string
+  doctorId: {
+    _id: string
+    department: string
+    specialization: string[]
+    qualifications: string[]
+    experienceYears: number
+    experiences?: Array<{
+      title: string
+      institution: string
+      period: string
+      duration?: string
+      description?: string
+    }>
+    consultationFee: number
+    ratingAverage: number
+    reviewCount: number
+    medicalCouncilRegistrationNumber: string
+    licenseDocumentUrl?: string
+    bio?: string
+    verificationStatus?: string
+    hospitalAffiliationStatus?: string
+    scheduleRules?: any[]
+  } | null
+  doctorUserId: {
+    _id: string
+    name: string
+    email: string
+    phoneNumber?: string
+    avatar?: string
+    address?: {
+      street?: string
+      city?: string
+      state?: string
+      zipCode?: string
+      country?: string
+    }
+  } | null
+  hospitalId: {
+    _id: string
+    name: string
+    slug: string
+    address?: {
+      street?: string
+      city?: string
+      state?: string
+      zipCode?: string
+    }
+    departments?: string[]
+    contactEmail?: string
+    contactPhone?: string
+    images?: {
+      coverImage?: string
+      gallery?: string[]
+    }
+  } | null
+  department: string
+  message?: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  rejectionReason?: string
+  reviewedBy?: {
+    _id: string
+    name: string
+    email: string
+  } | null
+  reviewedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface HospitalAdminDashboardData {
   adminName: string
   selectedHospitalId: string // 'all' | hospitalId
@@ -257,6 +328,8 @@ export interface HospitalAdminProfileData {
   designation: string
   governmentIdType?: string
   governmentIdNumber?: string
+  alternatePhone?: string
+  address?: string
   identityProofUrl?: string
   authorizationLetterUrl?: string
   additionalDocUrl?: string
@@ -290,6 +363,64 @@ export interface HospitalAdminProfileUpdatePayload {
   additionalDocUrl?: string
   qualifications?: string[]
   isSubmitted?: boolean
+}
+
+export interface AffiliatedDoctorItem {
+  _id: string
+  userId: {
+    _id: string
+    name: string
+    email: string
+    phoneNumber?: string
+    avatar?: string
+    address?: {
+      street?: string
+      city?: string
+      state?: string
+      zipCode?: string
+      country?: string
+    }
+  }
+  hospitalId: {
+    _id: string
+    name: string
+    slug: string
+    address?: {
+      street?: string
+      city?: string
+      state?: string
+      zipCode?: string
+    }
+    departments?: string[]
+  }
+  department: string
+  specialization: string[]
+  qualifications: string[]
+  experienceYears: number
+  consultationFee: number
+  ratingAverage: number
+  reviewCount: number
+  bio?: string
+  medicalCouncilRegistrationNumber?: string
+  licenseDocumentUrl?: string
+  hospitalAffiliationStatus: 'APPROVED' | 'PENDING_APPROVAL' | 'NOT_AFFILIATED' | 'REJECTED'
+  scheduleRules?: any[]
+  createdAt: string
+}
+
+export interface HospitalAdminDoctorsKpis {
+  totalDoctors: number
+  totalDepartments: number
+  averageRating: number
+  averageFee: number
+}
+
+export interface HospitalAdminDoctorsResponse {
+  doctors: AffiliatedDoctorItem[]
+  pagination: HospitalBranchPagination
+  kpis: HospitalAdminDoctorsKpis
+  departmentStats: Array<{ department: string; count: number }>
+  hospitalsList: Array<{ id: string; name: string; city: string }>
 }
 
 

@@ -5,8 +5,10 @@ import {
   updateHospitalById,
   deleteHospitalById,
   getAdminJoinRequests,
+  getAdminJoinRequestById,
   respondToJoinRequest,
   disaffiliateDoctor,
+  getAdminAffiliatedDoctors,
   getHospitalAdminPortalDashboard,
 } from "../controllers/hospitalAdmin.controller.js";
 import {
@@ -39,8 +41,10 @@ hospitalAdminRouter.put("/hospitals/:id", updateHospitalById);
 hospitalAdminRouter.patch("/hospitals/:id", updateHospitalById);
 hospitalAdminRouter.delete("/hospitals/:id", deleteHospitalById);
 
-// ── 3. Doctor Join Requests & Affiliations ──────────────────────────────────
+// ── 3. Doctor Affiliations & Join Requests ──────────────────────────────────
+hospitalAdminRouter.get("/doctors", getAdminAffiliatedDoctors);
 hospitalAdminRouter.get("/join-requests", getAdminJoinRequests);
+hospitalAdminRouter.get("/join-requests/:requestId", getAdminJoinRequestById);
 hospitalAdminRouter.patch("/join-requests/:requestId", respondToJoinRequest);
 hospitalAdminRouter.delete(
   "/hospitals/:hospitalId/doctors/:doctorId",

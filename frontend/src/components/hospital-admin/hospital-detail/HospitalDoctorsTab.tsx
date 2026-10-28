@@ -16,6 +16,7 @@ import drRajeshImg from '@/assets/dr-rajesh-verma.jpg'
 import drPriyaImg from '@/assets/dr-priya-sharma.jpg'
 
 import { HospitalDoctorDetailModal } from './HospitalDoctorDetailModal'
+import { DoctorAvatar } from '@/components/hospital-admin/join-requests/JoinRequestsTable'
 
 interface HospitalDoctorsTabProps {
   hospitalId: string
@@ -174,10 +175,11 @@ export const HospitalDoctorsTab: FC<HospitalDoctorsTabProps> = ({
                 <div>
                   {/* Doctor Info Header */}
                   <div className="flex items-start gap-3.5">
-                    <img
-                      src={avatar}
-                      alt={doc.userId.name}
-                      className="size-14 sm:size-16 rounded-2xl object-cover border border-slate-200 shadow-2xs shrink-0 group-hover:scale-105 transition-transform"
+                    <DoctorAvatar
+                      name={doc.userId.name}
+                      avatarUrl={avatar}
+                      size="md"
+                      className="size-14 sm:size-16 group-hover:scale-105 transition-transform"
                     />
 
                     <div className="min-w-0 flex-1">

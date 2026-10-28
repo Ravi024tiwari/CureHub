@@ -30,11 +30,21 @@ import { BookAppointmentModal } from '@/components/patient/BookAppointmentModal'
 
 import { useDoctorStore } from '@/store/doctorStore'
 import { useAppointmentStore } from '@/store/appointmentStore'
+import { useAuthStore } from '@/store/authStore'
+import { UserRole } from '@/types/auth'
 import type { AppointmentCardData } from '@/types/patient'
 
 export const DoctorDetailPage: FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuthStore()
+
+  // Guard: If logged in as Hospital Admin, securely redirect to Hospital Admin Doctor Detail Page
+  useEffect(() => {
+    if (user?.role === UserRole.HOSPITAL_ADMIN && id) {
+      navigate(`/hospital-admin/doctors/${id}`, { replace: true })
+    }
+  }, [user, id, navigate])
 
   // App Layout State
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false)

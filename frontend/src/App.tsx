@@ -21,6 +21,11 @@ import {
   AddNewHospitalPage,
   HospitalDetailPage,
   HospitalAdminVerificationPage,
+  DoctorJoinRequestsPage,
+  DoctorJoinRequestDetailPage,
+  HospitalAdminDoctorsPage,
+  HospitalAdminDoctorDetailPage,
+  HospitalAdminProfilePage,
 } from '@/pages/hospital-admin'
 import {
   SuperAdminDashboardPage,
@@ -91,7 +96,7 @@ function App() {
         {/* Dedicated Hospital Admin Routes */}
         <Route path="/hospital-admin/verification" element={<HospitalAdminVerificationPage />} />
         <Route path="/hospital-admin/onboarding" element={<Navigate to="/hospital-admin/verification" replace />} />
-        <Route path="/hospital-admin/profile" element={<HospitalAdminVerificationPage />} />
+        <Route path="/hospital-admin/profile" element={<HospitalAdminProfilePage />} />
         <Route path="/hospital-admin/complete-profile" element={<Navigate to="/hospital-admin/verification" replace />} />
         <Route path="/hospital-admin/dashboard" element={<HospitalAdminDashboardPage />} />
         <Route path="/hospital-admin/hospitals" element={<HospitalAdminHospitalsPage />} />
@@ -100,6 +105,10 @@ function App() {
         <Route path="/hospital-admin/hospitals/:id/edit" element={<AddNewHospitalPage />} />
         <Route path="/hospital-admin/hospitals/add" element={<Navigate to="/hospital-admin/hospitals/new" replace />} />
         <Route path="/hospital-admin/add-hospital" element={<Navigate to="/hospital-admin/hospitals/new" replace />} />
+        <Route path="/hospital-admin/doctors" element={<HospitalAdminDoctorsPage />} />
+        <Route path="/hospital-admin/doctors/:id" element={<HospitalAdminDoctorDetailPage />} />
+        <Route path="/hospital-admin/join-requests" element={<DoctorJoinRequestsPage />} />
+        <Route path="/hospital-admin/join-requests/:id" element={<DoctorJoinRequestDetailPage />} />
 
         {/* Dedicated Super Admin Routes */}
         <Route path="/super-admin/dashboard" element={<SuperAdminDashboardPage />} />

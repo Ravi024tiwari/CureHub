@@ -7,7 +7,7 @@ import {
   Stethoscope,
   UserPlus,
   Calendar,
-  Settings,
+  User,
   X,
   ChevronRight,
   PanelLeftClose,
@@ -63,10 +63,10 @@ export const HospitalAdminSidebar: FC<HospitalAdminSidebarProps> = ({
       path: '/hospital-admin/appointments',
     },
     {
-      id: 'settings',
-      label: 'Settings',
-      icon: Settings,
-      path: '/hospital-admin/settings',
+      id: 'profile',
+      label: 'Profile',
+      icon: User,
+      path: '/hospital-admin/profile',
     },
   ]
 

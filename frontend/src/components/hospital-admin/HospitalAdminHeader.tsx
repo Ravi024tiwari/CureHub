@@ -264,7 +264,7 @@ export const HospitalAdminHeader: FC<HospitalAdminHeaderProps> = ({ onToggleSide
                   <button
                     onClick={() => {
                       setIsProfileMenuOpen(false)
-                      navigate('/hospital-admin/settings')
+                      navigate('/hospital-admin/profile')
                     }}
                     className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                   >

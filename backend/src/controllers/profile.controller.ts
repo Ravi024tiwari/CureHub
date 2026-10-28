@@ -482,6 +482,8 @@ export const updateHospitalAdminProfile = asyncHandler(
       designation,
       governmentIdType,
       governmentIdNumber,
+      alternatePhone,
+      address,
       identityProofUrl,
       authorizationLetterUrl,
       additionalDocUrl,
@@ -501,6 +503,8 @@ export const updateHospitalAdminProfile = asyncHandler(
     if (designation && designation.trim()) profile.designation = designation.trim();
     if (governmentIdType !== undefined) profile.governmentIdType = governmentIdType.trim();
     if (governmentIdNumber !== undefined) profile.governmentIdNumber = governmentIdNumber.trim();
+    if (alternatePhone !== undefined) profile.alternatePhone = alternatePhone.trim();
+    if (address !== undefined) profile.address = address.trim();
     if (identityProofUrl && identityProofUrl.trim()) profile.identityProofUrl = identityProofUrl.trim();
     if (authorizationLetterUrl && authorizationLetterUrl.trim()) {
       profile.authorizationLetterUrl = authorizationLetterUrl.trim();

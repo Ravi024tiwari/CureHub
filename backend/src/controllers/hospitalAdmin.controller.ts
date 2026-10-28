@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
+import { User } from "../models/User.model.js";
 import { Hospital } from "../models/Hospital.model.js";
 import { HospitalAdminProfile } from "../models/HospitalAdminProfile.model.js";
 import { DoctorProfile } from "../models/DoctorProfile.model.js";
@@ -696,13 +697,54 @@ export const getAdminJoinRequests = asyncHandler(async (req: Request, res: Respo
     .populate({
       path: "doctorId",
       select:
-        "department specialization qualifications experienceYears consultationFee ratingAverage medicalCouncilRegistrationNumber",
+        "department specialization qualifications experienceYears experiences consultationFee ratingAverage reviewCount medicalCouncilRegistrationNumber licenseDocumentUrl bio verificationStatus hospitalAffiliationStatus",
     })
-    .populate("doctorUserId", "name email phoneNumber avatar")
+    .populate("doctorUserId", "name email phoneNumber avatar address")
+    .populate("reviewedBy", "name email")
     .sort({ createdAt: -1 });
 
   return res.status(200).json(
     new ApiResponse(200, joinRequests, "Doctor join requests retrieved successfully")
+  );
+});
+
+/**
+ * Get single doctor join request by ID
+ */
+export const getAdminJoinRequestById = asyncHandler(async (req: Request, res: Response) => {
+  const adminUserId = req.user?.userId;
+  const { requestId } = req.params;
+
+  if (!adminUserId) {
+    throw new ApiError(401, "Authentication required");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(requestId)) {
+    throw new ApiError(400, "Invalid join request ID format");
+  }
+
+  const joinRequest = await HospitalJoinRequest.findById(requestId)
+    .populate("hospitalId", "name slug address departments contactEmail contactPhone images")
+    .populate({
+      path: "doctorId",
+      select:
+        "department specialization qualifications experienceYears experiences consultationFee ratingAverage reviewCount medicalCouncilRegistrationNumber licenseDocumentUrl bio verificationStatus hospitalAffiliationStatus scheduleRules",
+    })
+    .populate("doctorUserId", "name email phoneNumber avatar address")
+    .populate("reviewedBy", "name email");
+
+  if (!joinRequest) {
+    throw new ApiError(404, "Doctor join request not found");
+  }
+
+  // Check that this join request belongs to a hospital managed by this admin
+  const hospital = await Hospital.findById(joinRequest.hospitalId);
+  if (!hospital || hospital.hospitalAdminId.toString() !== adminUserId.toString()) {
+    throw new ApiError(403, "Access denied. You do not manage the hospital associated with this request.");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, joinRequest, "Doctor join request retrieved successfully")
   );
 });
 
@@ -780,6 +822,197 @@ export const respondToJoinRequest = asyncHandler(async (req: Request, res: Respo
 });
 
 /**
+ * Get all doctors affiliated with hospital admin's hospitals (with pagination, metrics, filters)
+ */
+export const getAdminAffiliatedDoctors = asyncHandler(async (req: Request, res: Response) => {
+  const adminUserId = req.user?.userId;
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10));
+  const hospitalId = (req.query.hospitalId as string) || "";
+  const department = ((req.query.department as string) || "").trim();
+  const search = ((req.query.search as string) || "").trim();
+  const sortBy = ((req.query.sortBy as string) || "newest").trim();
+
+  if (!adminUserId) {
+    throw new ApiError(401, "Authentication required");
+  }
+
+  // 1. Get all hospitals owned by this hospital admin
+  const adminHospitals = await Hospital.find({ hospitalAdminId: adminUserId })
+    .select("_id name address departments images")
+    .lean();
+
+  const adminHospitalIds = adminHospitals.map((h) => h._id);
+
+  if (adminHospitalIds.length === 0) {
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          doctors: [],
+          pagination: {
+            totalDocs: 0,
+            totalPages: 1,
+            currentPage: 1,
+            limit,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+          kpis: {
+            totalDoctors: 0,
+            totalDepartments: 0,
+            averageRating: 0,
+            averageFee: 0,
+          },
+          departmentStats: [],
+          hospitalsList: [],
+        },
+        "No hospitals found for this admin"
+      )
+    );
+  }
+
+  // 2. Build filter
+  let targetHospitalIds = adminHospitalIds;
+  if (hospitalId && hospitalId !== "all" && mongoose.Types.ObjectId.isValid(hospitalId)) {
+    const isOwned = adminHospitalIds.some((id) => id.toString() === hospitalId);
+    if (!isOwned) {
+      throw new ApiError(403, "Access denied. You do not manage this hospital.");
+    }
+    targetHospitalIds = [new mongoose.Types.ObjectId(hospitalId)];
+  }
+
+  const filter: any = {
+    hospitalId: { $in: targetHospitalIds },
+    hospitalAffiliationStatus: "APPROVED",
+  };
+
+  if (department && department.toLowerCase() !== "all") {
+    filter.department = { $regex: new RegExp(`^${department}$`, "i") };
+  }
+
+  if (search) {
+    const searchRegex = new RegExp(search, "i");
+    const matchingUsers = await User.find({
+      $or: [{ name: searchRegex }, { email: searchRegex }, { phoneNumber: searchRegex }],
+    }).select("_id");
+    const userIds = matchingUsers.map((u) => u._id);
+
+    filter.$or = [
+      { userId: { $in: userIds } },
+      { specialization: { $elemMatch: { $regex: searchRegex } } },
+      { department: searchRegex },
+      { qualifications: { $elemMatch: { $regex: searchRegex } } },
+      { medicalCouncilRegistrationNumber: searchRegex },
+    ];
+  }
+
+  // 3. Sorting
+  let sortOption: any = { createdAt: -1 };
+  if (sortBy === "rating") {
+    sortOption = { ratingAverage: -1, reviewCount: -1 };
+  } else if (sortBy === "experience") {
+    sortOption = { experienceYears: -1 };
+  } else if (sortBy === "fee_low") {
+    sortOption = { consultationFee: 1 };
+  } else if (sortBy === "fee_high") {
+    sortOption = { consultationFee: -1 };
+  } else if (sortBy === "oldest") {
+    sortOption = { createdAt: 1 };
+  }
+
+  const skip = (page - 1) * limit;
+
+  // 4. Parallel queries: Paginated doctors, total count, KPI aggregation, department stats
+  const [totalDocs, doctors, overallAgg, departmentAgg] = await Promise.all([
+    DoctorProfile.countDocuments(filter),
+    DoctorProfile.find(filter)
+      .populate("userId", "name email phoneNumber avatar address")
+      .populate("hospitalId", "name slug address departments")
+      .select(
+        "userId hospitalId department specialization qualifications experienceYears consultationFee ratingAverage reviewCount bio medicalCouncilRegistrationNumber licenseDocumentUrl hospitalAffiliationStatus scheduleRules createdAt"
+      )
+      .sort(sortOption)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    DoctorProfile.aggregate([
+      {
+        $match: {
+          hospitalId: { $in: targetHospitalIds },
+          hospitalAffiliationStatus: "APPROVED",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalDoctors: { $sum: 1 },
+          avgRating: { $avg: "$ratingAverage" },
+          avgFee: { $avg: "$consultationFee" },
+          departments: { $addToSet: "$department" },
+        },
+      },
+    ]),
+    DoctorProfile.aggregate([
+      {
+        $match: {
+          hospitalId: { $in: targetHospitalIds },
+          hospitalAffiliationStatus: "APPROVED",
+        },
+      },
+      {
+        $group: {
+          _id: "$department",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+    ]),
+  ]);
+
+  const totalPages = Math.ceil(totalDocs / limit) || 1;
+
+  const kpis = {
+    totalDoctors: overallAgg[0]?.totalDoctors || 0,
+    totalDepartments: overallAgg[0]?.departments?.length || 0,
+    averageRating: Number((overallAgg[0]?.avgRating || 0).toFixed(1)),
+    averageFee: Math.round(overallAgg[0]?.avgFee || 0),
+  };
+
+  const departmentStats = departmentAgg.map((d) => ({
+    department: d._id || "General Medicine",
+    count: d.count,
+  }));
+
+  const hospitalsList = adminHospitals.map((h) => ({
+    id: h._id.toString(),
+    name: h.name,
+    city: (h as any).address?.city || "",
+  }));
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        doctors,
+        pagination: {
+          totalDocs,
+          totalPages,
+          currentPage: page,
+          limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+        kpis,
+        departmentStats,
+        hospitalsList,
+      },
+      "Hospital affiliated doctors retrieved successfully"
+    )
+  );
+});
+
+/**
  * Disaffiliate / Remove a doctor from hospital
  */
 export const disaffiliateDoctor = asyncHandler(async (req: Request, res: Response) => {
@@ -830,11 +1063,7 @@ export const disaffiliateDoctor = asyncHandler(async (req: Request, res: Respons
   );
 });
 
-/**
- * Production-Grade Multi-Hospital Admin Portal Dashboard Controller
- * Aggregates KPIs, daily appointments timeline, status breakdown, cross-facility performance,
- * department distribution, and action queues across all hospitals owned by this admin.
- */
+
 export const getHospitalAdminPortalDashboard = asyncHandler(async (req: Request, res: Response) => {
   const adminUserId = req.user?.userId;
 

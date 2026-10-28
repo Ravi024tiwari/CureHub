@@ -260,7 +260,12 @@ export const HospitalDoctorDetailModal: FC<HospitalDoctorDetailModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => doctorId && navigate(`/doctors/${doctorId}`)}
+                onClick={() => {
+                  if (doctorId) {
+                    onClose()
+                    navigate(`/hospital-admin/doctors/${doctorId}`)
+                  }
+                }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
               >
                 <span>Full Page</span>
@@ -554,7 +559,7 @@ export const HospitalDoctorDetailModal: FC<HospitalDoctorDetailModalProps> = ({
             onClick={() => {
               if (doctorId) {
                 onClose()
-                navigate(`/doctors/${doctorId}`)
+                navigate(`/hospital-admin/doctors/${doctorId}`)
               }
             }}
             className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"

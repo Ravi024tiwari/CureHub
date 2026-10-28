@@ -13,8 +13,10 @@ import {
   Clock,
   Sparkles,
   X,
+  Building2,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { UserRole } from '@/types/auth'
 import { useNavigate } from 'react-router-dom'
 
 interface PatientHeaderProps {
@@ -104,6 +106,23 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
   }
 
   const patientName = user?.name || 'Ravi Tiwari'
+  const roleLabel =
+    user?.role === UserRole.HOSPITAL_ADMIN
+      ? 'Hospital Admin'
+      : user?.role === UserRole.DOCTOR
+      ? 'Doctor'
+      : user?.role === UserRole.SUPER_ADMIN
+      ? 'Super Admin'
+      : 'Patient'
+
+  const verifiedBadgeText =
+    user?.role === UserRole.HOSPITAL_ADMIN
+      ? 'Hospital Administrator'
+      : user?.role === UserRole.DOCTOR
+      ? 'Verified Doctor'
+      : user?.role === UserRole.SUPER_ADMIN
+      ? 'Super Admin'
+      : 'Verified Patient'
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-slate-100 px-3 sm:px-6 lg:px-8 2xl:px-10 py-2.5 sm:py-3 transition-all shadow-2xs">
@@ -274,7 +293,7 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
                 </p>
                 <p className="text-[10px] font-semibold text-emerald-600 leading-none flex items-center gap-1 mt-0.5">
                   <span className="size-1.5 rounded-full bg-emerald-500"></span>
-                  Patient
+                  {roleLabel}
                 </p>
               </div>
 
@@ -296,16 +315,28 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
                     <p className="text-xs font-bold text-slate-900 truncate">{patientName}</p>
                     <p className="text-[11px] text-slate-400 truncate">{user?.email || 'patient@curehealth.org'}</p>
                     <span className="inline-block mt-0.5 text-[9px] font-bold text-blue-700 bg-blue-100/80 px-1.5 py-0.5 rounded-full">
-                      Verified Patient
+                      {verifiedBadgeText}
                     </span>
                   </div>
                 </div>
 
                 <div className="py-1">
+                  {user?.role === UserRole.HOSPITAL_ADMIN && (
+                    <button
+                      onClick={() => {
+                        setIsProfileOpen(false)
+                        navigate('/hospital-admin/dashboard')
+                      }}
+                      className="w-full px-3.5 py-2 text-left text-xs text-blue-700 hover:bg-blue-50 flex items-center gap-2.5 font-bold transition-colors cursor-pointer"
+                    >
+                      <Building2 className="size-4 text-blue-600" />
+                      <span>Hospital Admin Portal</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setIsProfileOpen(false)
-                      alert(`Profile: ${patientName} | Status: Active | Blood Group: O+`)
+                      alert(`Profile: ${patientName} | Status: Active | Role: ${roleLabel}`)
                     }}
                     className="w-full px-3.5 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 font-medium transition-colors cursor-pointer"
                   >
