@@ -1,3 +1,4 @@
+import { HospitalAdminLayout } from '@/components/hospital-admin/HospitalAdminLayout'
 import { useState, useEffect, type FC } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
@@ -5,9 +6,6 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react'
-import { HospitalAdminSidebar } from '@/components/hospital-admin/HospitalAdminSidebar'
-import { HospitalAdminHeader } from '@/components/hospital-admin/HospitalAdminHeader'
-import { HospitalAdminMobileNav } from '@/components/hospital-admin/HospitalAdminMobileNav'
 import { EditHospitalModal } from '@/components/hospital-admin/hospitals/EditHospitalModal'
 
 import { HospitalDetailHeader } from '@/components/hospital-admin/hospital-detail/HospitalDetailHeader'
@@ -130,30 +128,7 @@ export const HospitalDetailPage: FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex selection:bg-blue-100 selection:text-blue-700 antialiased">
-      {/* 1. Desktop Persistent Collapsible Sidebar */}
-      <div
-        className={`hidden lg:block transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${
-          isSidebarCollapsed ? 'w-0 opacity-0 -ml-2 pointer-events-none' : 'w-64 opacity-100'
-        }`}
-      >
-        <HospitalAdminSidebar />
-      </div>
-
-      {/* 2. Mobile Drawer Sidebar (triggered by hamburger menu) */}
-      {isMobileSidebarOpen && (
-        <HospitalAdminSidebar
-          isMobileDrawer={true}
-          onCloseDrawer={() => setIsMobileSidebarOpen(false)}
-        />
-      )}
-
-      {/* 3. Main Page Area */}
-      <div className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-10 transition-all duration-300">
-        {/* Top Header with Hamburger Mobile Menu toggle */}
-        <HospitalAdminHeader onToggleSidebar={toggleSidebar} />
-
-        {/* Content Body */}
+    <HospitalAdminLayout>
         <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 sm:space-y-6">
           {isLoading ? (
             <div className="py-24 flex flex-col items-center justify-center text-center">
@@ -286,7 +261,6 @@ export const HospitalDetailPage: FC = () => {
             </>
           )}
         </main>
-      </div>
 
       {/* Edit Hospital Modal */}
       <EditHospitalModal />
@@ -310,8 +284,7 @@ export const HospitalDetailPage: FC = () => {
       />
 
       {/* Mobile Bottom Navigation */}
-      <HospitalAdminMobileNav />
-    </div>
+    </HospitalAdminLayout>
   )
 }
 

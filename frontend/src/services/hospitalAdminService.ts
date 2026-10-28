@@ -9,6 +9,8 @@ import type {
   HospitalDoctorsResponse,
   HospitalAdminProfileData,
   HospitalAdminDoctorsResponse,
+  AdminAppointmentsResponse,
+  AdminAppointmentDetailResponse,
 } from '@/types/hospitalAdmin'
 
 export const hospitalAdminService = {
@@ -181,4 +183,77 @@ export const hospitalAdminService = {
     const response = await apiClient.patch('/profile/hospital-admin', data, { headers })
     return (response as any)?.data || response
   },
+  // ── Hospital Admin Appointments ───────────────────────────────────────────
+  getAppointments: async (params?: {
+    page?: number
+    limit?: number
+    hospitalId?: string
+    doctorId?: string
+    department?: string
+    status?: string
+    tab?: string
+    date?: string
+    startDate?: string
+    endDate?: string
+    search?: string
+    sortBy?: string
+  }): Promise<AdminAppointmentsResponse> => {
+    const q = new URLSearchParams()
+    if (params?.page) q.append('page', params.page.toString())
+    if (params?.limit) q.append('limit', params.limit.toString())
+    if (params?.hospitalId && params.hospitalId !== 'all') q.append('hospitalId', params.hospitalId)
+    if (params?.doctorId && params.doctorId !== 'all') q.append('doctorId', params.doctorId)
+    if (params?.department && params.department !== 'all') q.append('department', params.department)
+    if (params?.status && params.status !== 'ALL') q.append('status', params.status)
+    if (params?.tab) q.append('tab', params.tab)
+    if (params?.date) q.append('date', params.date)
+    if (params?.startDate) q.append('startDate', params.startDate)
+    if (params?.endDate) q.append('endDate', params.endDate)
+    if (params?.search) q.append('search', params.search)
+    if (params?.sortBy) q.append('sortBy', params.sortBy)
+
+    const response = await apiClient.get(`/hospital-admin/appointments?${q.toString()}`)
+    return (response as any)?.data || response
+  },
+
+  getAppointmentById: async (appointmentId: string): Promise<AdminAppointmentDetailResponse> => {
+    const response = await apiClient.get(`/hospital-admin/appointments/${appointmentId}`)
+    return (response as any)?.data || response
+  },
+
+  cancelAppointment: async (appointmentId: string, reason?: string): Promise<any> => {
+    const response = await apiClient.patch(`/hospital-admin/appointments/${appointmentId}/cancel`, {
+      reason,
+    })
+    return (response as any)?.data || response
+  },
+
+  rescheduleAppointment: async (
+    appointmentId: string,
+    payload: { newSlotId?: string; date?: string; startTime?: string; reason?: string }
+  ): Promise<any> => {
+    const response = await apiClient.patch(
+      `/hospital-admin/appointments/${appointmentId}/reschedule`,
+      payload
+    )
+    return (response as any)?.data || response
+  },
+
+  bookAppointment: async (payload: {
+    patientName: string
+    phoneNumber: string
+    age?: number | ''
+    gender?: string
+    hospitalId: string
+    doctorId: string
+    date: string
+    startTime: string
+    consultationFee?: number
+    symptoms?: string
+    notes?: string
+  }): Promise<any> => {
+    const response = await apiClient.post('/hospital-admin/appointments', payload)
+    return (response as any)?.data || response
+  },
+
 }

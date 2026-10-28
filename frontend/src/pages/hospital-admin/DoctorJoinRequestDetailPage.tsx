@@ -27,9 +27,7 @@ import { useHospitalAdminStore } from '@/store/hospitalAdminStore'
 import { useHospitalAdminJoinRequestsStore } from '@/store/hospitalAdminJoinRequestsStore'
 
 // Components
-import { HospitalAdminSidebar } from '@/components/hospital-admin/HospitalAdminSidebar'
-import { HospitalAdminHeader } from '@/components/hospital-admin/HospitalAdminHeader'
-import { HospitalAdminMobileNav } from '@/components/hospital-admin/HospitalAdminMobileNav'
+import { HospitalAdminLayout } from '@/components/hospital-admin/HospitalAdminLayout'
 import { JoinRequestActionModal } from '@/components/hospital-admin/join-requests/JoinRequestActionModal'
 import { DoctorAvatar } from '@/components/hospital-admin/join-requests/JoinRequestsTable'
 
@@ -175,30 +173,8 @@ export const DoctorJoinRequestDetailPage: FC = () => {
   ]
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex selection:bg-blue-100 selection:text-blue-700 antialiased">
-      {/* 1. Desktop Persistent Collapsible Sidebar */}
-      <div
-        className={`hidden lg:block transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${
-          isSidebarCollapsed ? 'w-0 opacity-0 -ml-2 pointer-events-none' : 'w-64 opacity-100'
-        }`}
-      >
-        <HospitalAdminSidebar />
-      </div>
-
-      {/* 2. Mobile Drawer Sidebar */}
-      {isMobileSidebarOpen && (
-        <HospitalAdminSidebar
-          isMobileDrawer={true}
-          onCloseDrawer={() => setIsMobileSidebarOpen(false)}
-        />
-      )}
-
-      {/* 3. Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 pb-32 lg:pb-16 transition-all duration-300">
-        {/* Top Header */}
-        <HospitalAdminHeader onToggleSidebar={toggleSidebar} />
-
-        <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+    <HospitalAdminLayout>
+      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
           {/* Action Success / Error Notification */}
           {toastMessage && (
             <div
@@ -781,10 +757,6 @@ export const DoctorJoinRequestDetailPage: FC = () => {
             </div>
           )}
         </main>
-      </div>
-
-      {/* Mobile Bottom Navigation */}
-      <HospitalAdminMobileNav onToggleSidebar={() => setIsMobileSidebarOpen(true)} />
 
       {/* Action Approval / Rejection Modal */}
       <JoinRequestActionModal />
@@ -847,7 +819,7 @@ export const DoctorJoinRequestDetailPage: FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </HospitalAdminLayout>
   )
 }
 export default DoctorJoinRequestDetailPage

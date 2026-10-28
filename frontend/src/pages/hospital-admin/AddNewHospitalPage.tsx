@@ -1,3 +1,4 @@
+import { HospitalAdminLayout } from '@/components/hospital-admin/HospitalAdminLayout'
 import { useState, useEffect, type FC, type FormEvent } from 'react'
 import { useNavigate, Link, useParams } from 'react-router-dom'
 import {
@@ -19,9 +20,6 @@ import {
   Stethoscope,
   Clock,
 } from 'lucide-react'
-import { HospitalAdminSidebar } from '@/components/hospital-admin/HospitalAdminSidebar'
-import { HospitalAdminHeader } from '@/components/hospital-admin/HospitalAdminHeader'
-import { HospitalAdminMobileNav } from '@/components/hospital-admin/HospitalAdminMobileNav'
 import { AddHospitalStepper } from '@/components/hospital-admin/add-hospital/AddHospitalStepper'
 import { BasicInfoCard } from '@/components/hospital-admin/add-hospital/BasicInfoCard'
 import { HospitalImagesCard } from '@/components/hospital-admin/add-hospital/HospitalImagesCard'
@@ -385,30 +383,7 @@ export const AddNewHospitalPage: FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex selection:bg-blue-100 selection:text-blue-700 antialiased">
-      {/* 1. Desktop Persistent Collapsible Sidebar */}
-      <div
-        className={`hidden lg:block transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${
-          isSidebarCollapsed ? 'w-0 opacity-0 -ml-2 pointer-events-none' : 'w-64 opacity-100'
-        }`}
-      >
-        <HospitalAdminSidebar />
-      </div>
-
-      {/* 2. Mobile Drawer Sidebar */}
-      {isMobileSidebarOpen && (
-        <HospitalAdminSidebar
-          isMobileDrawer={true}
-          onCloseDrawer={() => setIsMobileSidebarOpen(false)}
-        />
-      )}
-
-      {/* 3. Main Content Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 pb-28 lg:pb-16 transition-all duration-300">
-        {/* Top Header with Hamburger menu */}
-        <HospitalAdminHeader onToggleSidebar={toggleSidebar} />
-
-        {/* Page Body */}
+    <HospitalAdminLayout>
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
           {/* Breadcrumbs: Hospitals > (Hospital Name) > Edit or Add New */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -728,7 +703,6 @@ export const AddNewHospitalPage: FC = () => {
             </>
           )}
         </main>
-      </div>
 
       {/* Floating Sticky Mobile Bottom Action Bar */}
       <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200/90 p-3 sm:p-4 z-40 lg:hidden shadow-lg flex items-center justify-between gap-2">
@@ -931,8 +905,7 @@ export const AddNewHospitalPage: FC = () => {
       )}
 
       {/* Mobile Bottom Nav */}
-      <HospitalAdminMobileNav />
-    </div>
+    </HospitalAdminLayout>
   )
 }
 export default AddNewHospitalPage

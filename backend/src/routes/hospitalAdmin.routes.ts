@@ -10,6 +10,11 @@ import {
   disaffiliateDoctor,
   getAdminAffiliatedDoctors,
   getHospitalAdminPortalDashboard,
+  getAdminAppointments,
+  getAdminAppointmentById,
+  cancelAdminAppointment,
+  rescheduleAdminAppointment,
+  bookAdminAppointment,
 } from "../controllers/hospitalAdmin.controller.js";
 import {
   getHospitalById,
@@ -49,6 +54,20 @@ hospitalAdminRouter.patch("/join-requests/:requestId", respondToJoinRequest);
 hospitalAdminRouter.delete(
   "/hospitals/:hospitalId/doctors/:doctorId",
   disaffiliateDoctor
+);
+
+
+// ── 4. Hospital Admin Appointments ───────────────────────────────────────────
+hospitalAdminRouter.get("/appointments", getAdminAppointments);
+hospitalAdminRouter.post("/appointments", bookAdminAppointment);
+hospitalAdminRouter.get("/appointments/:appointmentId", getAdminAppointmentById);
+hospitalAdminRouter.patch(
+  "/appointments/:appointmentId/cancel",
+  cancelAdminAppointment
+);
+hospitalAdminRouter.patch(
+  "/appointments/:appointmentId/reschedule",
+  rescheduleAdminAppointment
 );
 
 export default hospitalAdminRouter;

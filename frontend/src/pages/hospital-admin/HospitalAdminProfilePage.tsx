@@ -1,3 +1,4 @@
+import { HospitalAdminLayout } from '@/components/hospital-admin/HospitalAdminLayout'
 import { useState, useEffect, useRef, type FC, type ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
@@ -35,9 +36,6 @@ import { hospitalAdminService } from '@/services/hospitalAdminService'
 import type { HospitalAdminProfileData } from '@/types/hospitalAdmin'
 
 // Layout Components
-import { HospitalAdminSidebar } from '@/components/hospital-admin/HospitalAdminSidebar'
-import { HospitalAdminHeader } from '@/components/hospital-admin/HospitalAdminHeader'
-import { HospitalAdminMobileNav } from '@/components/hospital-admin/HospitalAdminMobileNav'
 
 export const HospitalAdminProfilePage: FC = () => {
   const navigate = useNavigate()
@@ -319,28 +317,7 @@ export const HospitalAdminProfilePage: FC = () => {
   const isVerified = user?.isAccountApproved || profileData?.verificationStatus === 'APPROVED'
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex selection:bg-blue-100 selection:text-blue-700 antialiased">
-      {/* 1. Desktop Persistent Collapsible Sidebar */}
-      <div
-        className={`hidden lg:block transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${
-          isSidebarCollapsed ? 'w-0 opacity-0 -ml-2 pointer-events-none' : 'w-64 opacity-100'
-        }`}
-      >
-        <HospitalAdminSidebar />
-      </div>
-
-      {/* 2. Mobile Drawer Sidebar */}
-      {isMobileSidebarOpen && (
-        <HospitalAdminSidebar
-          isMobileDrawer={true}
-          onCloseDrawer={() => setIsMobileSidebarOpen(false)}
-        />
-      )}
-
-      {/* 3. Main Content View Area */}
-      <div className="flex-1 flex flex-col min-w-0 pb-28 sm:pb-24 lg:pb-12 transition-all duration-300">
-        <HospitalAdminHeader onToggleSidebar={toggleSidebar} />
-
+    <HospitalAdminLayout>
         <main className="flex-1 max-w-[1500px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-5 lg:py-6 space-y-4 sm:space-y-5 lg:space-y-6">
           {/* Toast Notification Alert */}
           {toast && (
@@ -1321,7 +1298,6 @@ export const HospitalAdminProfilePage: FC = () => {
             </div>
           </div>
         </main>
-      </div>
 
       {/* ── Mobile-Only Floating Bottom Save Bar (Docked right above MobileNav) ── */}
       <div className="sm:hidden fixed bottom-[56px] inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 p-2.5 px-3.5 flex items-center justify-between gap-2.5 shadow-lg">
@@ -1526,8 +1502,7 @@ export const HospitalAdminProfilePage: FC = () => {
       )}
 
       {/* Mobile Bottom Navigation */}
-      <HospitalAdminMobileNav />
-    </div>
+    </HospitalAdminLayout>
   )
 }
 

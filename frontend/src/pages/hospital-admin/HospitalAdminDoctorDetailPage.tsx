@@ -1,3 +1,4 @@
+import { HospitalAdminLayout } from '@/components/hospital-admin/HospitalAdminLayout'
 import { useState, useEffect, type FC } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
@@ -32,9 +33,6 @@ import { useHospitalAdminDoctorsStore } from '@/store/hospitalAdminDoctorsStore'
 import { fetchDoctorByIdApi } from '@/services/patientService'
 
 // Layout Components
-import { HospitalAdminSidebar } from '@/components/hospital-admin/HospitalAdminSidebar'
-import { HospitalAdminHeader } from '@/components/hospital-admin/HospitalAdminHeader'
-import { HospitalAdminMobileNav } from '@/components/hospital-admin/HospitalAdminMobileNav'
 import { HospitalDoctorDisaffiliateModal } from '@/components/hospital-admin/doctors/HospitalDoctorDisaffiliateModal'
 import { DoctorAvatar } from '@/components/hospital-admin/join-requests/JoinRequestsTable'
 
@@ -157,28 +155,7 @@ export const HospitalAdminDoctorDetailPage: FC = () => {
   const avatar = doctor?.avatar || doctor?.userId?.avatar || drAmitImg
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex selection:bg-blue-100 selection:text-blue-700 antialiased">
-      {/* 1. Desktop Persistent Collapsible Sidebar */}
-      <div
-        className={`hidden lg:block transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${
-          isSidebarCollapsed ? 'w-0 opacity-0 -ml-2 pointer-events-none' : 'w-64 opacity-100'
-        }`}
-      >
-        <HospitalAdminSidebar />
-      </div>
-
-      {/* 2. Mobile Drawer Sidebar */}
-      {isMobileSidebarOpen && (
-        <HospitalAdminSidebar
-          isMobileDrawer={true}
-          onCloseDrawer={() => setIsMobileSidebarOpen(false)}
-        />
-      )}
-
-      {/* 3. Main Content View Area */}
-      <div className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-10 transition-all duration-300">
-        <HospitalAdminHeader onToggleSidebar={toggleSidebar} />
-
+    <HospitalAdminLayout>
         <main className="flex-1 max-w-[1400px] w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-5 sm:space-y-6">
           {/* Top Breadcrumb Navigation & Top Action Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -816,14 +793,12 @@ export const HospitalAdminDoctorDetailPage: FC = () => {
             </>
           )}
         </main>
-      </div>
 
       {/* Disaffiliate Confirmation Modal */}
       <HospitalDoctorDisaffiliateModal />
 
       {/* Mobile Bottom Navigation */}
-      <HospitalAdminMobileNav />
-    </div>
+    </HospitalAdminLayout>
   )
 }
 

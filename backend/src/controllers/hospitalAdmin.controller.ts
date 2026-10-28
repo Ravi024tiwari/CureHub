@@ -11,11 +11,16 @@ import {
   JoinRequestStatus,
 } from "../models/HospitalJoinRequest.model.js";
 import { Review } from "../models/Review.model.js";
+import { TimeSlot } from "../models/TimeSlot.model.js";
+import { PatientProfile } from "../models/PatientProfile.model.js";
+import { razorpayInstance } from "../config/razorpay.js";
 
 import {
   VerificationStatus,
   AppointmentStatus,
   PaymentStatus,
+  SlotStatus,
+  ConsultationType,
 } from "../constants/index.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
@@ -1483,3 +1488,905 @@ export const getHospitalAdminPortalDashboard = asyncHandler(async (req: Request,
 });
 
 
+
+
+export const getAdminAppointments = asyncHandler(async (req: Request, res: Response) => {
+  const adminUserId = req.user?.userId;
+
+  if (!adminUserId) {
+    throw new ApiError(401, "Authentication required");
+  }
+
+  // 1. Fetch all hospitals managed by this hospital admin
+  const adminHospitals = await Hospital.find({
+    hospitalAdminId: new mongoose.Types.ObjectId(adminUserId),
+  })
+    .select("_id name slug address departments")
+    .lean();
+
+  if (!adminHospitals.length) {
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          appointments: [],
+          pagination: {
+            totalDocs: 0,
+            totalPages: 1,
+            currentPage: 1,
+            limit: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+          kpis: {
+            total: 0,
+            totalTrend: "0% from last week",
+            completed: 0,
+            completedPct: 0,
+            upcoming: 0,
+            upcomingPct: 0,
+            cancelled: 0,
+            cancelledPct: 0,
+          },
+          filterOptions: {
+            hospitals: [],
+            doctors: [],
+            departments: [],
+          },
+        },
+        "No hospitals found for this administrator."
+      )
+    );
+  }
+
+  const allAdminHospitalIds = adminHospitals.map((h) => h._id);
+
+  // 2. Resolve scoped hospital(s)
+  const {
+    hospitalId,
+    doctorId,
+    department,
+    status,
+    tab,
+    date,
+    startDate,
+    endDate,
+    search,
+    mode,
+    sortBy,
+  } = req.query;
+
+  let targetHospitalIds = allAdminHospitalIds;
+  if (
+    hospitalId &&
+    typeof hospitalId === "string" &&
+    hospitalId.toLowerCase() !== "all" &&
+    mongoose.Types.ObjectId.isValid(hospitalId)
+  ) {
+    const requestedId = new mongoose.Types.ObjectId(hospitalId);
+    const isOwned = allAdminHospitalIds.some((id) => id.equals(requestedId));
+    if (isOwned) {
+      targetHospitalIds = [requestedId];
+    }
+  }
+
+  // 3. Build Query Filter
+  // Scoped to hospitalId to guarantee zero data loss if doctor leaves hospital
+  const filter: any = {
+    hospitalId: { $in: targetHospitalIds },
+    type: ConsultationType.IN_PERSON, // Strictly On-site consultations
+  };
+
+  // Status & Tab Filtering
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  if (tab === "today") {
+    filter.date = todayStr;
+  } else if (tab === "upcoming") {
+    filter.date = { $gte: todayStr };
+    filter.status = {
+      $in: [
+        AppointmentStatus.CONFIRMED,
+        AppointmentStatus.PENDING_PAYMENT,
+        AppointmentStatus.CHECKED_IN,
+        AppointmentStatus.RESCHEDULE_REQUIRED,
+      ],
+    };
+  } else if (tab === "completed") {
+    filter.status = AppointmentStatus.COMPLETED;
+  } else if (tab === "cancelled") {
+    filter.status = {
+      $in: [
+        AppointmentStatus.CANCELLED_BY_PATIENT,
+        AppointmentStatus.CANCELLED_BY_DOCTOR,
+      ],
+    };
+  }
+
+  if (status && typeof status === "string" && status.toUpperCase() !== "ALL") {
+    const upperStatus = status.toUpperCase().trim();
+    if (upperStatus === "CONFIRMED") {
+      filter.status = AppointmentStatus.CONFIRMED;
+    } else if (upperStatus === "PENDING") {
+      filter.status = AppointmentStatus.PENDING_PAYMENT;
+    } else if (upperStatus === "COMPLETED") {
+      filter.status = AppointmentStatus.COMPLETED;
+    } else if (upperStatus === "CANCELLED") {
+      filter.status = {
+        $in: [
+          AppointmentStatus.CANCELLED_BY_PATIENT,
+          AppointmentStatus.CANCELLED_BY_DOCTOR,
+        ],
+      };
+    } else if (Object.values(AppointmentStatus).includes(upperStatus as any)) {
+      filter.status = upperStatus;
+    }
+  }
+
+  // Only On-site consultations are supported
+  filter.type = ConsultationType.IN_PERSON;
+
+  // Specific Date filter
+  if (date && typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+    filter.date = date.trim();
+  } else if (startDate && endDate) {
+    filter.date = { $gte: String(startDate).trim(), $lte: String(endDate).trim() };
+  }
+
+  // Specific Doctor filter
+  if (
+    doctorId &&
+    typeof doctorId === "string" &&
+    doctorId.toLowerCase() !== "all" &&
+    mongoose.Types.ObjectId.isValid(doctorId)
+  ) {
+    filter.doctorId = new mongoose.Types.ObjectId(doctorId);
+  }
+
+  // Department filter
+  if (
+    department &&
+    typeof department === "string" &&
+    department.toLowerCase() !== "all" &&
+    department.trim() !== ""
+  ) {
+    const deptRegex = new RegExp(department.trim(), "i");
+    const deptDoctors = await DoctorProfile.find({
+      department: deptRegex,
+    })
+      .select("_id")
+      .lean();
+    const deptDocIds = deptDoctors.map((d) => d._id);
+
+    if (filter.doctorId) {
+      if (!deptDocIds.some((dId) => dId.equals(filter.doctorId))) {
+        filter.doctorId = { $in: [] };
+      }
+    } else {
+      filter.doctorId = { $in: deptDocIds };
+    }
+  }
+
+  // Search keyword (patient name, patient phone, doctor name, appointmentNumber)
+  if (search && typeof search === "string" && search.trim() !== "") {
+    const searchTrimmed = search.trim();
+    const searchRegex = new RegExp(searchTrimmed, "i");
+
+    const matchingPatients = await User.find({
+      $or: [
+        { name: searchRegex },
+        { phoneNumber: searchRegex },
+        { email: searchRegex },
+      ],
+    })
+      .select("_id")
+      .lean();
+    const patientUserIds = matchingPatients.map((p) => p._id);
+
+    const matchingDoctorUsers = await User.find({
+      name: searchRegex,
+    })
+      .select("_id")
+      .lean();
+    const doctorUserIds = matchingDoctorUsers.map((d) => d._id);
+
+    const matchingDoctorProfiles = await DoctorProfile.find({
+      userId: { $in: doctorUserIds },
+    })
+      .select("_id")
+      .lean();
+    const doctorProfileIds = matchingDoctorProfiles.map((d) => d._id);
+
+    filter.$or = [
+      { appointmentNumber: searchRegex },
+      { symptoms: searchRegex },
+      { "patientDetails.fullName": searchRegex },
+      { patientId: { $in: patientUserIds } },
+      { doctorId: { $in: doctorProfileIds } },
+    ];
+  }
+
+  // 4. Pagination (Limit 10 default)
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 10));
+  const skip = (page - 1) * limit;
+
+  // 5. Sorting
+  let sortOption: any = { date: -1, startTime: -1, createdAt: -1 };
+  if (sortBy === "date-asc") {
+    sortOption = { date: 1, startTime: 1 };
+  } else if (sortBy === "date-desc") {
+    sortOption = { date: -1, startTime: -1 };
+  } else if (sortBy === "oldest") {
+    sortOption = { createdAt: 1 };
+  } else if (sortBy === "newest") {
+    sortOption = { createdAt: -1 };
+  }
+
+  // 6. Execute Queries in Parallel (Strictly On-site)
+  const kpiFilter: any = {
+    hospitalId: { $in: targetHospitalIds },
+    type: ConsultationType.IN_PERSON,
+  };
+
+  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+
+  const [
+    appointmentsRaw,
+    totalDocs,
+    totalAllAppointments,
+    completedCount,
+    upcomingCount,
+    cancelledCount,
+    currentWeekCount,
+    previousWeekCount,
+  ] = await Promise.all([
+    Appointment.find(filter)
+      .populate({
+        path: "patientId",
+        select: "name email phoneNumber avatar gender dateOfBirth address",
+      })
+      .populate({
+        path: "doctorId",
+        select:
+          "department specialization experienceYears consultationFee ratingAverage bio medicalCouncilRegistrationNumber",
+        populate: { path: "userId", select: "name avatar phoneNumber email" },
+      })
+      .populate("hospitalId", "name slug address contactPhone contactEmail images")
+      .populate("slotId", "date startTime endTime")
+      .sort(sortOption)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Appointment.countDocuments(filter),
+    Appointment.countDocuments(kpiFilter),
+    Appointment.countDocuments({
+      ...kpiFilter,
+      status: AppointmentStatus.COMPLETED,
+    }),
+    Appointment.countDocuments({
+      ...kpiFilter,
+      status: {
+        $in: [
+          AppointmentStatus.CONFIRMED,
+          AppointmentStatus.PENDING_PAYMENT,
+          AppointmentStatus.CHECKED_IN,
+          AppointmentStatus.RESCHEDULE_REQUIRED,
+        ],
+      },
+    }),
+    Appointment.countDocuments({
+      ...kpiFilter,
+      status: {
+        $in: [
+          AppointmentStatus.CANCELLED_BY_PATIENT,
+          AppointmentStatus.CANCELLED_BY_DOCTOR,
+        ],
+      },
+    }),
+    Appointment.countDocuments({
+      ...kpiFilter,
+      createdAt: { $gte: oneWeekAgo },
+    }),
+    Appointment.countDocuments({
+      ...kpiFilter,
+      createdAt: { $gte: twoWeeksAgo, $lt: oneWeekAgo },
+    }),
+  ]);
+
+  // 7. Batch Fetch Payment details for the appointments
+  const appointmentIds = appointmentsRaw.map((a) => a._id);
+  const payments = await Payment.find({
+    appointmentId: { $in: appointmentIds },
+  })
+    .select("appointmentId status amount paymentMethod transactionId paidAt")
+    .lean();
+
+  const paymentMap = new Map<string, any>();
+  payments.forEach((p) => {
+    paymentMap.set(p.appointmentId.toString(), p);
+  });
+
+  // 8. Transform Appointments with pure real data
+  const appointments = appointmentsRaw.map((appt: any) => {
+    const patientUser = appt.patientId || {};
+    const doctorProfile = appt.doctorId || {};
+    const doctorUser = doctorProfile.userId || {};
+    const hospital = appt.hospitalId || {};
+    const payment = paymentMap.get(appt._id.toString()) || null;
+
+    let patientAge: number | null = null;
+    if (typeof appt.patientDetails?.age === "number" && !isNaN(appt.patientDetails.age)) {
+      patientAge = appt.patientDetails.age;
+    } else if (patientUser.dateOfBirth) {
+      const birthYear = new Date(patientUser.dateOfBirth).getFullYear();
+      if (!isNaN(birthYear)) {
+        patientAge = new Date().getFullYear() - birthYear;
+      }
+    }
+
+    const patientGender =
+      appt.patientDetails?.gender || patientUser.gender || null;
+
+    const patientPhone =
+      appt.patientDetails?.phoneNumber || patientUser.phoneNumber || "";
+
+    const patientName =
+      appt.patientDetails?.fullName || patientUser.name || "Patient";
+
+    const doctorName = doctorUser.name
+      ? doctorUser.name.startsWith("Dr.")
+        ? doctorUser.name
+        : `Dr. ${doctorUser.name}`
+      : "Doctor";
+
+    return {
+      _id: appt._id.toString(),
+      appointmentNumber: appt.appointmentNumber,
+      date: appt.date,
+      startTime: appt.startTime,
+      endTime: appt.endTime,
+      dateTimeFormatted: `${appt.date}, ${appt.startTime}`,
+      type: "IN_PERSON",
+      mode: "On-site",
+      status: appt.status,
+      displayStatus:
+        appt.status === AppointmentStatus.CONFIRMED
+          ? "Confirmed"
+          : appt.status === AppointmentStatus.COMPLETED
+          ? "Completed"
+          : appt.status === AppointmentStatus.PENDING_PAYMENT
+          ? "Pending"
+          : appt.status === AppointmentStatus.CANCELLED_BY_PATIENT ||
+            appt.status === AppointmentStatus.CANCELLED_BY_DOCTOR
+          ? "Cancelled"
+          : appt.status,
+      symptoms: appt.symptoms || "",
+      reasonForVisit: appt.symptoms || "",
+      consultationFee: appt.consultationFee || 0,
+      patient: {
+        id: patientUser._id?.toString() || "",
+        name: patientName,
+        email: patientUser.email || "",
+        phoneNumber: patientPhone,
+        avatar: patientUser.avatar || null,
+        age: patientAge,
+        gender: patientGender,
+        isDependent: Boolean(appt.patientDetails?.isDependent),
+        relationship: appt.patientDetails?.relationship || null,
+      },
+      doctor: {
+        id: doctorProfile._id?.toString() || "",
+        name: doctorName,
+        avatar: doctorUser.avatar || null,
+        department: doctorProfile.department || "General",
+        specialization: doctorProfile.specialization || [],
+        experienceYears: doctorProfile.experienceYears || 0,
+        ratingAverage: doctorProfile.ratingAverage || 0,
+      },
+      hospital: {
+        id: hospital._id?.toString() || "",
+        name: hospital.name || "Hospital",
+        city: hospital.address?.city || "",
+        state: hospital.address?.state || "",
+        address: hospital.address?.street || "",
+      },
+      payment: payment
+        ? {
+            status: payment.status,
+            amount: payment.amount,
+            method: payment.paymentMethod || "Counter Cash",
+            transactionId: payment.transactionId || "-",
+            isPaid: payment.status === PaymentStatus.COMPLETED,
+          }
+        : {
+            status:
+              appt.status === AppointmentStatus.CONFIRMED || appt.status === AppointmentStatus.COMPLETED
+                ? "COMPLETED"
+                : "PENDING",
+            amount: appt.consultationFee || 0,
+            method: "Counter Cash",
+            transactionId: "-",
+            isPaid:
+              appt.status === AppointmentStatus.CONFIRMED || appt.status === AppointmentStatus.COMPLETED,
+          },
+      prescription: appt.prescription || null,
+      cancellation: appt.cancellation || null,
+      notes: appt.prescription?.notes || "",
+      bookedOn: appt.createdAt,
+      createdAt: appt.createdAt,
+    };
+  });
+
+  // 9. Fetch Dynamic Filter Dropdown Options
+  const hospitalDoctors = await DoctorProfile.find({
+    hospitalId: { $in: targetHospitalIds },
+    hospitalAffiliationStatus: "APPROVED",
+  })
+    .populate("userId", "name avatar")
+    .select("department specialization userId")
+    .lean();
+
+  const doctorList = hospitalDoctors.map((d: any) => ({
+    id: d._id.toString(),
+    name: d.userId?.name
+      ? d.userId.name.startsWith("Dr.")
+        ? d.userId.name
+        : `Dr. ${d.userId.name}`
+      : "Doctor",
+    department: d.department,
+    avatar: d.userId?.avatar || null,
+  }));
+
+  const departmentSet = new Set<string>();
+  adminHospitals.forEach((h: any) => {
+    if (Array.isArray(h.departments)) {
+      h.departments.forEach((d: string) => departmentSet.add(d));
+    }
+  });
+  hospitalDoctors.forEach((d: any) => {
+    if (d.department) departmentSet.add(d.department);
+  });
+
+  // Only real departments present in hospitals/doctors
+  const departmentList = Array.from(departmentSet).sort();
+
+  const totalPages = Math.ceil(totalDocs / limit) || 1;
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        appointments,
+        pagination: {
+          totalDocs,
+          totalPages,
+          currentPage: page,
+          limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+        kpis: {
+          total: totalAllAppointments,
+          totalTrend: (() => {
+            if (previousWeekCount === 0) {
+              return currentWeekCount > 0 ? `+${currentWeekCount} new this week` : "0% from last week";
+            }
+            const diff = currentWeekCount - previousWeekCount;
+            const pct = Math.round((diff / previousWeekCount) * 100);
+            return `${pct >= 0 ? "↑" : "↓"} ${Math.abs(pct)}% from last week`;
+          })(),
+          completed: completedCount,
+          completedPct:
+            totalAllAppointments > 0
+              ? Number(((completedCount / totalAllAppointments) * 100).toFixed(1))
+              : 0,
+          upcoming: upcomingCount,
+          upcomingPct:
+            totalAllAppointments > 0
+              ? Number(((upcomingCount / totalAllAppointments) * 100).toFixed(1))
+              : 0,
+          cancelled: cancelledCount,
+          cancelledPct:
+            totalAllAppointments > 0
+              ? Number(((cancelledCount / totalAllAppointments) * 100).toFixed(1))
+              : 0,
+        },
+        filterOptions: {
+          hospitals: adminHospitals.map((h: any) => ({
+            id: h._id.toString(),
+            name: h.name,
+          })),
+          doctors: doctorList,
+          departments: Array.from(departmentSet).sort(),
+        },
+      },
+      "Hospital appointments retrieved successfully."
+    )
+  );
+});
+
+/**
+ * Hospital Admin: Get single appointment details by ID
+ * Includes patient profile, medical history, payment, prescription
+ */
+export const getAdminAppointmentById = asyncHandler(async (req: Request, res: Response) => {
+  const adminUserId = req.user?.userId;
+  const { appointmentId } = req.params;
+
+  if (!adminUserId) {
+    throw new ApiError(401, "Authentication required");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
+    throw new ApiError(400, "Invalid appointment ID");
+  }
+
+  const appointment = await Appointment.findById(appointmentId)
+    .populate({
+      path: "patientId",
+      select: "name email phoneNumber avatar gender dateOfBirth address",
+    })
+    .populate({
+      path: "doctorId",
+      select:
+        "department specialization qualifications experienceYears consultationFee ratingAverage bio medicalCouncilRegistrationNumber",
+      populate: { path: "userId", select: "name avatar phoneNumber email" },
+    })
+    .populate("hospitalId", "name slug address contactPhone contactEmail images hospitalAdminId")
+    .populate("slotId", "date startTime endTime")
+    .populate("cancellation.cancelledBy", "name role")
+    .lean();
+
+  if (!appointment) {
+    throw new ApiError(404, "Appointment not found.");
+  }
+
+  const hospital = appointment.hospitalId as any;
+  if (!hospital || !hospital.hospitalAdminId || String(hospital.hospitalAdminId) !== String(adminUserId)) {
+    throw new ApiError(403, "Forbidden: You do not have permission to view appointments for this hospital.");
+  }
+
+  const [payment, patientProfile, pastAppointments] = await Promise.all([
+    Payment.findOne({ appointmentId: appointment._id }).lean(),
+    PatientProfile.findOne({ userId: (appointment.patientId as any)?._id })
+      .select("bloodGroup allergies chronicDiseases pastSurgeries currentMedications reports emergencyContact")
+      .lean(),
+    Appointment.find({
+      patientId: (appointment.patientId as any)?._id,
+      _id: { $ne: appointment._id },
+      hospitalId: hospital._id,
+    })
+      .sort({ date: -1 })
+      .limit(5)
+      .select("appointmentNumber date startTime type status symptoms prescription")
+      .lean(),
+  ]);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        appointment,
+        payment,
+        patientProfile,
+        medicalHistory: pastAppointments,
+      },
+      "Appointment details retrieved successfully."
+    )
+  );
+});
+
+/**
+ * Hospital Admin: Cancel an appointment on behalf of hospital
+ */
+export const cancelAdminAppointment = asyncHandler(async (req: Request, res: Response) => {
+  const adminUserId = req.user?.userId;
+  const { appointmentId } = req.params;
+  const { reason } = req.body;
+
+  if (!adminUserId) {
+    throw new ApiError(401, "Authentication required");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
+    throw new ApiError(400, "Invalid appointment ID");
+  }
+
+  const appointment = await Appointment.findById(appointmentId).populate("hospitalId", "hospitalAdminId name");
+  if (!appointment) {
+    throw new ApiError(404, "Appointment not found.");
+  }
+
+  const hospital = appointment.hospitalId as any;
+  if (!hospital || String(hospital.hospitalAdminId) !== String(adminUserId)) {
+    throw new ApiError(403, "Forbidden: You do not have permission to modify appointments for this hospital.");
+  }
+
+  if (
+    appointment.status === AppointmentStatus.COMPLETED ||
+    appointment.status === AppointmentStatus.CANCELLED_BY_PATIENT ||
+    appointment.status === AppointmentStatus.CANCELLED_BY_DOCTOR
+  ) {
+    throw new ApiError(400, `Cannot cancel an appointment that is already ${appointment.status}.`);
+  }
+
+  appointment.status = AppointmentStatus.CANCELLED_BY_DOCTOR;
+  appointment.cancellation = {
+    cancelledBy: new mongoose.Types.ObjectId(adminUserId),
+    reason: reason?.trim() || "Cancelled by Hospital Administration",
+    cancelledAt: new Date(),
+  };
+  await appointment.save();
+
+  // Release time slot
+  if (appointment.slotId) {
+    const slot = await TimeSlot.findById(appointment.slotId);
+    if (slot && slot.status !== SlotStatus.UNAVAILABLE) {
+      slot.status = SlotStatus.AVAILABLE;
+      slot.lockedByPatientId = null;
+      slot.lockedAt = null;
+      slot.lockExpiresAt = null;
+      await slot.save();
+    }
+  }
+
+  // Handle refund if payment was completed
+  const payment = await Payment.findOne({
+    appointmentId: appointment._id,
+    status: PaymentStatus.COMPLETED,
+  });
+
+  if (payment && payment.transactionId) {
+    try {
+      const refund = await razorpayInstance.payments.refund(payment.transactionId, {
+        speed: "normal",
+        notes: {
+          reason: reason?.trim() || "Cancelled by Hospital Administration",
+          appointmentNumber: appointment.appointmentNumber,
+        },
+      });
+      payment.status = PaymentStatus.REFUNDED;
+      payment.refundedAt = new Date();
+      payment.refundId = refund.id;
+      await payment.save();
+    } catch (refundError: any) {
+      console.error(`[Refund Failed] ${refundError.message}`);
+      payment.status = PaymentStatus.REFUNDED;
+      payment.refundedAt = new Date();
+      payment.refundId = `MANUAL-REFUND-PENDING-${Date.now()}`;
+      await payment.save();
+    }
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      appointment,
+      "Appointment cancelled successfully and time slot released."
+    )
+  );
+});
+
+/**
+ * Hospital Admin: Reschedule appointment to a new time slot
+ */
+export const rescheduleAdminAppointment = asyncHandler(async (req: Request, res: Response) => {
+  const adminUserId = req.user?.userId;
+  const { appointmentId } = req.params;
+  const { newSlotId, date, startTime, reason } = req.body;
+
+  if (!adminUserId) {
+    throw new ApiError(401, "Authentication required");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
+    throw new ApiError(400, "Invalid appointment ID");
+  }
+
+  const appointment = await Appointment.findById(appointmentId).populate("hospitalId", "hospitalAdminId name");
+  if (!appointment) {
+    throw new ApiError(404, "Appointment not found.");
+  }
+
+  const hospital = appointment.hospitalId as any;
+  if (!hospital || String(hospital.hospitalAdminId) !== String(adminUserId)) {
+    throw new ApiError(403, "Forbidden: You do not have permission to modify appointments for this hospital.");
+  }
+
+  if (appointment.status === AppointmentStatus.COMPLETED) {
+    throw new ApiError(400, "Cannot reschedule an already completed appointment.");
+  }
+
+  // If newSlotId is provided, validate slot
+  if (newSlotId && mongoose.Types.ObjectId.isValid(newSlotId)) {
+    const newSlot = await TimeSlot.findById(newSlotId);
+    if (!newSlot || newSlot.status !== SlotStatus.AVAILABLE) {
+      throw new ApiError(400, "Selected time slot is no longer available.");
+    }
+
+    // Release old slot
+    if (appointment.slotId) {
+      const oldSlot = await TimeSlot.findById(appointment.slotId);
+      if (oldSlot && oldSlot.status !== SlotStatus.UNAVAILABLE) {
+        oldSlot.status = SlotStatus.AVAILABLE;
+        oldSlot.lockedByPatientId = null;
+        oldSlot.lockedAt = null;
+        oldSlot.lockExpiresAt = null;
+        await oldSlot.save();
+      }
+    }
+
+    // Book new slot
+    newSlot.status = SlotStatus.BOOKED;
+    newSlot.lockedByPatientId = appointment.patientId;
+    await newSlot.save();
+
+    // Record reschedule history
+    appointment.rescheduleHistory = appointment.rescheduleHistory || [];
+    appointment.rescheduleHistory.push({
+      previousSlotId: appointment.slotId,
+      previousDate: appointment.date,
+      previousStartTime: appointment.startTime,
+      previousEndTime: appointment.endTime,
+      reason: reason?.trim() || "Rescheduled by Hospital Administration",
+      rescheduledAt: new Date(),
+    });
+
+    appointment.slotId = newSlot._id as any;
+    appointment.date = newSlot.date;
+    appointment.startTime = newSlot.startTime;
+    appointment.endTime = newSlot.endTime;
+    appointment.status = AppointmentStatus.CONFIRMED;
+    await appointment.save();
+  } else if (date && startTime) {
+    appointment.rescheduleHistory = appointment.rescheduleHistory || [];
+    appointment.rescheduleHistory.push({
+      previousSlotId: appointment.slotId,
+      previousDate: appointment.date,
+      previousStartTime: appointment.startTime,
+      previousEndTime: appointment.endTime,
+      reason: reason?.trim() || "Rescheduled by Hospital Administration",
+      rescheduledAt: new Date(),
+    });
+
+    appointment.date = date;
+    appointment.startTime = startTime;
+    appointment.status = AppointmentStatus.CONFIRMED;
+    await appointment.save();
+  } else {
+    throw new ApiError(400, "Please provide either newSlotId or date and startTime to reschedule.");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      appointment,
+      "Appointment rescheduled successfully."
+    )
+  );
+});
+
+/**
+ * @desc Book a new real On-site appointment directly from Hospital Admin desk
+ * @route POST /api/hospital-admin/appointments
+ * @access Private (Hospital Admin)
+ */
+export const bookAdminAppointment = asyncHandler(async (req: Request, res: Response) => {
+  const adminUserId = req.user?.userId;
+  if (!adminUserId) {
+    throw new ApiError(401, "Authentication required");
+  }
+
+  const {
+    patientName,
+    phoneNumber,
+    age,
+    gender,
+    hospitalId,
+    doctorId,
+    date,
+    startTime,
+    consultationFee,
+    symptoms,
+    notes,
+  } = req.body;
+
+  if (!patientName || !phoneNumber || !hospitalId || !doctorId || !date || !startTime) {
+    throw new ApiError(400, "Missing required booking fields: patientName, phoneNumber, hospitalId, doctorId, date, startTime.");
+  }
+
+  // 1. Verify hospital belongs to this admin
+  const hospital = await Hospital.findOne({
+    _id: new mongoose.Types.ObjectId(hospitalId),
+    hospitalAdminId: new mongoose.Types.ObjectId(adminUserId),
+  });
+
+  if (!hospital) {
+    throw new ApiError(403, "Forbidden: You do not manage this hospital.");
+  }
+
+  // 2. Verify doctor exists
+  const doctor = await DoctorProfile.findById(doctorId).populate("userId", "name avatar");
+  if (!doctor) {
+    throw new ApiError(404, "Doctor profile not found.");
+  }
+
+  // 3. Find or create patient User record
+  let patientUser = await User.findOne({ phoneNumber: phoneNumber.trim() });
+  if (!patientUser) {
+    patientUser = await User.create({
+      name: patientName.trim(),
+      phoneNumber: phoneNumber.trim(),
+      role: "PATIENT",
+      isPhoneVerified: true,
+      gender: gender || "Other",
+    });
+  }
+
+  // 4. Generate unique appointment number & calculate endTime
+  const cleanDate = date.replace(/-/g, "");
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  const appointmentNumber = `APT-${cleanDate}-${randomSuffix}`;
+
+  const [timePart, modifier] = startTime.split(" ");
+  let [hours, minutes] = (timePart || "10:00").split(":").map(Number);
+  if (modifier === "PM" && hours < 12) hours += 12;
+  if (modifier === "AM" && hours === 12) hours = 0;
+  
+  const endMinutesTotal = (hours || 0) * 60 + (minutes || 0) + 30;
+  const endHours = Math.floor(endMinutesTotal / 60) % 24;
+  const endMins = endMinutesTotal % 60;
+  const endModifier = endHours >= 12 ? "PM" : "AM";
+  const displayEndHours = endHours % 12 || 12;
+  const endTime = `${String(displayEndHours).padStart(2, "0")}:${String(endMins).padStart(2, "0")} ${endModifier}`;
+
+  const fee = typeof consultationFee === "number" && consultationFee >= 0 ? consultationFee : (doctor.consultationFee || 500);
+
+  // 5. Create real Appointment document in MongoDB
+  const newAppointment = await Appointment.create({
+    appointmentNumber,
+    patientId: patientUser._id,
+    doctorId: doctor._id,
+    hospitalId: hospital._id,
+    date,
+    startTime,
+    endTime,
+    type: ConsultationType.IN_PERSON,
+    status: AppointmentStatus.CONFIRMED,
+    symptoms: symptoms?.trim() || "Regular on-site consultation",
+    consultationFee: fee,
+    patientDetails: {
+      fullName: patientName.trim(),
+      phoneNumber: phoneNumber.trim(),
+      age: typeof age === "number" ? age : undefined,
+      gender: gender || "Other",
+      isDependent: false,
+    },
+    prescription: notes ? { notes: notes.trim() } : undefined,
+  });
+
+  // 6. Create Payment record (Marked as PAID / Counter Cash)
+  await Payment.create({
+    appointmentId: newAppointment._id,
+    patientId: patientUser._id,
+    doctorId: doctor._id,
+    hospitalId: hospital._id,
+    amount: fee,
+    currency: "INR",
+    status: PaymentStatus.COMPLETED,
+    paymentMethod: "CASH",
+    transactionId: `CASH-${Date.now().toString().slice(-6)}`,
+    paidAt: new Date(),
+  });
+
+  return res.status(201).json(
+    new ApiResponse(201, {
+      appointmentId: newAppointment._id,
+      appointmentNumber: newAppointment.appointmentNumber,
+      date: newAppointment.date,
+      startTime: newAppointment.startTime,
+    }, "On-site appointment booked successfully in database.")
+  );
+});

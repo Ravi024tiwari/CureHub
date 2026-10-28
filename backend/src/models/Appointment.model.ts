@@ -189,6 +189,9 @@ const AppointmentSchema = new Schema<IAppointment>(
 // Fast query index for doctor daily schedule
 AppointmentSchema.index({ doctorId: 1, date: 1, status: 1 });
 AppointmentSchema.index({ patientId: 1, date: 1, status: 1 });
+// Fast query index for hospital admin appointments & analytics
+AppointmentSchema.index({ hospitalId: 1, date: -1, status: 1 });
+AppointmentSchema.index({ hospitalId: 1, doctorId: 1, date: -1 });
 
 export const Appointment: Model<IAppointment> = mongoose.model<IAppointment>(
   "Appointment",

@@ -26,6 +26,8 @@ import {
   HospitalAdminDoctorsPage,
   HospitalAdminDoctorDetailPage,
   HospitalAdminProfilePage,
+  HospitalAdminAppointmentsPage,
+  HospitalAdminAppointmentDetailPage,
 } from '@/pages/hospital-admin'
 import {
   SuperAdminDashboardPage,
@@ -109,6 +111,8 @@ function App() {
         <Route path="/hospital-admin/doctors/:id" element={<HospitalAdminDoctorDetailPage />} />
         <Route path="/hospital-admin/join-requests" element={<DoctorJoinRequestsPage />} />
         <Route path="/hospital-admin/join-requests/:id" element={<DoctorJoinRequestDetailPage />} />
+        <Route path="/hospital-admin/appointments" element={<HospitalAdminAppointmentsPage />} />
+        <Route path="/hospital-admin/appointments/:id" element={<HospitalAdminAppointmentDetailPage />} />
 
         {/* Dedicated Super Admin Routes */}
         <Route path="/super-admin/dashboard" element={<SuperAdminDashboardPage />} />

@@ -424,3 +424,135 @@ export interface HospitalAdminDoctorsResponse {
 }
 
 
+
+// ── HOSPITAL ADMIN APPOINTMENTS TYPES ─────────────────────────────────────────
+
+export interface AdminAppointmentPatient {
+  id: string
+  name: string
+  email: string
+  phoneNumber: string
+  avatar: string | null
+  age: number
+  gender: string
+  isDependent?: boolean
+  relationship?: string | null
+}
+
+export interface AdminAppointmentDoctor {
+  id: string
+  name: string
+  avatar: string | null
+  department: string
+  specialization: string[]
+  experienceYears: number
+  ratingAverage: number
+}
+
+export interface AdminAppointmentHospital {
+  id: string
+  name: string
+  city: string
+  state: string
+  address?: string
+}
+
+export interface AdminAppointmentPayment {
+  status: string
+  amount: number
+  method: string
+  transactionId: string
+  isPaid: boolean
+}
+
+export interface AdminAppointmentItem {
+  _id: string
+  appointmentNumber: string
+  date: string
+  startTime: string
+  endTime: string
+  dateTimeFormatted: string
+  type: string
+  mode: 'On-site'
+  status: string
+  displayStatus: 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled' | string
+  symptoms: string
+  reasonForVisit: string
+  consultationFee: number
+  patient: AdminAppointmentPatient
+  doctor: AdminAppointmentDoctor
+  hospital: AdminAppointmentHospital
+  payment: AdminAppointmentPayment
+  prescription?: any
+  cancellation?: {
+    cancelledBy?: any
+    reason?: string
+    cancelledAt?: string
+  } | null
+  notes?: string
+  bookedOn?: string
+  createdAt?: string
+}
+
+export interface AdminAppointmentsKpis {
+  total: number
+  totalTrend: string
+  completed: number
+  completedPct: number
+  upcoming: number
+  upcomingPct: number
+  cancelled: number
+  cancelledPct: number
+}
+
+export interface AdminAppointmentsFilterOptions {
+  hospitals: Array<{ id: string; name: string }>
+  doctors: Array<{ id: string; name: string; department?: string; avatar?: string | null }>
+  departments: string[]
+}
+
+export interface AdminAppointmentsPagination {
+  totalDocs: number
+  totalPages: number
+  currentPage: number
+  limit: number
+  hasNextPage: boolean
+  hasPrevPage: boolean
+  hasMore?: boolean
+  remainingDocs?: number
+}
+
+export interface AdminAppointmentsResponse {
+  appointments: AdminAppointmentItem[]
+  pagination: AdminAppointmentsPagination
+  kpis: AdminAppointmentsKpis
+  filterOptions: AdminAppointmentsFilterOptions
+}
+
+export interface AdminAppointmentDetailResponse {
+  appointment: any
+  payment?: any
+  patientProfile?: {
+    bloodGroup?: string
+    allergies?: string[]
+    chronicDiseases?: string[]
+    pastSurgeries?: string[]
+    currentMedications?: string[]
+    reports?: any[]
+    emergencyContact?: {
+      name: string
+      relationship: string
+      phoneNumber: string
+    }
+  } | null
+  medicalHistory?: Array<{
+    _id: string
+    appointmentNumber: string
+    date: string
+    startTime: string
+    type: string
+    status: string
+    symptoms: string
+    prescription?: any
+  }>
+}

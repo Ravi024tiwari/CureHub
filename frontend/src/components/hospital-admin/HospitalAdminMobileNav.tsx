@@ -2,12 +2,11 @@ import { type FC } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
+  Calendar,
   Building2,
   Stethoscope,
-  UserPlus,
   Menu,
 } from 'lucide-react'
-import { useHospitalAdminStore } from '@/store/hospitalAdminStore'
 
 interface HospitalAdminMobileNavProps {
   onToggleSidebar?: () => void
@@ -16,21 +15,20 @@ interface HospitalAdminMobileNavProps {
 export const HospitalAdminMobileNav: FC<HospitalAdminMobileNavProps> = ({ onToggleSidebar }) => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { kpis } = useHospitalAdminStore()
 
   const navItems = [
     {
-      id: 'home',
-      label: 'Home',
+      id: 'dashboard',
+      label: 'Dashboard',
       icon: LayoutDashboard,
       path: '/hospital-admin/dashboard',
       alias: ['/dashboard', '/hospital-admin'],
     },
     {
-      id: 'hospitals',
-      label: 'Hospitals',
-      icon: Building2,
-      path: '/hospital-admin/hospitals',
+      id: 'appointments',
+      label: 'Appointments',
+      icon: Calendar,
+      path: '/hospital-admin/appointments',
     },
     {
       id: 'doctors',
@@ -39,11 +37,10 @@ export const HospitalAdminMobileNav: FC<HospitalAdminMobileNavProps> = ({ onTogg
       path: '/hospital-admin/doctors',
     },
     {
-      id: 'requests',
-      label: 'Requests',
-      icon: UserPlus,
-      path: '/hospital-admin/join-requests',
-      badge: kpis.pendingJoinRequests,
+      id: 'hospitals',
+      label: 'Hospitals',
+      icon: Building2,
+      path: '/hospital-admin/hospitals',
     },
   ]
 
@@ -65,11 +62,6 @@ export const HospitalAdminMobileNav: FC<HospitalAdminMobileNavProps> = ({ onTogg
           >
             <div className="relative">
               <Icon className="size-5 stroke-[2.2]" />
-              {item.badge !== undefined && item.badge > 0 && (
-                <span className="absolute -top-1 -right-2 size-4 bg-rose-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
-                  {item.badge}
-                </span>
-              )}
             </div>
             <span className="text-[10px] leading-none">{item.label}</span>
           </button>
