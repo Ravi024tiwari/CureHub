@@ -248,7 +248,7 @@ export const getHospitalDashboard = asyncHandler(async (req: Request, res: Respo
     // Doctors
     DoctorProfile.countDocuments({
       hospitalId: hospital._id,
-      hospitalAffiliationStatus: "APPROVED",
+      hospitalAffiliationStatus: { $ne: "REJECTED" },
     }),
     HospitalJoinRequest.countDocuments({
       hospitalId: hospital._id,
@@ -355,7 +355,7 @@ export const getHospitalDashboard = asyncHandler(async (req: Request, res: Respo
       {
         $match: {
           hospitalId: hospital._id,
-          hospitalAffiliationStatus: "APPROVED",
+          hospitalAffiliationStatus: { $ne: "REJECTED" },
         },
       },
       {
@@ -372,9 +372,10 @@ export const getHospitalDashboard = asyncHandler(async (req: Request, res: Respo
     // Top 5 Doctors in Hospital
     DoctorProfile.find({
       hospitalId: hospital._id,
-      hospitalAffiliationStatus: "APPROVED",
+      hospitalAffiliationStatus: { $ne: "REJECTED" },
     })
-      .populate("userId", "name email phoneNumber avatar")
+      .populate("userId", "name email phoneNumber avatar isAccountApproved isActive")
+      .populate("hospitalId", "name slug address")
       .select("department specialization consultationFee ratingAverage")
       .sort({ ratingAverage: -1 })
       .limit(5),
@@ -792,7 +793,7 @@ export const getHospitalById = asyncHandler(async (req: Request, res: Response) 
   ] = await Promise.all([
     DoctorProfile.countDocuments({
       hospitalId: hospital._id,
-      hospitalAffiliationStatus: "APPROVED",
+      hospitalAffiliationStatus: { $ne: "REJECTED" },
     }),
     Appointment.countDocuments({ hospitalId: hospital._id }),
     Appointment.distinct("patientId", { hospitalId: hospital._id }),
@@ -800,7 +801,7 @@ export const getHospitalById = asyncHandler(async (req: Request, res: Response) 
       {
         $match: {
           hospitalId: hospital._id,
-          hospitalAffiliationStatus: "APPROVED",
+          hospitalAffiliationStatus: { $ne: "REJECTED" },
         },
       },
       {
@@ -813,9 +814,10 @@ export const getHospitalById = asyncHandler(async (req: Request, res: Response) 
     ]),
     DoctorProfile.find({
       hospitalId: hospital._id,
-      hospitalAffiliationStatus: "APPROVED",
+      hospitalAffiliationStatus: { $ne: "REJECTED" },
     })
-      .populate("userId", "name email phoneNumber avatar")
+      .populate("userId", "name email phoneNumber avatar isAccountApproved isActive")
+      .populate("hospitalId", "name slug address")
       .select(
         "userId department specialization experienceYears consultationFee ratingAverage reviewCount createdAt"
       )
@@ -937,7 +939,7 @@ export const getHospitalDoctors = asyncHandler(async (req: Request, res: Respons
 
   const filter: any = {
     hospitalId: hospital._id,
-    hospitalAffiliationStatus: "APPROVED",
+    hospitalAffiliationStatus: { $ne: "REJECTED" },
   };
 
   if (department && department.toLowerCase() !== "all") {
@@ -963,7 +965,8 @@ export const getHospitalDoctors = asyncHandler(async (req: Request, res: Respons
   const [totalDocs, doctors] = await Promise.all([
     DoctorProfile.countDocuments(filter),
     DoctorProfile.find(filter)
-      .populate("userId", "name email phoneNumber avatar")
+      .populate("userId", "name email phoneNumber avatar isAccountApproved isActive")
+      .populate("hospitalId", "name slug address")
       .select(
         "userId department specialization experienceYears consultationFee ratingAverage reviewCount bio medicalCouncilRegistrationNumber qualifications createdAt"
       )

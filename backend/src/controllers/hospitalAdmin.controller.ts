@@ -13,9 +13,16 @@ import {
 import { Review } from "../models/Review.model.js";
 import { TimeSlot } from "../models/TimeSlot.model.js";
 import { PatientProfile } from "../models/PatientProfile.model.js";
+import { DoctorLeave } from "../models/DoctorLeave.model.js";
+import {
+  processAppointmentsForApprovedLeave,
+  reopenSlotsForLeaveWindow,
+  blockSlotsForLeaveWindow,
+} from "../services/doctorLeave.service.js";
 import { razorpayInstance } from "../config/razorpay.js";
 
 import {
+  UserRole,
   VerificationStatus,
   AppointmentStatus,
   PaymentStatus,
@@ -2388,5 +2395,353 @@ export const bookAdminAppointment = asyncHandler(async (req: Request, res: Respo
       date: newAppointment.date,
       startTime: newAppointment.startTime,
     }, "On-site appointment booked successfully in database.")
+  );
+});
+
+/**
+ * Helper to fetch list of Hospital IDs owned/managed by the authenticated admin
+ */
+const getAdminHospitalIds = async (
+  userId: string,
+  userRole?: string
+): Promise<mongoose.Types.ObjectId[]> => {
+  if (userRole === UserRole.SUPER_ADMIN) {
+    const hospitals = await Hospital.find({}).select("_id");
+    return hospitals.map((h) => h._id as mongoose.Types.ObjectId);
+  }
+  const hospitals = await Hospital.find({
+    hospitalAdminId: new mongoose.Types.ObjectId(userId),
+  }).select("_id");
+  return hospitals.map((h) => h._id as mongoose.Types.ObjectId);
+};
+
+// ==========================================
+// 5. DOCTOR LEAVES REVIEW & APPROVAL WORKFLOW
+// ==========================================
+
+/**
+ * Hospital Admin: List all leave applications for hospitals managed by this admin
+ * - Supports filtering by: status (PENDING, APPROVED, REJECTED, CANCELLED), hospitalId, doctorId, search, date
+ * - Returns detailed metrics/KPIs: total, pending, approved, rejected
+ * - Fully paginated
+ */
+export const getAdminDoctorLeaves = asyncHandler(async (req: Request, res: Response) => {
+  const adminUserId = req.user?.userId;
+  const userRole = req.user?.role;
+  if (!adminUserId) throw new ApiError(401, "Authentication required");
+
+  const managedHospitalIds = await getAdminHospitalIds(adminUserId, userRole);
+  if (managedHospitalIds.length === 0) {
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          leaves: [],
+          counts: { total: 0, pending: 0, approved: 0, rejected: 0, cancelled: 0 },
+          pagination: { totalDocs: 0, totalPages: 0, currentPage: 1, limit: 10, hasNextPage: false, hasPrevPage: false },
+        },
+        "No hospitals currently managed by this admin."
+      )
+    );
+  }
+
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
+  const skip = (page - 1) * limit;
+
+  const { status, hospitalId, doctorId, search, startDate, endDate, leaveType } = req.query;
+
+  const filter: any = {
+    hospitalId: { $in: managedHospitalIds },
+  };
+
+  // Hospital override
+  if (hospitalId && typeof hospitalId === "string" && hospitalId !== "ALL") {
+    if (mongoose.Types.ObjectId.isValid(hospitalId)) {
+      filter.hospitalId = new mongoose.Types.ObjectId(hospitalId);
+    }
+  }
+
+  // Doctor override
+  if (doctorId && typeof doctorId === "string" && doctorId !== "ALL") {
+    if (mongoose.Types.ObjectId.isValid(doctorId)) {
+      filter.doctorId = new mongoose.Types.ObjectId(doctorId);
+    }
+  }
+
+  // Status Filter
+  if (status && typeof status === "string" && status !== "ALL") {
+    filter.status = status.toUpperCase();
+  }
+
+  // Leave Type Filter
+  if (leaveType && typeof leaveType === "string" && leaveType !== "ALL") {
+    filter.leaveType = leaveType.toUpperCase();
+  }
+
+  // Date Range Filter
+  if (startDate || endDate) {
+    filter.startDateTime = filter.startDateTime || {};
+    if (startDate) {
+      filter.startDateTime.$gte = new Date(`${startDate}T00:00:00.000Z`);
+    }
+    if (endDate) {
+      filter.endDateTime = filter.endDateTime || {};
+      filter.endDateTime.$lte = new Date(`${endDate}T23:59:59.999Z`);
+    }
+  }
+
+  // Search by doctor name, specialization, or department
+  if (search && typeof search === "string" && search.trim()) {
+    const searchRegex = new RegExp(search.trim(), "i");
+    const matchingUsers = await User.find({ name: searchRegex }).select("_id");
+    const matchingUserIds = matchingUsers.map((u) => u._id);
+
+    const matchingDoctorProfiles = await DoctorProfile.find({
+      $or: [
+        { userId: { $in: matchingUserIds } },
+        { department: searchRegex },
+        { specialization: searchRegex },
+      ],
+    }).select("_id");
+
+    const doctorIds = matchingDoctorProfiles.map((d) => d._id);
+    filter.doctorId = { $in: doctorIds };
+  }
+
+  const baseCountFilter = { hospitalId: { $in: managedHospitalIds } };
+
+  const [
+    leaves,
+    totalDocs,
+    pendingCount,
+    approvedCount,
+    rejectedCount,
+    cancelledCount,
+  ] = await Promise.all([
+    DoctorLeave.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate({
+        path: "doctorId",
+        select: "department specialization qualifications consultationFee experienceYears userId",
+        populate: {
+          path: "userId",
+          select: "name email phoneNumber avatar",
+        },
+      })
+      .populate("hospitalId", "name slug address contactPhone")
+      .populate("approvedBy", "name email"),
+    DoctorLeave.countDocuments(filter),
+    DoctorLeave.countDocuments({ ...baseCountFilter, status: "PENDING" }),
+    DoctorLeave.countDocuments({ ...baseCountFilter, status: "APPROVED" }),
+    DoctorLeave.countDocuments({ ...baseCountFilter, status: "REJECTED" }),
+    DoctorLeave.countDocuments({ ...baseCountFilter, status: "CANCELLED" }),
+  ]);
+
+  const totalPages = Math.ceil(totalDocs / limit) || 1;
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        leaves,
+        counts: {
+          total: totalDocs,
+          pending: pendingCount,
+          approved: approvedCount,
+          rejected: rejectedCount,
+          cancelled: cancelledCount,
+        },
+        pagination: {
+          totalDocs,
+          totalPages,
+          currentPage: page,
+          limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      },
+      "Hospital doctor leave requests retrieved successfully"
+    )
+  );
+});
+
+/**
+ * Hospital Admin: Get single doctor leave details along with affected appointments
+ */
+export const getAdminDoctorLeaveById = asyncHandler(async (req: Request, res: Response) => {
+  const adminUserId = req.user?.userId;
+  const userRole = req.user?.role;
+  const { leaveId } = req.params;
+
+  if (!adminUserId) throw new ApiError(401, "Authentication required");
+  if (!mongoose.Types.ObjectId.isValid(leaveId)) {
+    throw new ApiError(400, "Invalid leave ID format");
+  }
+
+  const managedHospitalIds = await getAdminHospitalIds(adminUserId, userRole);
+
+  const leave = await DoctorLeave.findOne({
+    _id: leaveId,
+    hospitalId: { $in: managedHospitalIds },
+  })
+    .populate({
+      path: "doctorId",
+      select: "department specialization qualifications consultationFee experienceYears userId",
+      populate: {
+        path: "userId",
+        select: "name email phoneNumber avatar",
+      },
+    })
+    .populate("hospitalId", "name slug address contactPhone contactEmail")
+    .populate("approvedBy", "name email");
+
+  if (!leave) {
+    throw new ApiError(404, "Doctor leave request not found or unauthorized for this hospital.");
+  }
+
+  // Find appointments that overlap with this leave
+  const startDateStr = leave.startDateTime.toISOString().split("T")[0];
+  const endDateStr = leave.endDateTime.toISOString().split("T")[0];
+
+  const candidateAppointments = await Appointment.find({
+    doctorId: leave.doctorId._id,
+    date: { $gte: startDateStr, $lte: endDateStr },
+  })
+    .populate("patientId", "name email phoneNumber avatar")
+    .populate("slotId", "date startTime endTime status");
+
+  const overlappingAppointments = candidateAppointments.filter((appt) => {
+    const apptStart = new Date(`${appt.date}T${appt.startTime}:00.000Z`);
+    const apptEnd = new Date(`${appt.date}T${appt.endTime || appt.startTime}:00.000Z`);
+    return leave.startDateTime < apptEnd && leave.endDateTime > apptStart;
+  });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        leave,
+        affectedAppointments: overlappingAppointments,
+        affectedAppointmentsCount: overlappingAppointments.length,
+      },
+      "Leave details and affected appointments retrieved successfully"
+    )
+  );
+});
+
+/**
+ * Hospital Admin: Update Doctor Leave Status (APPROVE or REJECT)
+ * - If APPROVED:
+ *   - Marks status = APPROVED
+ *   - Sets approvedBy = adminUserId
+ *   - Shifts active confirmed appointments in [startDateTime, endDateTime] to RESCHEDULE_REQUIRED with 7-day priority window
+ *   - Locks all unbooked time slots as UNAVAILABLE
+ * - If REJECTED:
+ *   - Requires rejectionReason
+ *   - Marks status = REJECTED
+ *   - Re-opens blocked unbooked slots back to AVAILABLE
+ */
+export const updateAdminDoctorLeaveStatus = asyncHandler(async (req: Request, res: Response) => {
+  const adminUserId = req.user?.userId;
+  const userRole = req.user?.role;
+  const { leaveId } = req.params;
+  const { status, rejectionReason } = req.body;
+
+  if (!adminUserId) throw new ApiError(401, "Authentication required");
+  if (!mongoose.Types.ObjectId.isValid(leaveId)) {
+    throw new ApiError(400, "Invalid leave ID format");
+  }
+
+  if (!status || !["APPROVED", "REJECTED"].includes(status)) {
+    throw new ApiError(400, "Status must be either 'APPROVED' or 'REJECTED'.");
+  }
+
+  const managedHospitalIds = await getAdminHospitalIds(adminUserId, userRole);
+
+  const leave = await DoctorLeave.findOne({
+    _id: leaveId,
+    hospitalId: { $in: managedHospitalIds },
+  });
+
+  if (!leave) {
+    throw new ApiError(404, "Leave request not found or you are not authorized to manage this hospital.");
+  }
+
+  if (leave.status !== "PENDING") {
+    throw new ApiError(
+      400,
+      `Cannot update a leave request that is already '${leave.status}'.`
+    );
+  }
+
+  if (status === "REJECTED") {
+    if (!rejectionReason || !rejectionReason.trim()) {
+      throw new ApiError(400, "A clear rejection reason is required when rejecting a doctor's leave request.");
+    }
+
+    leave.status = "REJECTED";
+    leave.rejectionReason = rejectionReason.trim();
+    await leave.save();
+
+    // Restore unbooked slots that were blocked while pending back to AVAILABLE
+    const reopenedSlotsCount = await reopenSlotsForLeaveWindow(
+      leave.doctorId,
+      leave.startDateTime,
+      leave.endDateTime
+    );
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        { leave, reopenedSlotsCount },
+        `Doctor leave request has been rejected. ${reopenedSlotsCount} blocked slot(s) have been restored to AVAILABLE for patient bookings.`
+      )
+    );
+  }
+
+  // --- APPROVED WORKFLOW ---
+  leave.status = "APPROVED";
+  leave.approvedBy = new mongoose.Types.ObjectId(adminUserId);
+
+  // Process affected active appointments (RESCHEDULE_REQUIRED + 7-day window) & lock slots
+  const { affectedCount, affectedAppointments } = await processAppointmentsForApprovedLeave(leave);
+
+  leave.affectedAppointmentsCount = affectedCount;
+  await leave.save();
+
+  const populatedLeave = await DoctorLeave.findById(leave._id)
+    .populate({
+      path: "doctorId",
+      select: "department specialization userId",
+      populate: { path: "userId", select: "name email phoneNumber" },
+    })
+    .populate("hospitalId", "name slug address")
+    .populate("approvedBy", "name email");
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        leave: populatedLeave,
+        affectedAppointmentsCount: affectedCount,
+        affectedAppointments: affectedAppointments.map((a) => ({
+          _id: a._id,
+          appointmentNumber: a.appointmentNumber,
+          patientName: a.patientId?.name,
+          date: a.date,
+          startTime: a.startTime,
+          rescheduleDeadline: a.rescheduleDeadline,
+        })),
+      },
+      `Doctor leave approved successfully. ${affectedCount} existing appointment(s) have been placed into a 7-day priority rescheduling window. Patient booking slots are locked.`
+    )
+  );
+});
+
+export const _noopTrailing = asyncHandler(async (_req: Request, res: Response) => {
+  return res.status(200).json(
   );
 });

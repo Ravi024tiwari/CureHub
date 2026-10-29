@@ -7,6 +7,7 @@ import {
   type DoctorDashboardData,
   type DoctorScheduleRule,
   type DoctorLeaveItem,
+  type ApplyDoctorLeavePayload,
   type DoctorAppointmentItem,
   type DoctorAppointmentCounts,
   type DoctorProfileData,
@@ -102,10 +103,10 @@ export interface DoctorStoreState {
   fetchScheduleAndLeaves: () => Promise<void>
   saveScheduleRules: (rules: DoctorScheduleRule[]) => Promise<boolean>
   applyLeave: (
-    date: string,
+    payload: string | ApplyDoctorLeavePayload,
     reason?: string
   ) => Promise<{ success: boolean; affectedCount?: number; message?: string }>
-  cancelLeave: (date: string) => Promise<boolean>
+  cancelLeave: (idOrDate: string) => Promise<boolean>
 
   // Doctor Appointments Management
   appointments: DoctorAppointmentItem[]
@@ -184,581 +185,556 @@ const DEFAULT_FILTERS = {
 export const useDoctorStore = create<DoctorStoreState>()(
   devtools(
     persist(
-    (set, get) => ({
-      // Initial Data
-      doctors: [],
-      totalDoctors: 0,
-      page: 1,
-      limit: 10,
-      hasMore: true,
-      isLoadingInitial: false,
-      isLoadingMore: false,
-      error: null,
-      selectedDoctor: null,
-      currentDoctorDetail: null,
-      isDetailLoading: false,
-      detailError: null,
-      favoriteDoctorIds: [],
+      (set, get) => ({
+        // Initial Data
+        doctors: [],
+        totalDoctors: 0,
+        page: 1,
+        limit: 10,
+        hasMore: true,
+        isLoadingInitial: false,
+        isLoadingMore: false,
+        error: null,
+        selectedDoctor: null,
+        currentDoctorDetail: null,
+        isDetailLoading: false,
+        detailError: null,
+        favoriteDoctorIds: [],
 
-      // Doctor Profile State
-      myDoctorProfile: null,
-      isProfileLoading: false,
-      isSavingProfile: false,
-      profileError: null,
+        // Doctor Profile State
+        myDoctorProfile: null,
+        isProfileLoading: false,
+        isSavingProfile: false,
+        profileError: null,
 
-      // Doctor Practice Dashboard State
-      dashboardData: null,
-      isDashboardLoading: false,
-      dashboardError: null,
+        // Doctor Practice Dashboard State
+        dashboardData: null,
+        isDashboardLoading: false,
+        dashboardError: null,
 
-      // Doctor Schedule & Leaves State
-      scheduleRules: DEFAULT_SCHEDULE_RULES,
-      leaves: [],
-      isScheduleLoading: false,
-      scheduleError: null,
-      isSavingSchedule: false,
+        // Doctor Schedule & Leaves State
+        scheduleRules: DEFAULT_SCHEDULE_RULES,
+        leaves: [],
+        isScheduleLoading: false,
+        scheduleError: null,
+        isSavingSchedule: false,
 
-      // Doctor Appointments State
-      appointments: [],
-      recentCompletedAppointments: [],
-      appointmentCounts: {
-        today: 0,
-        todayWaiting: 0,
-        todayInProgress: 0,
-        todayCompleted: 0,
-        todayCancelled: 0,
-        upcoming: 0,
-        completed: 0,
-        cancelled: 0,
-      },
-      selectedAppointment: null,
-      isAppointmentsLoading: false,
-      appointmentError: null,
-      appointmentTab: 'today',
-      appointmentSelectedDate: null,
-      appointmentSearchQuery: '',
-      appointmentPage: 1,
-      appointmentTotalPages: 1,
-      appointmentTotalDocs: 0,
+        // Doctor Appointments State
+        appointments: [],
+        recentCompletedAppointments: [],
+        appointmentCounts: {
+          today: 0,
+          todayWaiting: 0,
+          todayInProgress: 0,
+          todayCompleted: 0,
+          todayCancelled: 0,
+          upcoming: 0,
+          completed: 0,
+          cancelled: 0,
+        },
+        selectedAppointment: null,
+        isAppointmentsLoading: false,
+        appointmentError: null,
+        appointmentTab: 'today',
+        appointmentSelectedDate: null,
+        appointmentSearchQuery: '',
+        appointmentPage: 1,
+        appointmentTotalPages: 1,
+        appointmentTotalDocs: 0,
 
-      // Initial Filters
-      ...DEFAULT_FILTERS,
+        // Initial Filters
+        ...DEFAULT_FILTERS,
 
-      // Filter Setters
-      setSearchQuery: (query: string) => {
-        set({ searchQuery: query })
-      },
-      setSelectedCity: (city: string) => {
-        set({ selectedCity: city })
-      },
-      setActiveSpecialtyPill: (pill: string) => {
-        set({ activeSpecialtyPill: pill })
-      },
-      setSelectedSpecializations: (specs: string[]) => {
-        set({ selectedSpecializations: specs })
-      },
-      setSelectedHospitals: (hospitals: string[]) => {
-        set({ selectedHospitals: hospitals })
-      },
-      setSelectedConsultationType: (type: string) => {
-        set({ selectedConsultationType: type })
-      },
-      setSelectedAvailability: (availability: string) => {
-        set({ selectedAvailability: availability })
-      },
-      setMaxFee: (fee: number) => {
-        set({ maxFee: fee })
-      },
-      setSortBy: (sort: string) => {
-        set({ sortBy: sort })
-      },
-      setSelectedDoctor: (doctor: DoctorCardData | null) => {
-        set({ selectedDoctor: doctor })
-      },
-      setCurrentDoctorDetail: (doctor: DoctorDetailData | null) => {
-        set({ currentDoctorDetail: doctor })
-      },
+        // Filter Setters
+        setSearchQuery: (query: string) => {
+          set({ searchQuery: query })
+        },
+        setSelectedCity: (city: string) => {
+          set({ selectedCity: city })
+        },
+        setActiveSpecialtyPill: (pill: string) => {
+          set({ activeSpecialtyPill: pill })
+        },
+        setSelectedSpecializations: (specs: string[]) => {
+          set({ selectedSpecializations: specs })
+        },
+        setSelectedHospitals: (hospitals: string[]) => {
+          set({ selectedHospitals: hospitals })
+        },
+        setSelectedConsultationType: (type: string) => {
+          set({ selectedConsultationType: type })
+        },
+        setSelectedAvailability: (availability: string) => {
+          set({ selectedAvailability: availability })
+        },
+        setMaxFee: (fee: number) => {
+          set({ maxFee: fee })
+        },
+        setSortBy: (sort: string) => {
+          set({ sortBy: sort })
+        },
+        setSelectedDoctor: (doctor: DoctorCardData | null) => {
+          set({ selectedDoctor: doctor })
+        },
+        setCurrentDoctorDetail: (doctor: DoctorDetailData | null) => {
+          set({ currentDoctorDetail: doctor })
+        },
 
-      toggleFavorite: (doctorId: string) => {
-        const { favoriteDoctorIds, doctors } = get()
-        const isFav = favoriteDoctorIds.includes(doctorId)
-        const updatedFavs = isFav
-          ? favoriteDoctorIds.filter((id) => id !== doctorId)
-          : [...favoriteDoctorIds, doctorId]
+        toggleFavorite: (doctorId: string) => {
+          const { favoriteDoctorIds, doctors } = get()
+          const isFav = favoriteDoctorIds.includes(doctorId)
+          const updatedFavs = isFav
+            ? favoriteDoctorIds.filter((id) => id !== doctorId)
+            : [...favoriteDoctorIds, doctorId]
 
-        const updatedDoctors = doctors.map((doc) =>
-          doc._id === doctorId ? { ...doc, isFavorite: !isFav } : doc
-        )
+          const updatedDoctors = doctors.map((doc) =>
+            doc._id === doctorId ? { ...doc, isFavorite: !isFav } : doc
+          )
 
-        set({ favoriteDoctorIds: updatedFavs, doctors: updatedDoctors })
-      },
+          set({ favoriteDoctorIds: updatedFavs, doctors: updatedDoctors })
+        },
 
-      clearFilters: () => {
-        set({
-          ...DEFAULT_FILTERS,
-        })
-        get().fetchDoctors(1, true)
-      },
+        clearFilters: () => {
+          set({
+            ...DEFAULT_FILTERS,
+          })
+          get().fetchDoctors(1, true)
+        },
 
-      // Fetch Doctors from Database
-      fetchDoctors: async (pageNumber = 1, isNewFilter = false) => {
-        const state = get()
-        if (isNewFilter || pageNumber === 1) {
-          set({ isLoadingInitial: true, error: null })
-        } else {
-          if (state.isLoadingMore || !state.hasMore) return
-          set({ isLoadingMore: true, error: null })
-        }
-
-        try {
-          // Combine category pill with specific checkbox selections
-          let combinedSpecialties = [...state.selectedSpecializations]
-          if (
-            state.activeSpecialtyPill !== 'all' &&
-            !combinedSpecialties.includes(state.activeSpecialtyPill)
-          ) {
-            combinedSpecialties.push(state.activeSpecialtyPill)
+        // Fetch Doctors from Database
+        fetchDoctors: async (pageNumber = 1, isNewFilter = false) => {
+          const state = get()
+          if (isNewFilter || pageNumber === 1) {
+            set({ isLoadingInitial: true, error: null })
+          } else {
+            if (state.isLoadingMore || !state.hasMore) return
+            set({ isLoadingMore: true, error: null })
           }
 
-          const response = await fetchDoctorsListApi({
-            page: pageNumber,
-            limit: 10,
-            search: state.searchQuery.trim() || undefined,
-            specialty: combinedSpecialties.length > 0 ? combinedSpecialties.join(',') : undefined,
-            hospital: state.selectedHospitals.length > 0 ? state.selectedHospitals.join(',') : undefined,
-            city: state.selectedCity && state.selectedCity !== 'All Cities' && !state.selectedCity.toLowerCase().includes('all') ? state.selectedCity : undefined,
-            maxFee: state.maxFee < 3000 ? state.maxFee : undefined,
-            sort: state.sortBy !== 'relevance' ? state.sortBy : undefined,
-            mode: state.selectedConsultationType !== 'all' ? state.selectedConsultationType : undefined,
-            availability: state.selectedAvailability !== 'all' ? state.selectedAvailability : undefined,
-          })
+          try {
+            let combinedSpecialties = [...state.selectedSpecializations]
+            if (
+              state.activeSpecialtyPill !== 'all' &&
+              !combinedSpecialties.includes(state.activeSpecialtyPill)
+            ) {
+              combinedSpecialties.push(state.activeSpecialtyPill)
+            }
 
-          if (response) {
-            const rawDoctors: DoctorCardData[] = response.doctors || []
-            const favIds = get().favoriteDoctorIds
+            const response = await fetchDoctorsListApi({
+              page: pageNumber,
+              limit: 10,
+              search: state.searchQuery.trim() || undefined,
+              specialty: combinedSpecialties.length > 0 ? combinedSpecialties.join(',') : undefined,
+              hospital: state.selectedHospitals.length > 0 ? state.selectedHospitals.join(',') : undefined,
+              city:
+                state.selectedCity &&
+                state.selectedCity !== 'All Cities' &&
+                !state.selectedCity.toLowerCase().includes('all')
+                  ? state.selectedCity
+                  : undefined,
+              maxFee: state.maxFee < 3000 ? state.maxFee : undefined,
+              sort: state.sortBy !== 'relevance' ? state.sortBy : undefined,
+              mode: state.selectedConsultationType !== 'all' ? state.selectedConsultationType : undefined,
+              availability: state.selectedAvailability !== 'all' ? state.selectedAvailability : undefined,
+            })
 
-            // Map favorite status and ensure real fields are attached
-            const formattedDoctors: DoctorCardData[] = rawDoctors.map((doc) => ({
-              ...doc,
-              isFavorite: favIds.includes(doc._id),
-              qualifications: doc.qualifications || ['MBBS', 'MD'],
-              specialization: doc.specialization || [doc.specialty || 'General Medicine'],
-              bio:
-                doc.bio ||
-                `Senior Specialist with ${doc.experienceYears || 8}+ years of extensive clinical practice in ${doc.department || doc.specialty || 'General Medicine'}.`,
-              medicalCouncilRegistrationNumber:
-                doc.medicalCouncilRegistrationNumber || 'MCI-REG-VALID',
-              verificationStatus: doc.verificationStatus || 'VERIFIED',
-            }))
+            if (response) {
+              const rawDoctors: DoctorCardData[] = response.doctors || []
+              const favIds = get().favoriteDoctorIds
 
-            if (isNewFilter || pageNumber === 1) {
-              set({
-                doctors: formattedDoctors,
-                totalDoctors: response.total ?? formattedDoctors.length,
-                page: 1,
-                hasMore: response.hasMore ?? false,
-                isLoadingInitial: false,
-                isLoadingMore: false,
-              })
+              const formattedDoctors: DoctorCardData[] = rawDoctors.map((doc) => ({
+                ...doc,
+                isFavorite: favIds.includes(doc._id),
+                qualifications: doc.qualifications || ['MBBS', 'MD'],
+                specialization: doc.specialization || [doc.specialty || 'General Medicine'],
+                bio:
+                  doc.bio ||
+                  `Senior Specialist with ${doc.experienceYears || 8}+ years of extensive clinical practice in ${doc.department || doc.specialty || 'General Medicine'}.`,
+                medicalCouncilRegistrationNumber:
+                  doc.medicalCouncilRegistrationNumber || 'MCI-REG-VALID',
+                verificationStatus: doc.verificationStatus || 'VERIFIED',
+              }))
+
+              if (isNewFilter || pageNumber === 1) {
+                set({
+                  doctors: formattedDoctors,
+                  totalDoctors: response.total ?? formattedDoctors.length,
+                  page: 1,
+                  hasMore: response.hasMore ?? false,
+                  isLoadingInitial: false,
+                  isLoadingMore: false,
+                })
+              } else {
+                const existingIds = new Set(state.doctors.map((d) => d._id))
+                const uniqueNew = formattedDoctors.filter((d) => !existingIds.has(d._id))
+                set({
+                  doctors: [...state.doctors, ...uniqueNew],
+                  totalDoctors: response.total ?? state.totalDoctors,
+                  page: pageNumber,
+                  hasMore: response.hasMore ?? false,
+                  isLoadingInitial: false,
+                  isLoadingMore: false,
+                })
+              }
             } else {
-              // Append newly fetched doctors avoiding duplicates
-              const existingIds = new Set(state.doctors.map((d) => d._id))
-              const uniqueNew = formattedDoctors.filter((d) => !existingIds.has(d._id))
               set({
-                doctors: [...state.doctors, ...uniqueNew],
-                totalDoctors: response.total ?? state.totalDoctors,
-                page: pageNumber,
-                hasMore: response.hasMore ?? false,
                 isLoadingInitial: false,
                 isLoadingMore: false,
+                hasMore: false,
+                error: 'Failed to retrieve doctors from database',
               })
             }
-          } else {
+          } catch (err: any) {
+            console.error('Error in doctorStore.fetchDoctors:', err)
             set({
               isLoadingInitial: false,
               isLoadingMore: false,
               hasMore: false,
-              error: 'Failed to retrieve doctors from database',
+              error: err.message || 'Error fetching doctors',
             })
           }
-        } catch (err: any) {
-          console.error('Error in doctorStore.fetchDoctors:', err)
-          set({
-            isLoadingInitial: false,
-            isLoadingMore: false,
-            hasMore: false,
-            error: err.message || 'Error fetching doctors',
-          })
-        }
-      },
+        },
 
-      fetchNextPage: async () => {
-        const { isLoadingMore, hasMore, page, fetchDoctors } = get()
-        if (isLoadingMore || !hasMore) return
-        await fetchDoctors(page + 1, false)
-      },
+        fetchNextPage: async () => {
+          const { isLoadingMore, hasMore, page, fetchDoctors } = get()
+          if (isLoadingMore || !hasMore) return
+          await fetchDoctors(page + 1, false)
+        },
 
-      fetchDoctorById: async (doctorId: string) => {
-        try {
-          const doctor = await fetchDoctorByIdApi(doctorId)
-          if (doctor) {
-            const favIds = get().favoriteDoctorIds
-            return {
-              ...doctor,
-              isFavorite: favIds.includes(doctor._id),
+        fetchDoctorById: async (doctorId: string) => {
+          try {
+            const doctor = await fetchDoctorByIdApi(doctorId)
+            if (doctor) {
+              const favIds = get().favoriteDoctorIds
+              return {
+                ...doctor,
+                isFavorite: favIds.includes(doctor._id),
+              }
             }
-          }
-          return null
-        } catch (err) {
-          console.error('Error fetching doctor by id:', err)
-          return null
-        }
-      },
-
-      fetchDoctorDetailById: async (doctorId: string) => {
-        set({ isDetailLoading: true, detailError: null })
-        try {
-          const doctor = await fetchDoctorByIdApi(doctorId)
-          if (doctor) {
-            const favIds = get().favoriteDoctorIds
-            const formattedDetail: DoctorDetailData = {
-              ...doctor,
-              isFavorite: favIds.includes(doctor._id),
-              qualifications: doctor.qualifications || ['MBBS', 'MD'],
-              specialization: doctor.specialization || [doctor.specialty || doctor.department || 'General Medicine'],
-              bio:
-                doctor.bio ||
-                `Dr. ${doctor.name} is a senior medical specialist with extensive clinical practice.`,
-              medicalCouncilRegistrationNumber:
-                doctor.medicalCouncilRegistrationNumber || 'MCI/12345/2012',
-              verificationStatus: doctor.verificationStatus || 'VERIFIED',
-              scheduleRules: doctor.scheduleRules || [],
-              leaves: doctor.leaves || [],
-              reviews: doctor.reviews || [],
-            }
-            set({ currentDoctorDetail: formattedDetail, isDetailLoading: false })
-            return formattedDetail
-          } else {
-            set({ isDetailLoading: false, detailError: 'Doctor details could not be retrieved' })
+            return null
+          } catch (err) {
+            console.error('Error fetching doctor by id:', err)
             return null
           }
-        } catch (err: any) {
-          console.error('Error in doctorStore.fetchDoctorDetailById:', err)
-          set({
-            isDetailLoading: false,
-            detailError: err.message || 'Error fetching doctor details',
-          })
-          return null
-        }
-      },
+        },
 
-      // Logged-in Doctor Profile Actions
-      setMyDoctorProfile: (profile) => {
-        set({ myDoctorProfile: profile })
-      },
-
-      fetchMyDoctorProfile: async () => {
-        set({ isProfileLoading: true, profileError: null })
-        try {
-          const profile = await doctorService.getMyDoctorProfile()
-          set({ myDoctorProfile: profile, isProfileLoading: false })
-          return profile
-        } catch (err: any) {
-          console.error('Error in doctorStore.fetchMyDoctorProfile:', err)
-          const errorMsg =
-            err?.response?.data?.message || err?.message || 'Failed to fetch doctor profile'
-          set({ profileError: errorMsg, isProfileLoading: false })
-          return null
-        }
-      },
-
-      updateMyDoctorProfile: async (payload: UpdateDoctorProfilePayload) => {
-        set({ isSavingProfile: true, profileError: null })
-        try {
-          const updated = await doctorService.updateDoctorProfile(payload)
-          set({ myDoctorProfile: updated, isSavingProfile: false })
-          return updated
-        } catch (err: any) {
-          console.error('Error in doctorStore.updateMyDoctorProfile:', err)
-          const errorMsg =
-            err?.response?.data?.message || err?.message || 'Failed to update doctor profile'
-          set({ profileError: errorMsg, isSavingProfile: false })
-          throw err
-        }
-      },
-
-      // Logged-in Doctor Dashboard Actions
-      setDashboardData: (data: DoctorDashboardData | null) => {
-        set({ dashboardData: data })
-      },
-
-      clearDashboardData: () => {
-        set({ dashboardData: null, dashboardError: null })
-      },
-
-      fetchDoctorDashboard: async () => {
-        set({ isDashboardLoading: true, dashboardError: null })
-        try {
-          const data = await doctorService.getDoctorDashboardData()
-          set({ dashboardData: data, isDashboardLoading: false })
-          return data
-        } catch (err: any) {
-          console.error('Error in doctorStore.fetchDoctorDashboard:', err)
-          const errorMsg =
-            err?.response?.data?.message || err?.message || 'Failed to fetch doctor dashboard data'
-          set({ dashboardError: errorMsg, isDashboardLoading: false })
-          return null
-        }
-      },
-
-      // Schedule & Availability Actions
-      fetchScheduleAndLeaves: async () => {
-        set({ isScheduleLoading: true, scheduleError: null })
-        try {
-          const profile = await doctorService.getMyDoctorProfile()
-          const leaves = await doctorService.getDoctorLeaves()
-          const rules =
-            profile?.scheduleRules && profile.scheduleRules.length > 0
-              ? profile.scheduleRules
-              : get().scheduleRules.length > 0
-              ? get().scheduleRules
-              : DEFAULT_SCHEDULE_RULES
-
-          set({
-            scheduleRules: rules,
-            leaves: leaves || profile?.leaves || [],
-            isScheduleLoading: false,
-          })
-        } catch (err: any) {
-          console.error('Error fetching schedule and leaves:', err)
-          set({
-            isScheduleLoading: false,
-            scheduleError:
-              err?.response?.data?.message || err?.message || 'Failed to load schedule and leaves',
-          })
-        }
-      },
-
-      saveScheduleRules: async (rules: DoctorScheduleRule[]) => {
-        set({ isSavingSchedule: true, scheduleError: null })
-        try {
-          const updatedProfile = await doctorService.updateDoctorSchedule(rules)
-          set({
-            scheduleRules:
-              updatedProfile.scheduleRules && updatedProfile.scheduleRules.length > 0
-                ? updatedProfile.scheduleRules
-                : rules,
-            isSavingSchedule: false,
-          })
-          return true
-        } catch (err: any) {
-          console.warn('API save schedule failed, persisting locally to Zustand:', err)
-          // Graceful fallback to local persistence
-          set({
-            scheduleRules: rules,
-            isSavingSchedule: false,
-          })
-          return true
-        }
-      },
-
-      applyLeave: async (date: string, reason?: string) => {
-        try {
-          const res = await doctorService.applyDoctorLeave(date, reason)
-          const currentLeaves = get().leaves
-          const alreadyExists = currentLeaves.some((l) => l.date === date)
-          const updatedLeaves = alreadyExists
-            ? currentLeaves
-            : [
-                ...currentLeaves,
-                {
-                  date,
-                  reason: reason || 'Personal Leave',
-                  createdAt: new Date().toISOString(),
-                  status: 'Approved' as const,
-                },
-              ]
-          set({ leaves: res.leaves || updatedLeaves })
-          return {
-            success: true,
-            affectedCount: res.affectedAppointmentsCount || 0,
-            message: res.affectedAppointmentsCount
-              ? `Leave applied. ${res.affectedAppointmentsCount} appointment(s) moved to priority reschedule window.`
-              : `Leave applied successfully for ${date}.`,
-          }
-        } catch (err: any) {
-          console.warn('API apply leave failed, persisting locally to Zustand:', err)
-          const currentLeaves = get().leaves
-          const alreadyExists = currentLeaves.some((l) => l.date === date)
-          const updatedLeaves = alreadyExists
-            ? currentLeaves
-            : [
-                ...currentLeaves,
-                {
-                  date,
-                  reason: reason || 'Personal Leave',
-                  createdAt: new Date().toISOString(),
-                  status: 'Approved' as const,
-                },
-              ]
-          set({ leaves: updatedLeaves })
-          return {
-            success: true,
-            affectedCount: 0,
-            message: `Leave scheduled for ${date}. Patient booking slots blocked.`,
-          }
-        }
-      },
-
-      cancelLeave: async (date: string) => {
-        try {
-          const updatedLeaves = await doctorService.cancelDoctorLeave(date)
-          set({
-            leaves: updatedLeaves || get().leaves.filter((l) => l.date !== date),
-          })
-          return true
-        } catch (err: any) {
-          console.warn('API cancel leave failed, persisting locally to Zustand:', err)
-          set({
-            leaves: get().leaves.filter((l) => l.date !== date),
-          })
-          return true
-        }
-      },
-
-      setSelectedAppointment: (appt) => {
-        set({ selectedAppointment: appt })
-      },
-
-      setAppointmentTab: (tab) => {
-        set({ appointmentTab: tab, appointmentPage: 1 })
-        get().fetchDoctorAppointments({ tab, page: 1 })
-      },
-
-      setAppointmentSelectedDate: (date) => {
-        set({ appointmentSelectedDate: date, appointmentPage: 1 })
-        get().fetchDoctorAppointments({ date: date || undefined, page: 1 })
-      },
-
-      setAppointmentSearchQuery: (query) => {
-        set({ appointmentSearchQuery: query })
-      },
-
-      fetchDoctorAppointments: async (overrides = {}) => {
-        set({ isAppointmentsLoading: true, appointmentError: null })
-        try {
-          const tab = overrides.tab ?? get().appointmentTab
-          const date =
-            overrides.date !== undefined
-              ? overrides.date
-              : get().appointmentSelectedDate || undefined
-          const search =
-            overrides.search !== undefined
-              ? overrides.search
-              : get().appointmentSearchQuery || undefined
-          const page = overrides.page ?? get().appointmentPage
-
-          const res = await doctorService.getDoctorAppointments({
-            tab,
-            date,
-            search,
-            page,
-            limit: 15,
-            status: overrides.status,
-          })
-
-          const appointments = res?.appointments || []
-          const counts = res?.counts || get().appointmentCounts
-          const recentCompleted = res?.recentCompleted || []
-          const pagination = res?.pagination || {
-            totalDocs: appointments.length,
-            totalPages: 1,
-            currentPage: 1,
-          }
-
-          const currentSelected = get().selectedAppointment
-          let nextSelected = currentSelected
-          if (!currentSelected && appointments.length > 0) {
-            nextSelected = appointments[0]
-          } else if (currentSelected) {
-            const found = appointments.find((a) => a._id === currentSelected._id)
-            if (found) nextSelected = found
-            else if (appointments.length > 0) nextSelected = appointments[0]
-          }
-
-          set({
-            appointments,
-            recentCompletedAppointments: recentCompleted,
-            appointmentCounts: counts,
-            selectedAppointment: nextSelected,
-            isAppointmentsLoading: false,
-            appointmentPage: pagination.currentPage,
-            appointmentTotalPages: pagination.totalPages,
-            appointmentTotalDocs: pagination.totalDocs,
-          })
-        } catch (err: any) {
-          console.error('Failed to fetch doctor appointments:', err)
-          set({
-            isAppointmentsLoading: false,
-            appointmentError:
-              err?.response?.data?.message ||
-              err?.message ||
-              'Unable to load appointments from server.',
-          })
-        }
-      },
-
-      updateAppointmentStatusAction: async (id, status, reason) => {
-        try {
-          const updated = await doctorService.updateAppointmentStatus(id, status, reason)
-          set((state) => {
-            const updatedList = state.appointments.map((a) =>
-              a._id === id ? { ...a, status: updated.status || (status as any) } : a
-            )
-            const updatedSelected =
-              state.selectedAppointment?._id === id
-                ? { ...state.selectedAppointment, status: updated.status || (status as any) }
-                : state.selectedAppointment
-            return {
-              appointments: updatedList,
-              selectedAppointment: updatedSelected,
+        fetchDoctorDetailById: async (doctorId: string) => {
+          set({ isDetailLoading: true, detailError: null })
+          try {
+            const doctor = await fetchDoctorByIdApi(doctorId)
+            if (doctor) {
+              const favIds = get().favoriteDoctorIds
+              const formattedDetail: DoctorDetailData = {
+                ...doctor,
+                isFavorite: favIds.includes(doctor._id),
+                qualifications: doctor.qualifications || ['MBBS', 'MD'],
+                specialization: doctor.specialization || [doctor.specialty || doctor.department || 'General Medicine'],
+                bio:
+                  doctor.bio ||
+                  `Dr. ${doctor.name} is a senior medical specialist with extensive clinical practice.`,
+                medicalCouncilRegistrationNumber:
+                  doctor.medicalCouncilRegistrationNumber || 'MCI/12345/2012',
+                verificationStatus: doctor.verificationStatus || 'VERIFIED',
+                scheduleRules: doctor.scheduleRules || [],
+                leaves: doctor.leaves || [],
+                reviews: doctor.reviews || [],
+              }
+              set({ currentDoctorDetail: formattedDetail, isDetailLoading: false })
+              return formattedDetail
+            } else {
+              set({ isDetailLoading: false, detailError: 'Doctor details could not be retrieved' })
+              return null
             }
-          })
-          get().fetchDoctorAppointments()
-          return true
-        } catch (err: any) {
-          console.error('Failed to update appointment status:', err)
-          return false
-        }
-      },
+          } catch (err: any) {
+            console.error('Error in doctorStore.fetchDoctorDetailById:', err)
+            set({
+              isDetailLoading: false,
+              detailError: err.message || 'Error fetching doctor details',
+            })
+            return null
+          }
+        },
 
-      completeAppointmentAction: async (id, data) => {
-        try {
-          await doctorService.completeAppointment(id, data)
-          get().fetchDoctorAppointments()
-          return true
-        } catch (err: any) {
-          console.error('Failed to complete appointment:', err)
-          return false
-        }
-      },
-    }),
-    {
-      name: 'curehealth_doctor_store',
-      partialize: (state) => ({
-        favoriteDoctorIds: state.favoriteDoctorIds,
-        selectedCity: state.selectedCity,
-        currentDoctorDetail: state.currentDoctorDetail,
-        myDoctorProfile: state.myDoctorProfile,
-        dashboardData: state.dashboardData,
-        scheduleRules: state.scheduleRules,
-        leaves: state.leaves,
+        // Logged-in Doctor Profile Actions
+        setMyDoctorProfile: (profile) => {
+          set({ myDoctorProfile: profile })
+        },
+
+        fetchMyDoctorProfile: async () => {
+          set({ isProfileLoading: true, profileError: null })
+          try {
+            const profile = await doctorService.getMyDoctorProfile()
+            set({ myDoctorProfile: profile, isProfileLoading: false })
+            return profile
+          } catch (err: any) {
+            console.error('Error in doctorStore.fetchMyDoctorProfile:', err)
+            const errorMsg =
+              err?.response?.data?.message || err?.message || 'Failed to fetch doctor profile'
+            set({ profileError: errorMsg, isProfileLoading: false })
+            return null
+          }
+        },
+
+        updateMyDoctorProfile: async (payload: UpdateDoctorProfilePayload) => {
+          set({ isSavingProfile: true, profileError: null })
+          try {
+            const updated = await doctorService.updateDoctorProfile(payload)
+            set({ myDoctorProfile: updated, isSavingProfile: false })
+            return updated
+          } catch (err: any) {
+            console.error('Error in doctorStore.updateMyDoctorProfile:', err)
+            const errorMsg =
+              err?.response?.data?.message || err?.message || 'Failed to update doctor profile'
+            set({ profileError: errorMsg, isSavingProfile: false })
+            throw err
+          }
+        },
+
+        // Logged-in Doctor Dashboard Actions
+        setDashboardData: (data: DoctorDashboardData | null) => {
+          set({ dashboardData: data })
+        },
+
+        clearDashboardData: () => {
+          set({ dashboardData: null, dashboardError: null })
+        },
+
+        fetchDoctorDashboard: async () => {
+          set({ isDashboardLoading: true, dashboardError: null })
+          try {
+            const data = await doctorService.getDoctorDashboardData()
+            set({ dashboardData: data, isDashboardLoading: false })
+            return data
+          } catch (err: any) {
+            console.error('Error in doctorStore.fetchDoctorDashboard:', err)
+            const errorMsg =
+              err?.response?.data?.message || err?.message || 'Failed to fetch doctor dashboard data'
+            set({ dashboardError: errorMsg, isDashboardLoading: false })
+            return null
+          }
+        },
+
+        // Schedule & Availability Actions
+        fetchScheduleAndLeaves: async () => {
+          set({ isScheduleLoading: true, scheduleError: null })
+          try {
+            const profile = await doctorService.getMyDoctorProfile()
+            const rawLeaves = await doctorService.getDoctorLeaves()
+            const leaves = Array.isArray(rawLeaves) ? rawLeaves : (rawLeaves as any)?.leaves || profile?.leaves || []
+            const rules =
+              profile?.scheduleRules && profile.scheduleRules.length > 0
+                ? profile.scheduleRules
+                : get().scheduleRules.length > 0
+                ? get().scheduleRules
+                : DEFAULT_SCHEDULE_RULES
+
+            set({
+              scheduleRules: rules,
+              leaves: leaves,
+              isScheduleLoading: false,
+            })
+          } catch (err: any) {
+            console.error('Error fetching schedule and leaves:', err)
+            set({
+              isScheduleLoading: false,
+              scheduleError:
+                err?.response?.data?.message || err?.message || 'Failed to load schedule and leaves',
+            })
+          }
+        },
+
+        saveScheduleRules: async (rules: DoctorScheduleRule[]) => {
+          set({ isSavingSchedule: true, scheduleError: null })
+          try {
+            const updatedProfile = await doctorService.updateDoctorSchedule(rules)
+            set({
+              scheduleRules:
+                updatedProfile.scheduleRules && updatedProfile.scheduleRules.length > 0
+                  ? updatedProfile.scheduleRules
+                  : rules,
+              isSavingSchedule: false,
+            })
+            return true
+          } catch (err: any) {
+            console.warn('API save schedule failed, persisting locally to Zustand:', err)
+            set({
+              scheduleRules: rules,
+              isSavingSchedule: false,
+            })
+            return true
+          }
+        },
+
+        applyLeave: async (payload: string | ApplyDoctorLeavePayload, reason?: string) => {
+          try {
+            const res = await doctorService.applyDoctorLeave(payload, reason)
+            await get().fetchScheduleAndLeaves()
+            const affectedCount =
+              res.totalAffected ?? res.affectedAppointmentsCount ?? res.rescheduledCount ?? 0
+            return {
+              success: true,
+              affectedCount,
+              message:
+                res.message ||
+                (affectedCount
+                  ? `Leave application submitted (PENDING approval). ${affectedCount} appointment(s) processed.`
+                  : 'Leave application submitted successfully (PENDING approval).'),
+            }
+          } catch (err: any) {
+            console.error('API apply leave failed:', err)
+            const errorMsg =
+              err?.response?.data?.message || err?.message || 'Failed to submit leave application.'
+            return {
+              success: false,
+              affectedCount: 0,
+              message: errorMsg,
+            }
+          }
+        },
+
+        cancelLeave: async (idOrDate: string) => {
+          try {
+            await doctorService.cancelDoctorLeave(idOrDate)
+            await get().fetchScheduleAndLeaves()
+            return true
+          } catch (err: any) {
+            console.error('API cancel leave failed:', err)
+            return false
+          }
+        },
+
+        setSelectedAppointment: (appt) => {
+          set({ selectedAppointment: appt })
+        },
+
+        setAppointmentTab: (tab) => {
+          set({ appointmentTab: tab, appointmentPage: 1 })
+          get().fetchDoctorAppointments({ tab, page: 1 })
+        },
+
+        setAppointmentSelectedDate: (date) => {
+          set({ appointmentSelectedDate: date, appointmentPage: 1 })
+          get().fetchDoctorAppointments({ date: date || undefined, page: 1 })
+        },
+
+        setAppointmentSearchQuery: (query) => {
+          set({ appointmentSearchQuery: query })
+        },
+
+        fetchDoctorAppointments: async (overrides = {}) => {
+          set({ isAppointmentsLoading: true, appointmentError: null })
+          try {
+            const tab = overrides.tab ?? get().appointmentTab
+            const date =
+              overrides.date !== undefined
+                ? overrides.date
+                : get().appointmentSelectedDate || undefined
+            const search =
+              overrides.search !== undefined
+                ? overrides.search
+                : get().appointmentSearchQuery || undefined
+            const page = overrides.page ?? get().appointmentPage
+
+            const res = await doctorService.getDoctorAppointments({
+              tab,
+              date,
+              search,
+              page,
+              limit: 15,
+              status: overrides.status,
+            })
+
+            const appointments = res?.appointments || []
+            const counts = res?.counts || get().appointmentCounts
+            const recentCompleted = res?.recentCompleted || []
+            const pagination = res?.pagination || {
+              totalDocs: appointments.length,
+              totalPages: 1,
+              currentPage: 1,
+            }
+
+            const currentSelected = get().selectedAppointment
+            let nextSelected = currentSelected
+            if (!currentSelected && appointments.length > 0) {
+              nextSelected = appointments[0]
+            } else if (currentSelected) {
+              const found = appointments.find((a) => a._id === currentSelected._id)
+              if (found) nextSelected = found
+              else if (appointments.length > 0) nextSelected = appointments[0]
+            }
+
+            set({
+              appointments,
+              recentCompletedAppointments: recentCompleted,
+              appointmentCounts: counts,
+              selectedAppointment: nextSelected,
+              isAppointmentsLoading: false,
+              appointmentPage: pagination.currentPage,
+              appointmentTotalPages: pagination.totalPages,
+              appointmentTotalDocs: pagination.totalDocs,
+            })
+          } catch (err: any) {
+            console.error('Failed to fetch doctor appointments:', err)
+            set({
+              isAppointmentsLoading: false,
+              appointmentError:
+                err?.response?.data?.message ||
+                err?.message ||
+                'Unable to load appointments from server.',
+            })
+          }
+        },
+
+        updateAppointmentStatusAction: async (id, status, reason) => {
+          try {
+            const updated = await doctorService.updateAppointmentStatus(id, status, reason)
+            set((state) => {
+              const updatedList = state.appointments.map((a) =>
+                a._id === id ? { ...a, status: updated.status || (status as any) } : a
+              )
+              const updatedSelected =
+                state.selectedAppointment?._id === id
+                  ? { ...state.selectedAppointment, status: updated.status || (status as any) }
+                  : state.selectedAppointment
+              return {
+                appointments: updatedList,
+                selectedAppointment: updatedSelected,
+              }
+            })
+            get().fetchDoctorAppointments()
+            return true
+          } catch (err: any) {
+            console.error('Failed to update appointment status:', err)
+            return false
+          }
+        },
+
+        completeAppointmentAction: async (id, data) => {
+          try {
+            await doctorService.completeAppointment(id, data)
+            get().fetchDoctorAppointments()
+            return true
+          } catch (err: any) {
+            console.error('Failed to complete appointment:', err)
+            return false
+          }
+        },
       }),
-    }
-  ),
-  { name: 'DoctorStore' }
-)
+      {
+        name: 'curehealth_doctor_store',
+        partialize: (state) => ({
+          favoriteDoctorIds: state.favoriteDoctorIds,
+          selectedCity: state.selectedCity,
+          currentDoctorDetail: state.currentDoctorDetail,
+          myDoctorProfile: state.myDoctorProfile,
+          dashboardData: state.dashboardData,
+          scheduleRules: state.scheduleRules,
+          leaves: state.leaves,
+        }),
+      }
+    ),
+    { name: 'DoctorStore' }
+  )
 )
 
 export const useDoctorPortalStore = useDoctorStore
-

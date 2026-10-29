@@ -133,7 +133,7 @@ export const superAdminService = {
   // Fetch list of registered hospitals for filtering dropdown
   getHospitals: async (): Promise<any> => {
     try {
-      const res = await apiClient.get('/hospitals?limit=100')
+      const res = await apiClient.get('/hospitals?limit=10')
       return (res as any)?.data || res
     } catch (err) {
       console.warn('Hospitals API query failed:', err)

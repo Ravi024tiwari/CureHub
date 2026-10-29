@@ -49,7 +49,6 @@ export interface DoctorProfileData {
   updatedAt?: string
 }
 
-
 export interface DoctorScheduleRule {
   dayOfWeek: number // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
   startTime: string // "09:00"
@@ -59,10 +58,63 @@ export interface DoctorScheduleRule {
 
 export interface DoctorLeaveItem {
   _id?: string
-  date: string // YYYY-MM-DD
+  doctorId?: any
+  hospitalId?: {
+    _id: string
+    name: string
+    slug?: string
+    address?: string
+  } | string
+  startDateTime?: string
+  endDateTime?: string
+  leaveType?: 'FULL_DAY' | 'PARTIAL_DAY' | 'MULTI_DAY'
+  date: string // YYYY-MM-DD or display date
+  startTime?: string
+  endTime?: string
   reason?: string
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'Pending' | 'Approved'
+  rejectionReason?: string
+  approvedBy?: any
+  affectedAppointmentsCount?: number
   createdAt?: string
-  status?: 'Approved' | 'Pending'
+  updatedAt?: string
+}
+
+export interface AffectedAppointmentItem {
+  _id: string
+  appointmentNumber: string
+  patientName: string
+  patientPhone?: string
+  patientAvatar?: string
+  date: string
+  startTime: string
+  endTime?: string
+  symptoms?: string
+}
+
+export interface AffectedAppointmentsResponse {
+  affectedCount: number
+  appointments: AffectedAppointmentItem[]
+  leaveStart: string
+  leaveEnd: string
+}
+
+export interface ApplyDoctorLeavePayload {
+  leaveType: 'FULL_DAY' | 'PARTIAL_DAY' | 'MULTI_DAY'
+  date?: string
+  startTime?: string
+  endTime?: string
+  startDate?: string
+  endDate?: string
+  startDateTime?: string
+  endDateTime?: string
+  reason?: string
+  rescheduledAppointments?: Array<{
+    appointmentId: string
+    newDate: string
+    newStartTime: string
+    newEndTime?: string
+  }>
 }
 
 export interface UpdateDoctorProfilePayload {
@@ -307,24 +359,50 @@ export const doctorService = {
 
   getDoctorLeaves: async (): Promise<DoctorLeaveItem[]> => {
     const res: any = await apiClient.get('/doctors/leaves')
+    const data = res?.data?.leaves || res?.data || res?.leaves || res
+    return Array.isArray(data) ? data : []
+  },
+
+  getAffectedAppointmentsForLeave: async (params: {
+    leaveType?: string
+    date?: string
+    startTime?: string
+    endTime?: string
+    startDate?: string
+    endDate?: string
+    startDateTime?: string
+    endDateTime?: string
+  }): Promise<AffectedAppointmentsResponse> => {
+    const res: any = await apiClient.get('/doctors/leaves/affected-appointments', { params })
     return res?.data || res
   },
 
   applyDoctorLeave: async (
-    date: string,
+    payload: ApplyDoctorLeavePayload | string,
     reason?: string
   ): Promise<{
-    date: string
-    reason: string
-    affectedAppointmentsCount: number
-    leaves: DoctorLeaveItem[]
+    leave?: DoctorLeaveItem
+    rescheduledCount?: number
+    unrescheduledCount?: number
+    totalAffected?: number
+    affectedAppointmentsCount?: number
+    leaves?: DoctorLeaveItem[]
+    message?: string
   }> => {
-    const res: any = await apiClient.post('/doctors/leaves', { date, reason })
-    return res?.data || res
+    const body =
+      typeof payload === 'string'
+        ? { date: payload, reason, leaveType: 'FULL_DAY' }
+        : payload
+    const res: any = await apiClient.post('/doctors/leaves', body)
+    const payloadData = res?.data || res
+    return {
+      ...payloadData,
+      message: res?.message || payloadData?.message,
+    }
   },
 
-  cancelDoctorLeave: async (date: string): Promise<DoctorLeaveItem[]> => {
-    const res: any = await apiClient.delete(`/doctors/leaves/${date}`)
+  cancelDoctorLeave: async (idOrDate: string): Promise<DoctorLeaveItem[]> => {
+    const res: any = await apiClient.delete(`/doctors/leaves/${idOrDate}`)
     return res?.data || res
   },
 
@@ -440,6 +518,11 @@ export const doctorService = {
     return res?.data || res
   },
 
+  getDoctorById: async (doctorId: string): Promise<any> => {
+    const res: any = await apiClient.get(`/doctors/details/${doctorId}`)
+    return res?.data?.data || res?.data || res
+  },
+
   getDoctorHospitalDetail: async (hospitalId: string): Promise<any> => {
     const res: any = await apiClient.get(`/doctors/hospitals/${hospitalId}`)
     return res?.data || res
@@ -447,5 +530,3 @@ export const doctorService = {
 }
 
 export default doctorService
-
-

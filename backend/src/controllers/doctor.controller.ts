@@ -7,6 +7,12 @@ import { Hospital } from "../models/Hospital.model.js";
 import { User } from "../models/User.model.js";
 import { Review } from "../models/Review.model.js";
 import { PatientProfile } from "../models/PatientProfile.model.js";
+import { DoctorLeave } from "../models/DoctorLeave.model.js";
+import {
+  blockSlotsForLeaveWindow,
+  reopenSlotsForLeaveWindow,
+  isDoctorOnLeave,
+} from "../services/doctorLeave.service.js";
 import {
   HospitalJoinRequest,
   JoinRequestStatus,
@@ -856,97 +862,413 @@ export const completeAppointmentWithPrescription = asyncHandler(
  * - Cancels or marks TimeSlots as UNAVAILABLE on that date
  * - Records leave on doctor profile
  */
-export const applyDoctorLeave = asyncHandler(async (req: Request, res: Response) => {
+/**
+ * Doctor: Pre-flight check for appointments that will be affected by a proposed leave
+ * Used by the Leave Modal to display affected patient bookings and let doctor reschedule them
+ */
+export const getDoctorLeaveAffectedAppointments = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.userId;
-  const { date, reason } = req.body;
-
   if (!userId) throw new ApiError(401, "Unauthorized");
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    throw new ApiError(400, "Valid date in YYYY-MM-DD format is required.");
-  }
-
-  const todayStr = new Date().toISOString().split("T")[0];
-  if (date < todayStr) {
-    throw new ApiError(400, "Cannot apply for leave on past dates.");
-  }
 
   const doctor = await getDoctorProfileByUserId(userId);
 
-  // Check if leave already exists for this date
-  const alreadyOnLeave = doctor.leaves.some((l) => l.date === date);
-  if (alreadyOnLeave) {
-    throw new ApiError(409, `You have already applied for leave on ${date}.`);
+  const {
+    leaveType = "FULL_DAY",
+    date,
+    startTime,
+    endTime,
+    startDate,
+    endDate,
+    startDateTime: rawStartDateTime,
+    endDateTime: rawEndDateTime,
+  } = req.query;
+
+  let calculatedStart: Date;
+  let calculatedEnd: Date;
+
+  if (rawStartDateTime && rawEndDateTime) {
+    calculatedStart = new Date(rawStartDateTime as string);
+    calculatedEnd = new Date(rawEndDateTime as string);
+  } else if (leaveType === "PARTIAL_DAY") {
+    if (!date || !startTime || !endTime) {
+      throw new ApiError(400, "Date, startTime, and endTime are required for partial day.");
+    }
+    calculatedStart = new Date(`${date}T${startTime}:00.000Z`);
+    calculatedEnd = new Date(`${date}T${endTime}:00.000Z`);
+  } else if (leaveType === "MULTI_DAY") {
+    if (!startDate || !endDate) {
+      throw new ApiError(400, "startDate and endDate are required for multi day.");
+    }
+    calculatedStart = new Date(`${startDate}T00:00:00.000Z`);
+    calculatedEnd = new Date(`${endDate}T23:59:59.999Z`);
+  } else {
+    // FULL_DAY
+    if (!date) throw new ApiError(400, "Date is required for full-day leave.");
+    calculatedStart = new Date(`${date}T00:00:00.000Z`);
+    calculatedEnd = new Date(`${date}T23:59:59.999Z`);
   }
 
-  // Check if there are active confirmed appointments on this date
-  const activeAppointments = await Appointment.find({
+  const startDateStr = calculatedStart.toISOString().split("T")[0];
+  const endDateStr = calculatedEnd.toISOString().split("T")[0];
+
+  const candidateAppointments = await Appointment.find({
     doctorId: doctor._id,
-    date,
-    status: { $in: [AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS] },
-  });
+    date: { $gte: startDateStr, $lte: endDateStr },
+    status: {
+      $in: [
+        AppointmentStatus.CONFIRMED,
+        AppointmentStatus.CHECKED_IN,
+        AppointmentStatus.PENDING_PAYMENT,
+      ],
+    },
+  })
+    .populate("patientId", "name email phoneNumber avatar")
+    .sort({ date: 1, startTime: 1 });
 
-  // Priority 7-day reschedule window for affected patients
-  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-  const rescheduleDeadline = new Date(Date.now() + SEVEN_DAYS_MS);
-
-  if (activeAppointments.length > 0) {
-    for (const appt of activeAppointments) {
-      // Release slot and mark as UNAVAILABLE since doctor is on leave
-      await TimeSlot.findByIdAndUpdate(appt.slotId, {
-        status: SlotStatus.UNAVAILABLE,
-        lockedByPatientId: null,
-        lockedAt: null,
-        lockExpiresAt: null,
+  const affectedAppointments: any[] = [];
+  for (const appt of candidateAppointments) {
+    const apptStart = new Date(`${appt.date}T${appt.startTime}:00.000Z`);
+    let apptEnd = new Date(`${appt.date}T${appt.endTime || appt.startTime}:00.000Z`);
+    if (apptEnd.getTime() <= apptStart.getTime()) {
+      apptEnd = new Date(apptStart.getTime() + 30 * 60 * 1000);
+    }
+    if (calculatedStart < apptEnd && calculatedEnd > apptStart) {
+      affectedAppointments.push({
+        _id: appt._id,
+        appointmentNumber: appt.appointmentNumber,
+        patientName: (appt.patientId as any)?.name || appt.patientDetails?.fullName || "Patient",
+        patientPhone: (appt.patientId as any)?.phoneNumber || (appt.patientDetails as any)?.phoneNumber,
+        patientAvatar: (appt.patientId as any)?.avatar,
+        date: appt.date,
+        startTime: appt.startTime,
+        endTime: appt.endTime,
+        symptoms: appt.symptoms,
       });
-
-      // Move appointment to RESCHEDULE_REQUIRED with 7-day window
-      appt.status = AppointmentStatus.RESCHEDULE_REQUIRED;
-      appt.rescheduleDeadline = rescheduleDeadline;
-      appt.doctorLeaveReason = reason?.trim() || "Doctor on approved medical/personal leave";
-      await appt.save();
     }
   }
-
-  // Mark all unbooked slots on this date as UNAVAILABLE
-  await TimeSlot.updateMany(
-    { doctorId: doctor._id, date, status: SlotStatus.AVAILABLE },
-    { status: SlotStatus.UNAVAILABLE }
-  );
-
-  // Add leave to doctor profile
-  doctor.leaves.push({
-    date,
-    reason: reason?.trim() || "Personal Leave",
-    createdAt: new Date(),
-  });
-  await doctor.save();
 
   return res.status(200).json(
     new ApiResponse(
       200,
       {
-        date,
-        reason: reason?.trim() || "Personal Leave",
-        affectedAppointmentsCount: activeAppointments.length,
-        rescheduleDeadline,
-        leaves: doctor.leaves,
+        affectedCount: affectedAppointments.length,
+        appointments: affectedAppointments,
+        leaveStart: calculatedStart.toISOString(),
+        leaveEnd: calculatedEnd.toISOString(),
       },
-      `Leave applied for ${date}. ${activeAppointments.length} appointments moved to a 7-day priority reschedule window (deadline: ${rescheduleDeadline.toISOString().split("T")[0]}).`
+      "Affected appointments retrieved successfully"
+    )
+  );
+});
+
+export const applyDoctorLeave = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user?.userId;
+  if (!req.user?.userId) throw new ApiError(401, "Unauthorized");
+
+  const doctor = await getDoctorProfileByUserId(req.user.userId);
+  const hospitalId = (doctor.hospitalId as any)?._id || doctor.hospitalId;
+  if (!hospitalId) {
+    throw new ApiError(400, "You must be affiliated with an active hospital to apply for leave.");
+  }
+
+  const {
+    leaveType = "FULL_DAY",
+    date,
+    startTime,
+    endTime,
+    startDate,
+    endDate,
+    startDateTime: rawStartDateTime,
+    endDateTime: rawEndDateTime,
+    reason,
+    rescheduledAppointments = [],
+  } = req.body;
+
+  let calculatedStart: Date;
+  let calculatedEnd: Date;
+
+  if (rawStartDateTime && rawEndDateTime) {
+    calculatedStart = new Date(rawStartDateTime);
+    calculatedEnd = new Date(rawEndDateTime);
+  } else if (leaveType === "PARTIAL_DAY") {
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new ApiError(400, "Valid date (YYYY-MM-DD) is required for partial-day leave.");
+    }
+    if (!startTime || !endTime) {
+      throw new ApiError(400, "Both startTime and endTime (HH:mm) are required for partial-day leave.");
+    }
+    calculatedStart = new Date(`${date}T${startTime}:00.000Z`);
+    calculatedEnd = new Date(`${date}T${endTime}:00.000Z`);
+  } else if (leaveType === "MULTI_DAY") {
+    if (!startDate || !endDate) {
+      throw new ApiError(400, "Both startDate and endDate (YYYY-MM-DD) are required for multi-day leave.");
+    }
+    calculatedStart = new Date(`${startDate}T00:00:00.000Z`);
+    calculatedEnd = new Date(`${endDate}T23:59:59.999Z`);
+  } else {
+    // Default: FULL_DAY
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new ApiError(400, "Valid date (YYYY-MM-DD) is required for full-day leave.");
+    }
+    calculatedStart = new Date(`${date}T00:00:00.000Z`);
+    calculatedEnd = new Date(`${date}T23:59:59.999Z`);
+  }
+
+  if (isNaN(calculatedStart.getTime()) || isNaN(calculatedEnd.getTime())) {
+    throw new ApiError(400, "Invalid start or end date-time format.");
+  }
+
+  const now = new Date();
+  const todayStr = now.toISOString().split("T")[0];
+  const startDayStr = calculatedStart.toISOString().split("T")[0];
+
+  if (calculatedEnd <= now) {
+    throw new ApiError(400, "Cannot apply for leave in the past. Leave window must be in the future.");
+  }
+
+  if (startDayStr < todayStr) {
+    throw new ApiError(400, "Cannot apply for leave on past dates.");
+  }
+
+  if (calculatedEnd <= calculatedStart) {
+    throw new ApiError(400, "End date-time must be after start date-time.");
+  }
+
+  // Check for conflicting active leave requests (PENDING or APPROVED)
+  const conflictingLeave = await DoctorLeave.findOne({
+    doctorId: doctor._id,
+    status: { $in: ["PENDING", "APPROVED"] },
+    startDateTime: { $lt: calculatedEnd },
+    endDateTime: { $gt: calculatedStart },
+  });
+
+  if (conflictingLeave) {
+    throw new ApiError(
+      409,
+      `You already have a ${conflictingLeave.status.toLowerCase()} leave request covering this window (${conflictingLeave.startDateTime.toISOString().split("T")[0]} to ${conflictingLeave.endDateTime.toISOString().split("T")[0]}).`
+    );
+  }
+
+  // Count active confirmed appointments in this window that will require rescheduling upon admin approval
+  const startDateStr = calculatedStart.toISOString().split("T")[0];
+  const endDateStr = calculatedEnd.toISOString().split("T")[0];
+
+  const candidateAppointments = await Appointment.find({
+    doctorId: doctor._id,
+    date: { $gte: startDateStr, $lte: endDateStr },
+    status: {
+      $in: [
+        AppointmentStatus.CONFIRMED,
+        AppointmentStatus.CHECKED_IN,
+        AppointmentStatus.PENDING_PAYMENT,
+      ],
+    },
+  });
+
+  const rescheduledMap = new Map<string, { newDate: string; newStartTime: string; newEndTime?: string }>();
+  if (Array.isArray(rescheduledAppointments)) {
+    for (const r of rescheduledAppointments) {
+      if (r.appointmentId && r.newDate && r.newStartTime) {
+        rescheduledMap.set(r.appointmentId.toString(), r);
+      }
+    }
+  }
+
+  let rescheduledCount = 0;
+  let unrescheduledCount = 0;
+
+  for (const appt of candidateAppointments) {
+    const apptStart = new Date(`${appt.date}T${appt.startTime}:00.000Z`);
+    let apptEnd = new Date(`${appt.date}T${appt.endTime || appt.startTime}:00.000Z`);
+    if (apptEnd.getTime() <= apptStart.getTime()) {
+      apptEnd = new Date(apptStart.getTime() + 30 * 60 * 1000);
+    }
+
+    if (calculatedStart < apptEnd && calculatedEnd > apptStart) {
+      const rescheduleData = rescheduledMap.get(appt._id.toString());
+
+      if (rescheduleData) {
+        // Doctor explicitly rescheduled this patient in the Leave Modal (NO REFUND - Transferred!)
+        const [y, m, d] = rescheduleData.newDate.split("-").map(Number);
+        const [sh, sm] = rescheduleData.newStartTime.split(":").map(Number);
+
+        let newEndStr = rescheduleData.newEndTime;
+        if (!newEndStr) {
+          const totalEndMin = sh * 60 + sm + 30;
+          const endH = Math.floor(totalEndMin / 60).toString().padStart(2, "0");
+          const endM = (totalEndMin % 60).toString().padStart(2, "0");
+          newEndStr = `${endH}:${endM}`;
+        }
+
+        // Release old slot
+        if (appt.slotId) {
+          await TimeSlot.findByIdAndUpdate(appt.slotId, {
+            status: SlotStatus.AVAILABLE,
+            lockedByPatientId: null,
+            lockedAt: null,
+            lockExpiresAt: null,
+          });
+        }
+
+        // Lock / upsert new slot
+        const newSlot = await TimeSlot.findOneAndUpdate(
+          {
+            doctorId: doctor._id,
+            date: rescheduleData.newDate,
+            startTime: rescheduleData.newStartTime,
+          },
+          {
+            $set: {
+              hospitalId: hospitalId,
+              endTime: newEndStr,
+              status: SlotStatus.BOOKED,
+              lockedByPatientId: appt.patientId,
+              lockedAt: new Date(),
+            },
+          },
+          { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
+
+        // Record history & update appointment schedule (NO REFUND!)
+        if (!appt.rescheduleHistory) appt.rescheduleHistory = [];
+        appt.rescheduleHistory.push({
+          previousSlotId: appt.slotId,
+          previousDate: appt.date,
+          previousStartTime: appt.startTime,
+          previousEndTime: appt.endTime,
+          reason: `Rescheduled by doctor during leave application: ${reason || "Personal Leave"}`,
+          rescheduledAt: new Date(),
+        });
+
+        appt.slotId = newSlot._id;
+        appt.date = rescheduleData.newDate;
+        appt.startTime = rescheduleData.newStartTime;
+        appt.endTime = newEndStr;
+        appt.status = AppointmentStatus.CONFIRMED;
+        appt.rescheduleDeadline = null;
+        appt.doctorLeaveReason = `Rescheduled by doctor to ${rescheduleData.newDate} at ${rescheduleData.newStartTime} due to leave: ${reason || "Leave"}`;
+
+        await appt.save();
+        rescheduledCount++;
+      } else {
+        // Left unrescheduled: enters 7-day priority window (auto-refunds if doctor doesn't reschedule in 7 days)
+        appt.status = AppointmentStatus.RESCHEDULE_REQUIRED;
+        appt.rescheduleDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        appt.doctorLeaveReason = reason?.trim() || "Doctor on scheduled leave";
+        await appt.save();
+
+        if (appt.slotId) {
+          await TimeSlot.findByIdAndUpdate(appt.slotId, {
+            status: SlotStatus.UNAVAILABLE,
+            lockedByPatientId: null,
+            lockedAt: null,
+            lockExpiresAt: null,
+          });
+        }
+        unrescheduledCount++;
+      }
+    }
+  }
+
+  // 1. Create the new leave record in PENDING state (mid-state workflow)
+  const newLeave = await DoctorLeave.create({
+    doctorId: doctor._id,
+    hospitalId: hospitalId,
+    startDateTime: calculatedStart,
+    endDateTime: calculatedEnd,
+    leaveType,
+    reason: reason?.trim() || "Personal Leave",
+    status: "PENDING",
+    affectedAppointmentsCount: rescheduledCount + unrescheduledCount,
+  });
+
+  // 2. Immediately block unbooked available time slots in this window so no NEW appointments can be booked
+  await blockSlotsForLeaveWindow(doctor._id, calculatedStart, calculatedEnd);
+
+  // Sync to doctor profile leaves array for backward compatibility
+  const legacyDateStr = date || startDateStr;
+  if (!Array.isArray(doctor.leaves)) {
+    doctor.leaves = [];
+  }
+  if (!doctor.leaves.some((l) => l.date === legacyDateStr)) {
+    doctor.leaves.push({
+      date: legacyDateStr,
+      reason: reason?.trim() || "Pending Leave Approval",
+      createdAt: new Date(),
+    });
+    await doctor.save();
+  }
+
+  const populatedLeave = await DoctorLeave.findById(newLeave._id)
+    .populate("hospitalId", "name slug address contactPhone")
+    .populate("doctorId", "department specialization");
+
+  return res.status(201).json(
+    new ApiResponse(
+      201,
+      {
+        leave: populatedLeave,
+        rescheduledCount,
+        unrescheduledCount,
+        totalAffected: rescheduledCount + unrescheduledCount,
+      },
+      `Leave application submitted (PENDING approval). ${rescheduledCount} appointment(s) rescheduled to new dates with zero refund deduction. ${unrescheduledCount} appointment(s) placed into 7-day priority window.`
     )
   );
 });
 
 /**
- * Get all leaves applied by doctor
+ * Legacy (with status breakdown and pagination)
  */
 export const getDoctorLeaves = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.userId;
   if (!userId) throw new ApiError(401, "Unauthorized");
 
   const doctor = await getDoctorProfileByUserId(userId);
+  const { status, page = "1", limit = "20" } = req.query;
+
+  const pageNum = Math.max(1, parseInt(page as string) || 1);
+  const limitNum = Math.max(1, Math.min(50, parseInt(limit as string) || 20));
+  const skip = (pageNum - 1) * limitNum;
+
+  const query: any = { doctorId: doctor._id };
+  if (status && status !== "ALL") {
+    query.status = status;
+  }
+
+  const [leaves, totalDocs, pendingCount, approvedCount, rejectedCount] = await Promise.all([
+    DoctorLeave.find(query)
+      .sort({ startDateTime: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .populate("hospitalId", "name address slug contactPhone")
+      .populate("approvedBy", "name email"),
+    DoctorLeave.countDocuments(query),
+    DoctorLeave.countDocuments({ doctorId: doctor._id, status: "PENDING" }),
+    DoctorLeave.countDocuments({ doctorId: doctor._id, status: "APPROVED" }),
+    DoctorLeave.countDocuments({ doctorId: doctor._id, status: "REJECTED" }),
+  ]);
 
   return res.status(200).json(
-    new ApiResponse(200, doctor.leaves, "Doctor leaves retrieved successfully")
+    new ApiResponse(
+      200,
+      {
+        leaves,
+        summary: {
+          total: totalDocs,
+          pending: pendingCount,
+          approved: approvedCount,
+          rejected: rejectedCount,
+        },
+        pagination: {
+          totalDocs,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(totalDocs / limitNum) || 1,
+        },
+      },
+      "Doctor leaves retrieved successfully"
+    )
   );
 });
 
@@ -955,35 +1277,83 @@ export const getDoctorLeaves = asyncHandler(async (req: Request, res: Response) 
  */
 export const cancelDoctorLeave = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.userId;
-  const { date } = req.params;
+  const { id } = req.params;
 
   if (!userId) throw new ApiError(401, "Unauthorized");
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    throw new ApiError(400, "Valid date in YYYY-MM-DD format is required.");
-  }
-
   const doctor = await getDoctorProfileByUserId(userId);
 
-  const leaveIndex = doctor.leaves.findIndex((l) => l.date === date);
-  if (leaveIndex === -1) {
-    throw new ApiError(404, `No scheduled leave found for date ${date}.`);
+  let leave: any = null;
+  if (mongoose.Types.ObjectId.isValid(id)) {
+    leave = await DoctorLeave.findOne({ _id: id, doctorId: doctor._id });
+  } else {
+    // Legacy support: match by YYYY-MM-DD date string
+    const dateStr = id;
+    const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
+    const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
+    leave = await DoctorLeave.findOne({
+      doctorId: doctor._id,
+      startDateTime: { $gte: startOfDay, $lte: endOfDay },
+      status: { $in: ["PENDING", "APPROVED"] },
+    });
   }
 
-  doctor.leaves.splice(leaveIndex, 1);
-  await doctor.save();
+  if (!leave) {
+    // Fallback: check legacy doctor.leaves array
+    const legacyIndex = doctor.leaves.findIndex((l) => l.date === id);
+    if (legacyIndex !== -1) {
+      doctor.leaves.splice(legacyIndex, 1);
+      await doctor.save();
+      await TimeSlot.updateMany(
+        { doctorId: doctor._id, date: id, status: SlotStatus.UNAVAILABLE, lockedByPatientId: null },
+        { status: SlotStatus.AVAILABLE }
+      );
+      return res.status(200).json(
+        new ApiResponse(200, null, `Leave on ${id} cancelled and slots reopened.`)
+      );
+    }
+    throw new ApiError(404, "Leave record not found or already cancelled.");
+  }
 
-  // Re-enable UNAVAILABLE slots to AVAILABLE
-  await TimeSlot.updateMany(
-    { doctorId: doctor._id, date, status: SlotStatus.UNAVAILABLE },
-    { status: SlotStatus.AVAILABLE }
+  if (leave.status === "CANCELLED") {
+    throw new ApiError(400, "This leave application is already cancelled.");
+  }
+
+  if (leave.status === "REJECTED") {
+    throw new ApiError(400, "This leave application was already rejected by hospital admin.");
+  }
+
+  const now = new Date();
+  if (leave.endDateTime < now) {
+    throw new ApiError(400, "Cannot cancel a past leave.");
+  }
+
+  leave.status = "CANCELLED";
+  await leave.save();
+
+  // Re-open unbooked slots in this window back to AVAILABLE
+  const reopenedCount = await reopenSlotsForLeaveWindow(
+    doctor._id,
+    leave.startDateTime,
+    leave.endDateTime
   );
 
+  // Also remove from legacy leaves array if present
+  const leaveDateStr = leave.startDateTime.toISOString().split("T")[0];
+  const legIdx = doctor.leaves.findIndex((l) => l.date === leaveDateStr);
+  if (legIdx !== -1) {
+    doctor.leaves.splice(legIdx, 1);
+    await doctor.save();
+  }
+
   return res.status(200).json(
-    new ApiResponse(200, doctor.leaves, `Leave for ${date} cancelled. Slots reopened.`)
+    new ApiResponse(
+      200,
+      { leave, reopenedSlotsCount: reopenedCount },
+      `Leave cancelled successfully. ${reopenedCount} future slot(s) reopened for patient booking.`
+    )
   );
 });
 
-// ==========================================
 // 5. TIME SLOT CREATION & AVAILABILITY
 // ==========================================
 
@@ -1023,7 +1393,23 @@ export const getAvailableSlotsForDoctor = asyncHandler(async (req: Request, res:
   }
 
   // 1. Check if doctor is on leave
-  const leave = doctor.leaves?.find((l) => l.date === date);
+  const dayStart = new Date(`${date}T00:00:00.000Z`);
+  const dayEnd = new Date(`${date}T23:59:59.999Z`);
+
+  const activeLeavesForDay = await DoctorLeave.find({
+    doctorId: doctor._id,
+    status: { $in: ["PENDING", "APPROVED"] },
+    startDateTime: { $lte: dayEnd },
+    endDateTime: { $gte: dayStart },
+  });
+
+  const fullDayLeave = activeLeavesForDay.find(
+    (l) =>
+      l.leaveType === "FULL_DAY" ||
+      l.leaveType === "MULTI_DAY" ||
+      (l.startDateTime <= dayStart && l.endDateTime >= dayEnd)
+  );
+  const leave = fullDayLeave || doctor.leaves?.find((l) => l.date === date);
   if (leave) {
     return res.status(200).json(
       new ApiResponse(
@@ -1139,7 +1525,12 @@ export const getAvailableSlotsForDoctor = asyncHandler(async (req: Request, res:
   const slots = allVirtualSlots.map((vSlot) => {
     const slotStartMin = toMinutes(vSlot.startTime);
     const isPast = date === todayStr && slotStartMin <= currentMinutesNow;
-    const isOccupied = occupiedSet.has(vSlot.startTime);
+    const slotStartObj = new Date(`${date}T${vSlot.startTime}:00.000Z`);
+    const slotEndObj = new Date(`${date}T${vSlot.endTime}:00.000Z`);
+    const isPartialLeave = activeLeavesForDay.some(
+      (l) => l.startDateTime < slotEndObj && l.endDateTime > slotStartObj
+    );
+    const isOccupied = occupiedSet.has(vSlot.startTime) || isPartialLeave;
     const isAvailable = !isPast && !isOccupied;
 
     return {
@@ -1212,7 +1603,8 @@ export const generateDoctorSlots = asyncHandler(async (req: Request, res: Respon
 
   const doctor = await getDoctorProfileByUserId(userId);
 
-  if (!doctor.hospitalId) {
+  const hospitalId = (doctor.hospitalId as any)?._id || doctor.hospitalId;
+  if (!hospitalId) {
     throw new ApiError(
       400,
       "You must be affiliated with an approved hospital to publish booking slots."
@@ -2002,7 +2394,9 @@ export const getPublicDoctorById = asyncHandler(async (req: Request, res: Respon
   ];
 
   if (mongoose.Types.ObjectId.isValid(doctorId)) {
-    const doc = await DoctorProfile.findById(doctorId)
+    const doc = await DoctorProfile.findOne({
+      $or: [{ _id: doctorId }, { userId: doctorId }],
+    })
       .populate("userId", "name avatar phoneNumber email")
       .populate("hospitalId")
       .lean();

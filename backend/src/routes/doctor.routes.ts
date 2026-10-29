@@ -8,6 +8,7 @@ import {
   updateAppointmentStatus,
   completeAppointmentWithPrescription,
   applyDoctorLeave,
+  getDoctorLeaveAffectedAppointments,
   getDoctorLeaves,
   cancelDoctorLeave,
   getDoctorSlots,
@@ -43,9 +44,8 @@ doctorRouter.get("/details/:doctorId", getPublicDoctorById);
 // ==========================================
 
 // Profile management
-doctorRouter.get( "/profile", authenticateToken, authorizeRoles(UserRole.DOCTOR),getMyDoctorProfile );
-
-doctorRouter.patch( "/profile", authenticateToken, authorizeRoles(UserRole.DOCTOR),updateDoctorProfile) ;
+doctorRouter.get("/profile", authenticateToken, authorizeRoles(UserRole.DOCTOR), getMyDoctorProfile);
+doctorRouter.patch("/profile", authenticateToken, authorizeRoles(UserRole.DOCTOR), updateDoctorProfile);
 
 // Dashboard & Analytics
 doctorRouter.get(
@@ -90,12 +90,12 @@ doctorRouter.post(
 );
 
 // Doctor Leaves Management
-doctorRouter.post(
-  "/leaves",
+doctorRouter.get(
+  "/leaves/affected-appointments",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
   requireApprovedAccount,
-  applyDoctorLeave
+  getDoctorLeaveAffectedAppointments
 );
 
 doctorRouter.get(
@@ -106,8 +106,24 @@ doctorRouter.get(
   getDoctorLeaves
 );
 
+doctorRouter.post(
+  "/leaves",
+  authenticateToken,
+  authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
+  applyDoctorLeave
+);
+
 doctorRouter.delete(
-  "/leaves/:date",
+  "/leaves/:id",
+  authenticateToken,
+  authorizeRoles(UserRole.DOCTOR),
+  requireApprovedAccount,
+  cancelDoctorLeave
+);
+
+doctorRouter.patch(
+  "/leaves/:id/cancel",
   authenticateToken,
   authorizeRoles(UserRole.DOCTOR),
   requireApprovedAccount,

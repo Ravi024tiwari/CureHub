@@ -10,12 +10,17 @@ interface IndustrialSpinnerProps {
 }
 
 const sizeMap = {
-  xs: { box: 'size-4', svgSize: 16 },
-  sm: { box: 'size-5', svgSize: 20 },
-  md: { box: 'size-7', svgSize: 28 },
-  lg: { box: 'size-10', svgSize: 40 },
-  xl: { box: 'size-14', svgSize: 56 },
-  '2xl': { box: 'size-20', svgSize: 80 },
+
+  xs: { box: 'size-4 min-w-[16px] min-h-[16px] shrink-0', svgSize: 16 },
+  sm: { box: 'size-5 min-w-[20px] min-h-[20px] shrink-0', svgSize: 20 },
+  md: { box: 'size-7 min-w-[28px] min-h-[28px] shrink-0', svgSize: 28 },
+  lg: { box: 'size-10 min-w-[40px] min-h-[40px] shrink-0', svgSize: 40 },
+  xl: { box: 'size-14 min-w-[56px] min-h-[56px] shrink-0', svgSize: 56 },
+  '2xl': { box: 'size-20 min-w-[80px] min-h-[80px] shrink-0', svgSize: 80 },
+
+
+
+
 }
 
 const colorMap = {
@@ -81,11 +86,14 @@ export const IndustrialSpinner: FC<IndustrialSpinnerProps> = ({
     <div
       role="status"
       aria-label={label || 'Loading...'}
-      className={`inline-flex flex-col items-center justify-center relative select-none ${className}`}
+      className={`inline-flex flex-col items-center justify-center relative select-none shrink-0 ${className}`}
     >
       {/* SVG Container */}
-      <div className={`relative ${currentSize.box} flex items-center justify-center`}>
+      <div className={`relative ${currentSize.box} flex items-center justify-center shrink-0`}>
         <svg
+          width={currentSize.svgSize}
+          height={currentSize.svgSize}
+          style={{ width: `${currentSize.svgSize}px`, height: `${currentSize.svgSize}px`, minWidth: `${currentSize.svgSize}px`, minHeight: `${currentSize.svgSize}px`, flexShrink: 0 }}
           viewBox="0 0 40 40"
           className={`w-full h-full overflow-visible ${
             animationMode === 'smooth'
@@ -162,7 +170,10 @@ export const IndustrialSpinner: FC<IndustrialSpinnerProps> = ({
           }}
         >
           <svg
-            viewBox="0 0 40 40"
+            width={currentSize.svgSize}
+          height={currentSize.svgSize}
+          style={{ width: `${currentSize.svgSize}px`, height: `${currentSize.svgSize}px`, minWidth: `${currentSize.svgSize}px`, minHeight: `${currentSize.svgSize}px`, flexShrink: 0 }}
+          viewBox="0 0 40 40"
             className={`${currentSize.box}`}
             xmlns="http://www.w3.org/2000/svg"
           >

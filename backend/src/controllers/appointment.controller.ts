@@ -9,6 +9,7 @@ import { Hospital } from "../models/Hospital.model.js";
 import { generatePrescriptionPdfBuffer } from "../services/prescriptionPdf.service.js";
 import { razorpayInstance } from "../config/razorpay.js";
 
+import { isDoctorOnLeave } from "../services/doctorLeave.service.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -440,7 +441,8 @@ export const rescheduleAppointment = asyncHandler(async (req: Request, res: Resp
     }
 
     // Verify doctor not on leave
-    const isOnLeave = doctor.leaves?.some((l: any) => l.date === date);
+    const { onLeave: isDocOnLeave, leave: conflictingLeave } = await isDoctorOnLeave(appointment.doctorId, date, startTime);
+    const isOnLeave = isDocOnLeave || doctor.leaves?.some((l: any) => l.date === date);
     if (isOnLeave) {
       throw new ApiError(400, "The doctor is on leave on this date. Please pick another date.");
     }

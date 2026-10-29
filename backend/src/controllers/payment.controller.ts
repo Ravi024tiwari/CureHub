@@ -12,6 +12,7 @@ import {
   ConsultationType,
 } from "../constants/index.js";
 import { razorpayInstance, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET } from "../config/razorpay.js";
+import { isDoctorOnLeave } from "../services/doctorLeave.service.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -161,7 +162,8 @@ export const initiateBooking = asyncHandler(async (req: Request, res: Response) 
     }
 
     // Verify doctor is not on leave
-    const isOnLeave = doctor.leaves?.some((leave: any) => leave.date === date);
+    const { onLeave: isDocOnLeave, leave: conflictingLeave } = await isDoctorOnLeave(doctorId, date, startTime);
+    const isOnLeave = isDocOnLeave || doctor.leaves?.some((leave: any) => leave.date === date);
     if (isOnLeave) {
       throw new ApiError(400, "The doctor is on leave on this date. Please select another date.");
     }
@@ -266,7 +268,8 @@ export const initiateBooking = asyncHandler(async (req: Request, res: Response) 
       throw new ApiError(404, "The requested doctor is currently not accepting appointments.");
     }
 
-    const isOnLeave = doctor.leaves?.some((leave: any) => leave.date === slot.date);
+    const { onLeave: isDocOnLeave, leave: conflictingLeave } = await isDoctorOnLeave(slot.doctorId, slot.date, slot.startTime, slot.endTime);
+    const isOnLeave = isDocOnLeave || doctor.leaves?.some((leave: any) => leave.date === slot.date);
     if (isOnLeave) {
       throw new ApiError(400, "The doctor is on leave on this date. Please select another date.");
     }

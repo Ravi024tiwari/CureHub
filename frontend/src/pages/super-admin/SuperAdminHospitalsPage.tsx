@@ -5,7 +5,8 @@ import { SuperAdminMobileNav } from '@/components/super-admin/SuperAdminMobileNa
 import { HospitalCard } from '@/components/patient/HospitalCard'
 import { HospitalFiltersSidebar } from '@/components/patient/HospitalFiltersSidebar'
 import { HospitalDetailView } from '@/components/patient/HospitalDetailView'
-import { IndustrialSpinner } from '@/components/ui/IndustrialSpinner'
+import { HospitalCardSkeleton } from '@/components/patient/HospitalCardSkeleton'
+import { LoadingStation } from '@/components/common/LoadingStation'
 import { useSuperAdminStore } from '@/store/superAdminStore'
 import { useHospitalStore } from '@/store/hospitalStore'
 
@@ -23,6 +24,7 @@ import {
   ChevronDown,
   X,
   RefreshCw,
+  CheckCircle2,
 } from 'lucide-react'
 
 export const SuperAdminHospitalsPage: FC = () => {
@@ -321,36 +323,47 @@ export const SuperAdminHospitalsPage: FC = () => {
                         key={pill.id}
                         type="button"
                         onClick={() => setActiveQuickPill(pill.id)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                           isActive
                             ? 'bg-blue-600 text-white shadow-xs'
-                            : 'bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/60'
+                            : 'bg-slate-100/70 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
                         }`}
                       >
-                        <Icon className="w-3.5 h-3.5" />
+                        <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                         <span>{pill.label}</span>
                       </button>
                     )
                   })}
-
-                  {activeFiltersCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={clearAllFilters}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors whitespace-nowrap ml-auto cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      <span>Reset Filters</span>
-                    </button>
-                  )}
                 </div>
               </div>
 
-              {/* Hospitals Cards Grid */}
+              {/* Main Hospital Grid Content Area */}
               {isLoadingInitial ? (
-                <div className="py-20 flex flex-col items-center justify-center space-y-3">
-                  <IndustrialSpinner size="lg" />
-                  <p className="text-xs font-semibold text-slate-400">Loading registered hospitals...</p>
+                <div className="space-y-6">
+                  {/* Interactive Live Sync Status Banner */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/50 to-blue-50/30 border border-blue-200/80 shadow-2xs flex items-center justify-between animate-in fade-in duration-300">
+                    <div className="flex items-center gap-3.5">
+                      <div className="relative size-9 flex items-center justify-center shrink-0">
+                        <div className="size-9 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                        <div className="absolute size-2.5 rounded-full bg-blue-600 animate-pulse" />
+                      </div>
+                      <div>
+                        <p className="text-xs sm:text-sm font-extrabold text-slate-900 leading-tight">
+                          Syncing Platform Hospital Registry...
+                        </p>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                          Fetching verified hospitals, bed counts, and department capacities
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-black border border-blue-200/80 hidden sm:inline-block">
+                      Live Sync
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <HospitalCardSkeleton count={6} />
+                  </div>
                 </div>
               ) : hospitals.length > 0 ? (
                 <div className="space-y-6">
@@ -363,20 +376,28 @@ export const SuperAdminHospitalsPage: FC = () => {
                         onToggleFavorite={toggleFavoriteHospital}
                       />
                     ))}
+
+                    {/* Shimmer skeleton cards during scroll loading */}
+                    {isLoadingMore && (
+                      <HospitalCardSkeleton count={3} />
+                    )}
                   </div>
 
                   {/* Infinite scroll sentinel & Loading indicator */}
-                  <div ref={observerTarget} className="py-6 flex justify-center">
+                  <div ref={observerTarget} className="py-6 flex flex-col items-center justify-center">
                     {isLoadingMore && (
-                      <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                        <IndustrialSpinner size="sm" />
-                        <span>Loading more hospitals...</span>
-                      </div>
+                      <LoadingStation
+                        variant="pill"
+                        title="Loading more hospitals..."
+                        subtitle="Retrieving real-time hospital records & departments"
+                        badgeText="Live Sync"
+                      />
                     )}
-                    {!hasMore && hospitals.length > 6 && (
-                      <span className="text-xs font-semibold text-slate-400">
-                        You have viewed all {hospitals.length} registered hospitals.
-                      </span>
+                    {!hasMore && hospitals.length > 0 && !isLoadingInitial && (
+                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 text-emerald-800 text-xs font-bold shadow-2xs animate-in fade-in duration-200">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>You have viewed all {totalHospitals || hospitals.length} registered hospitals</span>
+                      </div>
                     )}
                   </div>
                 </div>

@@ -82,8 +82,8 @@ export const DoctorSchedulePage: FC<DoctorSchedulePageProps> = ({
   }
 
   // Intercept apply leave with global pop-up toast
-  const handleApplyLeave = async (date: string, reason: string) => {
-    const res = await applyLeave(date, reason)
+  const handleApplyLeave = async (payload: any, reason?: string) => {
+    const res = await applyLeave(payload, reason)
     if (res.success) {
       toast.success(
         res.affectedCount
@@ -98,8 +98,8 @@ export const DoctorSchedulePage: FC<DoctorSchedulePageProps> = ({
   }
 
   // Intercept cancel leave with global pop-up toast
-  const handleCancelLeave = async (date: string) => {
-    const success = await cancelLeave(date)
+  const handleCancelLeave = async (idOrDate: string) => {
+    const success = await cancelLeave(idOrDate)
     if (success) {
       toast.success(
         `Leave for ${date} has been cancelled. Booking slots reopened.`,

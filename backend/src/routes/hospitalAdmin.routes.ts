@@ -15,6 +15,9 @@ import {
   cancelAdminAppointment,
   rescheduleAdminAppointment,
   bookAdminAppointment,
+  getAdminDoctorLeaves,
+  getAdminDoctorLeaveById,
+  updateAdminDoctorLeaveStatus,
 } from "../controllers/hospitalAdmin.controller.js";
 import {
   getHospitalById,
@@ -69,5 +72,10 @@ hospitalAdminRouter.patch(
   "/appointments/:appointmentId/reschedule",
   rescheduleAdminAppointment
 );
+
+// ── 5. Doctor Leave Management & Approvals ─────────────────────────────────
+hospitalAdminRouter.get("/leaves", getAdminDoctorLeaves);
+hospitalAdminRouter.get("/leaves/:leaveId", getAdminDoctorLeaveById);
+hospitalAdminRouter.patch("/leaves/:leaveId/status", updateAdminDoctorLeaveStatus);
 
 export default hospitalAdminRouter;

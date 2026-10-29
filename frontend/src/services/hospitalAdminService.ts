@@ -183,6 +183,7 @@ export const hospitalAdminService = {
     const response = await apiClient.patch('/profile/hospital-admin', data, { headers })
     return (response as any)?.data || response
   },
+
   // ── Hospital Admin Appointments ───────────────────────────────────────────
   getAppointments: async (params?: {
     page?: number
@@ -256,4 +257,53 @@ export const hospitalAdminService = {
     return (response as any)?.data || response
   },
 
+  getDoctorLeaves: async (params?: {
+    page?: number
+    limit?: number
+    status?: string
+    hospitalId?: string
+    doctorId?: string
+  }): Promise<{
+    leaves: any[]
+    summary: {
+      total: number
+      pending: number
+      approved: number
+      rejected: number
+      cancelled: number
+    }
+    pagination: {
+      totalDocs: number
+      page: number
+      limit: number
+      totalPages: number
+    }
+  }> => {
+    const q = new URLSearchParams()
+    if (params?.page) q.append('page', params.page.toString())
+    if (params?.limit) q.append('limit', params.limit.toString())
+    if (params?.status && params.status !== 'ALL') q.append('status', params.status)
+    if (params?.hospitalId && params.hospitalId !== 'all') q.append('hospitalId', params.hospitalId)
+    if (params?.doctorId && params.doctorId !== 'all') q.append('doctorId', params.doctorId)
+
+    const response = await apiClient.get(`/hospital-admin/leaves?${q.toString()}`)
+    return (response as any)?.data || response
+  },
+
+  getDoctorLeaveById: async (leaveId: string): Promise<any> => {
+    const response = await apiClient.get(`/hospital-admin/leaves/${leaveId}`)
+    return (response as any)?.data || response
+  },
+
+  updateDoctorLeaveStatus: async (
+    leaveId: string,
+    status: 'APPROVED' | 'REJECTED',
+    rejectionReason?: string
+  ): Promise<any> => {
+    const response = await apiClient.patch(`/hospital-admin/leaves/${leaveId}/status`, {
+      status,
+      rejectionReason,
+    })
+    return (response as any)?.data || response
+  },
 }
