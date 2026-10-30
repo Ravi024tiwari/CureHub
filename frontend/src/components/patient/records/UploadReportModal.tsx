@@ -6,11 +6,11 @@ import {
   AlertCircle,
   Loader2,
 } from 'lucide-react'
-import { useMedicalRecordsStore } from '@/store/medicalRecordsStore'
+import { usePatientStore } from '@/store/patientStore'
 
 export const UploadReportModal: FC = () => {
   const { isUploadModalOpen, closeUploadModal, uploadReport, isUploading } =
-    useMedicalRecordsStore()
+    usePatientStore()
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [reportTitle, setReportTitle] = useState('')

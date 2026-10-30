@@ -30,9 +30,9 @@ import { EditHealthHistoryModal } from '@/components/patient/records/EditHealthH
 import { RecordFiltersDrawer } from '@/components/patient/records/RecordFiltersDrawer'
 import { DeleteConfirmModal } from '@/components/patient/records/DeleteConfirmModal'
 import {
-  useMedicalRecordsStore,
+  usePatientStore,
   type SortOrderOption,
-} from '@/store/medicalRecordsStore'
+} from '@/store/patientStore'
 import { useNavigate } from 'react-router-dom'
 import type { MedicalRecordItem } from '@/types/patient'
 
@@ -79,7 +79,7 @@ export const PatientMedicalRecordsPage: FC = () => {
     openDeleteModal,
     fetchMedicalHistory,
     fetchReports,
-  } = useMedicalRecordsStore()
+  } = usePatientStore()
 
   // Fetch live patient history and reports on mount
   useEffect(() => {

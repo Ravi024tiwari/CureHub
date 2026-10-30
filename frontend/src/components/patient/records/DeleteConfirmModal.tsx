@@ -1,6 +1,6 @@
 import { type FC } from 'react'
 import { AlertTriangle, Trash2, Loader2 } from 'lucide-react'
-import { useMedicalRecordsStore } from '@/store/medicalRecordsStore'
+import { usePatientStore } from '@/store/patientStore'
 
 export const DeleteConfirmModal: FC = () => {
   const {
@@ -9,7 +9,7 @@ export const DeleteConfirmModal: FC = () => {
     closeDeleteModal,
     deleteReport,
     isDeleting,
-  } = useMedicalRecordsStore()
+  } = usePatientStore()
 
   if (!isDeleteModalOpen || !recordToDelete) return null
 

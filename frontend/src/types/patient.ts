@@ -280,3 +280,77 @@ export interface PatientMedicalHistory {
   dateOfBirth?: string | null
 }
 
+
+export interface PatientAddress {
+  street?: string
+  city?: string
+  state?: string
+  zipCode?: string
+  country?: string
+}
+
+export interface PatientProfileData {
+  _id?: string
+  userId?: string
+  name: string
+  email: string
+  phoneNumber?: string
+  avatar?: string
+  gender?: string
+  dateOfBirth?: string
+  bloodGroup?: string
+  address?: PatientAddress
+  allergies?: string[]
+  chronicDiseases?: string[]
+  pastSurgeries?: string[]
+  currentMedications?: string[]
+  emergencyContact?: PatientEmergencyContact
+  reports?: MedicalRecordItem[]
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface PatientDashboardOverview {
+  statistics: {
+    totalBooked: number
+    upcomingCount: number
+    completedCount: number
+    cancelledCount: number
+    totalSpent: number
+    totalReports: number
+  }
+  nextAppointment?: AppointmentCardData | null
+  recentAppointments?: AppointmentCardData[]
+}
+
+export interface PatientPrescriptionLockerItem {
+  appointmentId: string
+  appointmentNumber?: string
+  consultationDate: string
+  consultationTime: string
+  consultationType?: string
+  symptoms?: string
+  prescription: {
+    diagnosis?: string
+    issuedAt?: string
+    medicinesCount: number
+    medicines: PrescriptionMedicineItem[]
+    notes?: string
+  }
+  doctor: {
+    id: string
+    name: string
+    avatar?: string | null
+    department?: string
+    qualifications?: string[]
+    specialization?: string[]
+  }
+  hospital?: {
+    id: string
+    name: string
+    address?: any
+    contactPhone?: string
+  } | null
+  downloadPdfUrl?: string
+  previewPdfUrl?: string
+}

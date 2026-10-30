@@ -395,6 +395,42 @@ export async function deletePatientReportApi(reportId: string) {
 }
 
 // ============================================================================
+// Fetch Full Patient Profile (User identity + PatientProfile clinical fields)
+export async function fetchPatientProfileApi() {
+  try {
+    const res: any = await apiClient.get('/profile/patient')
+    return res?.data?.data || res?.data || res
+  } catch (error) {
+    console.warn('Backend patient profile not available:', error)
+    return null
+  }
+}
+
+// Update Full Patient Profile (Supports FormData with avatar or JSON payload)
+export async function updatePatientProfileApi(payload: FormData | Record<string, any>) {
+  if (payload instanceof FormData) {
+    const res: any = await apiClient.patch('/profile/patient', payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res?.data?.data || res?.data || res
+  } else {
+    const res: any = await apiClient.patch('/profile/patient', payload)
+    return res?.data?.data || res?.data || res
+  }
+}
+
+// Fetch Patient Prescriptions Locker (EHR completed consultation prescriptions)
+export async function fetchPatientPrescriptionsApi(page: number = 1, limit: number = 10) {
+  try {
+    const res: any = await apiClient.get(`/patients/prescriptions?page=${page}&limit=${limit}`)
+    return res?.data?.data || res?.data || res
+  } catch (error) {
+    console.warn('Backend patient prescriptions not available:', error)
+    return null
+  }
+}
+
+// ============================================================================
 // Appointment Booking & Slot Availability APIs
 // ============================================================================
 

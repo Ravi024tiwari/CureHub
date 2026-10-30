@@ -1,9 +1,13 @@
 import { useState, type FC } from 'react'
-import { HeartPulse, PhoneCall, Activity, Droplets } from 'lucide-react'
+import { HeartPulse, Activity, Droplets } from 'lucide-react'
+import { usePatientStore } from '@/store/patientStore'
 
 export const PatientVitalsWidget: FC = () => {
+  const { medicalHistory, profile } = usePatientStore()
   const [pulse] = useState(72)
   const [bp] = useState('120/80')
+
+  const bloodGroup = profile?.bloodGroup || medicalHistory.bloodGroup || '--'
 
   return (
     <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-4">
@@ -41,7 +45,7 @@ export const PatientVitalsWidget: FC = () => {
         <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-center space-y-0.5">
           <p className="text-[10px] text-slate-400 font-medium">Blood Group</p>
           <div className="flex items-baseline justify-center gap-0.5">
-            <span className="text-sm sm:text-base font-extrabold text-rose-600">O+</span>
+            <span className="text-sm sm:text-base font-extrabold text-rose-600">{bloodGroup}</span>
           </div>
           <Droplets className="size-3 text-rose-500 mx-auto" />
         </div>
@@ -58,7 +62,7 @@ export const PatientVitalsWidget: FC = () => {
           className="size-8 rounded-xl bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shrink-0 shadow-sm transition-transform active:scale-95"
           title="Call Emergency Ambulance"
         >
-          <PhoneCall className="size-4" />
+          <HeartPulse className="size-4" />
         </a>
       </div>
     </div>

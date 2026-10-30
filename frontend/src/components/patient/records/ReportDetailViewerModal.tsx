@@ -18,11 +18,11 @@ import {
   Heart,
   ShieldCheck,
 } from 'lucide-react'
-import { useMedicalRecordsStore } from '@/store/medicalRecordsStore'
+import { usePatientStore } from '@/store/patientStore'
 import { useAuthStore } from '@/store/authStore'
 
 export const ReportDetailViewerModal: FC = () => {
-  const { selectedRecord, isViewerOpen, closeViewer, openDeleteModal } = useMedicalRecordsStore()
+  const { selectedRecord, isViewerOpen, closeViewer, openDeleteModal } = usePatientStore()
   const { user } = useAuthStore()
 
   const [zoom, setZoom] = useState(100)

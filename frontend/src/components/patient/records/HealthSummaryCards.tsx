@@ -8,17 +8,17 @@ import {
   PhoneCall,
   Edit3,
 } from 'lucide-react'
-import { useMedicalRecordsStore } from '@/store/medicalRecordsStore'
+import { usePatientStore } from '@/store/patientStore'
 
 export const HealthSummaryCards: FC = () => {
-  const { medicalHistory, openEditHistoryModal } = useMedicalRecordsStore()
+  const { medicalHistory, openEditHistoryModal } = usePatientStore()
 
   const cards = [
     {
       id: 'blood-group',
       label: 'Blood Group',
-      value: medicalHistory.bloodGroup || 'O+',
-      subtext: 'Universal donor',
+      value: medicalHistory.bloodGroup || 'Not Set',
+      subtext: medicalHistory.bloodGroup ? 'Recorded on profile' : 'Add your blood group',
       icon: Droplet,
       iconColor: 'text-rose-500',
       iconBg: 'bg-rose-50 border-rose-100',
@@ -87,10 +87,10 @@ export const HealthSummaryCards: FC = () => {
     {
       id: 'emergency-contact',
       label: 'Emergency Contact',
-      value: medicalHistory.emergencyContact?.name || 'Ashok Tiwari',
-      subtext: `${medicalHistory.emergencyContact?.relationship || 'Father'} • ${
-        medicalHistory.emergencyContact?.phoneNumber || '+91 98765 43210'
-      }`,
+      value: medicalHistory.emergencyContact?.name || 'Not Configured',
+      subtext: medicalHistory.emergencyContact?.name
+        ? `${medicalHistory.emergencyContact.relationship ? `${medicalHistory.emergencyContact.relationship} • ` : ''}${medicalHistory.emergencyContact.phoneNumber || ''}`
+        : 'Tap to add emergency contact',
       icon: PhoneCall,
       iconColor: 'text-emerald-500',
       iconBg: 'bg-emerald-50 border-emerald-100',
@@ -149,4 +149,3 @@ export const HealthSummaryCards: FC = () => {
     </div>
   )
 }
-

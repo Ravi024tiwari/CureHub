@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, type FC } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
+import { usePatientStore } from '@/store/patientStore'
 import { PatientSidebar } from '@/components/patient/PatientSidebar'
 import { PatientHeader } from '@/components/patient/PatientHeader'
 import { PatientHeroBanner } from '@/components/patient/PatientHeroBanner'
@@ -35,6 +36,7 @@ import { Filter, Building2 } from 'lucide-react'
 export const PatientHomePage: FC = () => {
   const navigate = useNavigate()
   const { user } = useAuthStore()
+  const { profile, loadPatientInitialData } = usePatientStore()
 
   // State
   const [activeTab, setActiveTab] = useState('home')
@@ -178,6 +180,7 @@ export const PatientHomePage: FC = () => {
     async function loadData() {
       // Fetch live doctors from database
       fetchDoctors(1, true)
+      loadPatientInitialData()
 
       const serverHospitals = await fetchHospitalsListApi()
       if (serverHospitals?.hospitals && serverHospitals.hospitals.length > 0) {
@@ -255,7 +258,7 @@ export const PatientHomePage: FC = () => {
     setAppointments((prev) => [newAppt, ...prev])
   }
 
-  const patientDisplayName = user?.name || 'Ravi Tiwari'
+  const patientDisplayName = profile?.name || user?.name || 'Ravi Tiwari'
 
   return (
     <div className="min-h-screen bg-[#f8fbff] text-slate-900 selection:bg-blue-100 selection:text-blue-700 flex flex-col antialiased">

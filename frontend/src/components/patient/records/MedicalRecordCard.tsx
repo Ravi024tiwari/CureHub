@@ -15,14 +15,14 @@ import {
   HeartPulse,
 } from 'lucide-react'
 import type { MedicalRecordItem } from '@/types/patient'
-import { useMedicalRecordsStore } from '@/store/medicalRecordsStore'
+import { usePatientStore } from '@/store/patientStore'
 
 interface MedicalRecordCardProps {
   record: MedicalRecordItem
 }
 
 export const MedicalRecordCard: FC<MedicalRecordCardProps> = ({ record }) => {
-  const { openViewer, openDeleteModal } = useMedicalRecordsStore()
+  const { openViewer, openDeleteModal } = usePatientStore()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 

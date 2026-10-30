@@ -24,6 +24,34 @@ const safeParse = (data: any, fallback: any = undefined) => {
 };
 
 /**
+ * PATIENT: Get Logged-in Patient Profile (User identity + PatientProfile clinical details)
+ */
+export const getPatientProfile = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user?.userId;
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized");
+  }
+
+  const user = await User.findById(userId).select("-password");
+  if (!user) {
+    throw new ApiError(404, "User account not found");
+  }
+
+  let profile = await PatientProfile.findOne({ userId });
+  if (!profile) {
+    profile = await PatientProfile.create({ userId });
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      { user, profile },
+      "Patient profile retrieved successfully"
+    )
+  );
+});
+
+/**
  * PATIENT: Update Profile (Personal info, address, medical history, avatar)
  */
 export const updatePatientProfile = asyncHandler(async (req: Request, res: Response) => {

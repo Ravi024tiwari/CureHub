@@ -1,9 +1,20 @@
 import { Router } from "express";
-import { updatePatientProfile, uploadPatientReport, deletePatientReport, updateDoctorProfile, updateHospitalAdminProfile, getHospitalAdminProfile,
+import {
+  getPatientProfile,
+  updatePatientProfile,
+  uploadPatientReport,
+  deletePatientReport,
+  updateDoctorProfile,
+  updateHospitalAdminProfile,
+  getHospitalAdminProfile,
 } from "../controllers/profile.controller.js";
 import { authenticateToken, authorizeRoles } from "../middleware/auth.middleware.js";
 
-import { uploadSingleAvatar, uploadSingleReport, uploadDoctorFiles, uploadHospitalAdminFiles,
+import {
+  uploadSingleAvatar,
+  uploadSingleReport,
+  uploadDoctorFiles,
+  uploadHospitalAdminFiles,
 } from "../middleware/upload.middleware.js";
 
 import { UserRole } from "../constants/index.js";
@@ -12,6 +23,12 @@ const profileRouter = Router();
 
 profileRouter.use(authenticateToken);
 
+// ================= PATIENT PROFILE ROUTES =================
+profileRouter.get(
+  "/patient",
+  authorizeRoles(UserRole.PATIENT),
+  getPatientProfile
+);
 
 profileRouter.patch(
   "/patient",

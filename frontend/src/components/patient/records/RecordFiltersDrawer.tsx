@@ -1,9 +1,9 @@
 import { useState, type FC } from 'react'
 import { X, Filter } from 'lucide-react'
 import {
-  useMedicalRecordsStore,
+  usePatientStore,
   type SortOrderOption,
-} from '@/store/medicalRecordsStore'
+} from '@/store/patientStore'
 
 export const RecordFiltersDrawer: FC = () => {
   const {
@@ -16,7 +16,7 @@ export const RecordFiltersDrawer: FC = () => {
     dateRange,
     setDateRange,
     clearFilters,
-  } = useMedicalRecordsStore()
+  } = usePatientStore()
 
   const [tempCategory, setTempCategory] = useState(activeCategory)
   const [tempSortBy, setTempSortBy] = useState<SortOrderOption>(sortBy)

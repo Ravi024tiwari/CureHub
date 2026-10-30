@@ -10,7 +10,7 @@ import {
   Loader2,
   CheckCircle2,
 } from 'lucide-react'
-import { useMedicalRecordsStore } from '@/store/medicalRecordsStore'
+import { usePatientStore } from '@/store/patientStore'
 
 export const EditHealthHistoryModal: FC = () => {
   const {
@@ -18,9 +18,9 @@ export const EditHealthHistoryModal: FC = () => {
     isEditHistoryModalOpen,
     closeEditHistoryModal,
     updateMedicalHistory,
-  } = useMedicalRecordsStore()
+  } = usePatientStore()
 
-  const [bloodGroup, setBloodGroup] = useState(medicalHistory.bloodGroup || 'O+')
+  const [bloodGroup, setBloodGroup] = useState(medicalHistory.bloodGroup || '')
   const [allergies, setAllergies] = useState<string[]>([...medicalHistory.allergies])
   const [newAllergy, setNewAllergy] = useState('')
 
@@ -43,7 +43,7 @@ export const EditHealthHistoryModal: FC = () => {
     medicalHistory.emergencyContact?.name || ''
   )
   const [contactRelation, setContactRelation] = useState(
-    medicalHistory.emergencyContact?.relationship || 'Father'
+    medicalHistory.emergencyContact?.relationship || ''
   )
   const [contactPhone, setContactPhone] = useState(
     medicalHistory.emergencyContact?.phoneNumber || ''
@@ -55,13 +55,13 @@ export const EditHealthHistoryModal: FC = () => {
   // Sync state whenever modal opens or medicalHistory changes
   useEffect(() => {
     if (isEditHistoryModalOpen) {
-      setBloodGroup(medicalHistory.bloodGroup || 'O+')
+      setBloodGroup(medicalHistory.bloodGroup || '')
       setAllergies([...medicalHistory.allergies])
       setChronicDiseases([...medicalHistory.chronicDiseases])
       setPastSurgeries([...medicalHistory.pastSurgeries])
       setCurrentMedications([...medicalHistory.currentMedications])
       setContactName(medicalHistory.emergencyContact?.name || '')
-      setContactRelation(medicalHistory.emergencyContact?.relationship || 'Father')
+      setContactRelation(medicalHistory.emergencyContact?.relationship || '')
       setContactPhone(medicalHistory.emergencyContact?.phoneNumber || '')
     }
   }, [isEditHistoryModalOpen, medicalHistory])
