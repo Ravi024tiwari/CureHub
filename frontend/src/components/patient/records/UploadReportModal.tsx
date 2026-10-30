@@ -234,6 +234,7 @@ export const UploadReportModal: FC = () => {
                 <option value="Lab Report">Lab Report</option>
                 <option value="Imaging">Imaging (X-Ray, MRI, Scan)</option>
                 <option value="Prescription">Prescription</option>
+                <option value="Discharge Summary">Discharge Summary</option>
                 <option value="Surgery">Surgery Report</option>
                 <option value="Vaccination">Vaccination Record</option>
                 <option value="Others">Others</option>

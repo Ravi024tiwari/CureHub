@@ -154,6 +154,8 @@ export interface AppointmentPrescriptionData {
   issuedAt?: string
   medicines: PrescriptionMedicineItem[]
   notes?: string
+  tags?: string[]
+  isFavorite?: boolean
 }
 
 export interface AppointmentRescheduleItem {
@@ -261,6 +263,8 @@ export interface MedicalRecordItem {
   doctorName?: string
   hospitalName?: string
   notes?: string
+  tags?: string[]
+  isFavorite?: boolean
 }
 
 export interface PatientEmergencyContact {
@@ -336,6 +340,8 @@ export interface PatientPrescriptionLockerItem {
     medicinesCount: number
     medicines: PrescriptionMedicineItem[]
     notes?: string
+  tags?: string[]
+  isFavorite?: boolean
   }
   doctor: {
     id: string

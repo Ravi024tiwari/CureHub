@@ -395,6 +395,17 @@ export async function deletePatientReportApi(reportId: string) {
 }
 
 // ============================================================================
+// Toggle Medical Report Favorite
+export async function toggleReportFavoriteApi(reportId: string) {
+  try {
+    const res: any = await apiClient.patch(`/patients/reports/${reportId}/favorite`)
+    return res?.data?.data || res?.data || res
+  } catch (error) {
+    console.warn(`Could not toggle favorite for report ${reportId}:`, error)
+    return null
+  }
+}
+
 // Fetch Full Patient Profile (User identity + PatientProfile clinical fields)
 export async function fetchPatientProfileApi() {
   try {

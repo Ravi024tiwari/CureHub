@@ -36,7 +36,7 @@ import { Filter, Building2 } from 'lucide-react'
 export const PatientHomePage: FC = () => {
   const navigate = useNavigate()
   const { user } = useAuthStore()
-  const { profile, loadPatientInitialData } = usePatientStore()
+  const { profile, loadPatientInitialData, setActiveCategory } = usePatientStore()
 
   // State
   const [activeTab, setActiveTab] = useState('home')
@@ -482,10 +482,12 @@ export const PatientHomePage: FC = () => {
                     window.scrollTo({ top: 400, behavior: 'smooth' })
                   }}
                   onOpenLabTests={() => {
-                    alert('CarePlus Diagnostic Lab Booking is active! Pick from CBC, Lipid Profile, etc.')
+                    setActiveCategory('Lab Reports')
+                    navigate('/patient/records')
                   }}
                   onOpenPrescriptions={() => {
-                    alert('Accessing your electronic digital prescriptions.')
+                    setActiveCategory('Prescriptions')
+                    navigate('/patient/records')
                   }}
                   onUploadReport={() => setIsUploadModalOpen(true)}
                 />

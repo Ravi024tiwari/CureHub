@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import path from "path";
 import mongoose from "mongoose";
 import { Appointment } from "../models/Appointment.model.js";
 import { Payment } from "../models/Payment.model.js";
@@ -7,6 +8,7 @@ import { AppointmentStatus, PaymentStatus, Gender, BloodGroup } from "../constan
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { uploadFileToS3 } from "../utils/s3.util.js";
 
 /**
  * Patient: Comprehensive Dashboard Overview
@@ -250,7 +252,17 @@ export const getPatientReports = asyncHandler(async (req: Request, res: Response
  */
 export const uploadPatientReport = asyncHandler(async (req: Request, res: Response) => {
   const patientId = req.user?.userId;
-  const { title, fileUrl, fileType, category } = req.body;
+  const {
+    title,
+    fileUrl,
+    fileType,
+    fileSize,
+    category,
+    doctorName,
+    hospitalName,
+    notes,
+    tags,
+  } = req.body;
 
   if (!patientId) throw new ApiError(401, "Unauthorized");
 
@@ -258,15 +270,49 @@ export const uploadPatientReport = asyncHandler(async (req: Request, res: Respon
     throw new ApiError(400, "Report title is required (e.g. 'CBC Blood Test', 'Chest X-Ray').");
   }
 
-  if (!fileUrl || !fileUrl.trim()) {
-    throw new ApiError(400, "Report file URL is required.");
+  let resolvedFileUrl = fileUrl ? String(fileUrl).trim() : "";
+  let resolvedFileType = fileType ? String(fileType).trim().toUpperCase() : "PDF";
+  let resolvedFileSize = fileSize ? String(fileSize).trim() : "245 KB";
+
+  if (req.file) {
+    try {
+      const s3Result = await uploadFileToS3(req.file, "patients/reports");
+      resolvedFileUrl = s3Result.url;
+      const ext = path.extname(req.file.originalname).replace(".", "").toUpperCase();
+      resolvedFileType = ext || "PDF";
+      const sizeMb = (req.file.size / (1024 * 1024)).toFixed(1);
+      resolvedFileSize = `${sizeMb} MB`;
+    } catch (s3Err) {
+      console.warn("Failed uploading report to AWS S3, fallback to local reference:", s3Err);
+      if (!resolvedFileUrl) {
+        resolvedFileUrl = `/uploads/reports/${req.file.originalname}`;
+      }
+      const ext = path.extname(req.file.originalname).replace(".", "").toUpperCase();
+      resolvedFileType = ext || "PDF";
+      const sizeMb = (req.file.size / (1024 * 1024)).toFixed(1);
+      resolvedFileSize = `${sizeMb} MB`;
+    }
+  }
+
+  if (!resolvedFileUrl) {
+    throw new ApiError(400, "Report file or valid file URL is required.");
   }
 
   const newReport = {
     title: title.trim(),
-    fileUrl: fileUrl.trim(),
-    fileType: fileType ? fileType.trim().toUpperCase() : "PDF",
+    fileUrl: resolvedFileUrl,
+    fileType: resolvedFileType,
     category: category ? category.trim() : "General",
+    fileSize: resolvedFileSize,
+    doctorName: doctorName ? String(doctorName).trim() : "",
+    hospitalName: hospitalName ? String(hospitalName).trim() : "",
+    notes: notes ? String(notes).trim() : "",
+    tags: Array.isArray(tags)
+      ? tags
+      : typeof tags === "string"
+      ? tags.split(",").map((t: string) => t.trim()).filter(Boolean)
+      : [],
+    isFavorite: false,
     uploadedAt: new Date(),
   };
 
@@ -313,6 +359,45 @@ export const deletePatientReport = asyncHandler(async (req: Request, res: Respon
 
   return res.status(200).json(
     new ApiResponse(200, { reportId }, "Medical report deleted successfully.")
+  );
+});
+
+/**
+ * Patient: Toggle favorite status for a medical report
+ */
+export const toggleReportFavorite = asyncHandler(async (req: Request, res: Response) => {
+  const patientId = req.user?.userId;
+  const { reportId } = req.params;
+
+  if (!patientId) throw new ApiError(401, "Unauthorized");
+
+  if (!mongoose.Types.ObjectId.isValid(reportId)) {
+    throw new ApiError(400, "Invalid report ID format.");
+  }
+
+  const profile = await PatientProfile.findOne({
+    userId: patientId,
+    "reports._id": reportId,
+  });
+
+  if (!profile) {
+    throw new ApiError(404, "Report not found in your health vault.");
+  }
+
+  const report = profile.reports.find((r: any) => r._id.toString() === reportId);
+  const newFavStatus = !(report?.isFavorite ?? false);
+
+  await PatientProfile.updateOne(
+    { userId: patientId, "reports._id": reportId },
+    { $set: { "reports.$.isFavorite": newFavStatus } }
+  );
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      { reportId, isFavorite: newFavStatus },
+      `Report marked as ${newFavStatus ? "favorite" : "normal"}.`
+    )
   );
 });
 

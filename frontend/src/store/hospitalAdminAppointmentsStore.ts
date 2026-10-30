@@ -318,7 +318,7 @@ export const useHospitalAdminAppointmentsStore = create<HospitalAdminAppointment
           isDetailLoading: false,
           appointmentDetail: {
             appointment,
-            patientProfile: appointment.patient,
+            patientProfile: appointment.patient as any,
             medicalHistory: [],
             payment: appointment.payment,
           },

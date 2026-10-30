@@ -6,9 +6,6 @@ import {
   Building2,
   Calendar,
   FileText,
-  Pill,
-  FlaskConical,
-  HeartHandshake,
   BookOpen,
   CalendarPlus,
   Search,
@@ -17,8 +14,8 @@ import {
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-
 import { useNavigate } from 'react-router-dom'
+import { usePatientStore } from '@/store/patientStore'
 
 interface PatientSidebarProps {
   activeTab: string
@@ -38,16 +35,22 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
   onOpenUploadModal,
 }) => {
   const navigate = useNavigate()
+  const totalReports = usePatientStore((s) => s.records.length)
 
+  // Primary navigation links - clean production grade (prescriptions, lab tests, and health services
+  // are consolidated inside Medical Reports to eliminate UI redundancy)
   const mainNavItems = [
     { id: 'home', label: 'Home', icon: Home, path: '/patient/home' },
+    { id: 'appointments', label: 'Appointments', icon: Calendar, path: '/patient/appointments' },
     { id: 'doctors', label: 'Find Doctors', icon: UserCheck, path: '/patient/doctors' },
     { id: 'hospitals', label: 'Hospitals', icon: Building2, path: '/patient/hospitals' },
-    { id: 'appointments', label: 'Appointments', icon: Calendar, path: '/patient/appointments' },
-    { id: 'records', label: 'Medical Records', icon: FileText, path: '/patient/records' },
-    { id: 'prescriptions', label: 'Prescriptions', icon: Pill },
-    { id: 'lab-tests', label: 'Lab Tests', icon: FlaskConical },
-    { id: 'services', label: 'Health Services', icon: HeartHandshake },
+    {
+      id: 'records',
+      label: 'Medical Reports',
+      icon: FileText,
+      path: '/patient/records',
+      badge: totalReports > 0 ? String(totalReports) : undefined,
+    },
     { id: 'articles', label: 'Health Articles', icon: BookOpen },
   ]
 
@@ -63,7 +66,7 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
     if (item.path) {
       navigate(item.path)
     }
-    if (isMobileDrawer && onCloseDrawer) {
+    if (onCloseDrawer) {
       onCloseDrawer()
     }
   }
@@ -74,7 +77,7 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
     } else if (item.path) {
       navigate(item.path)
     }
-    if (isMobileDrawer && onCloseDrawer) {
+    if (onCloseDrawer) {
       onCloseDrawer()
     }
   }
@@ -86,8 +89,14 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
       }`}
     >
       {/* Brand Header */}
-      <div className="flex items-center justify-between pb-6 mb-2 border-b border-slate-100">
-        <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/patient/home')}>
+      <div className="flex items-center justify-between pb-5 mb-2 border-b border-slate-100">
+        <div
+          className="flex items-center gap-2.5 cursor-pointer"
+          onClick={() => {
+            navigate('/patient/home')
+            if (onCloseDrawer) onCloseDrawer()
+          }}
+        >
           <div className="size-9 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
             <Activity className="size-5 stroke-[2.5]" />
           </div>
@@ -96,10 +105,11 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
           </span>
         </div>
 
-        {isMobileDrawer && onCloseDrawer && (
+        {onCloseDrawer && (
           <button
             onClick={onCloseDrawer}
-            className="size-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="size-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            title="Close sidebar"
           >
             <X className="size-5" />
           </button>
@@ -116,18 +126,29 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
             <button
               key={item.id}
               onClick={() => handleNavClick(item)}
-              className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer text-left ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer text-left ${
                 isActive
                   ? 'bg-blue-50 text-blue-600 font-bold shadow-xs'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <Icon
-                className={`size-4.5 shrink-0 transition-transform ${
-                  isActive ? 'text-blue-600 stroke-[2.2]' : 'text-slate-400 stroke-[1.8]'
-                }`}
-              />
-              <span className="truncate">{item.label}</span>
+              <div className="flex items-center gap-3.5 min-w-0">
+                <Icon
+                  className={`size-4.5 shrink-0 transition-transform ${
+                    isActive ? 'text-blue-600 stroke-[2.2]' : 'text-slate-400 stroke-[1.8]'
+                  }`}
+                />
+                <span className="truncate">{item.label}</span>
+              </div>
+              {item.badge && (
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {item.badge}
+                </span>
+              )}
             </button>
           )
         })}

@@ -15,6 +15,7 @@ import {
   fetchPatientReportsApi,
   uploadPatientReportApi,
   deletePatientReportApi,
+  toggleReportFavoriteApi,
   fetchPatientPrescriptionsApi,
   fetchPatientDashboardApi,
 } from '@/services/patientService'
@@ -66,7 +67,7 @@ export interface PatientStoreState {
   // General Status
   error: string | null
 
-  // Filters, Search & Sorting (for Medical Records vault)
+  // Filters, Search & Sorting (for Medical Reports vault)
   searchQuery: string
   activeCategory: string
   sortBy: SortOrderOption
@@ -80,6 +81,10 @@ export interface PatientStoreState {
   isFilterModalOpen: boolean
   isDeleteModalOpen: boolean
   recordToDelete: MedicalRecordItem | null
+
+  // Selection & Favorite Actions
+  setSelectedRecord: (record: MedicalRecordItem | null) => void
+  toggleFavorite: (recordId: string) => Promise<boolean>
 
   // Filter Actions
   setSearchQuery: (query: string) => void
@@ -107,7 +112,17 @@ export interface PatientStoreState {
   updateMedicalHistory: (data: Partial<PatientMedicalHistory>) => Promise<boolean>
   fetchReports: (category?: string) => Promise<void>
   uploadReport: (
-    payload: FormData | { title: string; fileUrl: string; fileType?: string; category?: string; fileSize?: string; notes?: string }
+    payload: FormData | {
+      title: string
+      fileUrl: string
+      fileType?: string
+      fileSize?: string
+      category?: string
+      doctorName?: string
+      hospitalName?: string
+      notes?: string
+      tags?: string[]
+    }
   ) => Promise<boolean>
   deleteReport: (recordId: string) => Promise<boolean>
   fetchPrescriptions: (page?: number, limit?: number) => Promise<void>
@@ -154,6 +169,32 @@ export const usePatientStore = create<PatientStoreState>()(
         isFilterModalOpen: false,
         isDeleteModalOpen: false,
         recordToDelete: null,
+
+        // Selection & Favorite Actions
+        setSelectedRecord: (selectedRecord) => set({ selectedRecord }),
+
+        toggleFavorite: async (recordId: string) => {
+          const prev = get().records
+          const isNowFav = !prev.find((r) => r._id === recordId)?.isFavorite
+
+          set((state) => ({
+            records: state.records.map((r) =>
+              r._id === recordId ? { ...r, isFavorite: isNowFav } : r
+            ),
+            selectedRecord:
+              state.selectedRecord?._id === recordId
+                ? { ...state.selectedRecord, isFavorite: isNowFav }
+                : state.selectedRecord,
+          }))
+
+          try {
+            await toggleReportFavoriteApi(recordId)
+            return true
+          } catch (err: any) {
+            console.warn('Failed to toggle favorite on server:', err)
+            return true
+          }
+        },
 
         // Filter Actions
         setSearchQuery: (searchQuery) => set({ searchQuery }),
@@ -207,7 +248,7 @@ export const usePatientStore = create<PatientStoreState>()(
                 updatedAt: data.profile.updatedAt,
               }
 
-              // Also sync medicalHistory slice
+              // Sync medicalHistory slice
               const medicalHistorySync: PatientMedicalHistory = {
                 bloodGroup: data.profile.bloodGroup || null,
                 allergies: Array.isArray(data.profile.allergies) ? data.profile.allergies : [],
@@ -227,12 +268,14 @@ export const usePatientStore = create<PatientStoreState>()(
                     category: r.category || 'General',
                     fileUrl: r.fileUrl || '',
                     fileType: r.fileType || 'PDF',
-                    fileSize: r.fileSize || '1.0 MB',
+                    fileSize: r.fileSize || '245 KB',
                     uploadedAt: r.uploadedAt || new Date().toISOString(),
                     uploadedBy: r.uploadedBy || 'You',
                     doctorName: r.doctorName || '',
                     hospitalName: r.hospitalName || '',
                     notes: r.notes || '',
+                    tags: r.tags || [],
+                    isFavorite: r.isFavorite ?? false,
                   }))
                 : []
 
@@ -368,18 +411,24 @@ export const usePatientStore = create<PatientStoreState>()(
                 category: r.category || 'General',
                 fileUrl: r.fileUrl || '',
                 fileType: r.fileType || 'PDF',
-                fileSize: r.fileSize || '1.0 MB',
+                fileSize: r.fileSize || '245 KB',
                 uploadedAt: r.uploadedAt || new Date().toISOString(),
                 uploadedBy: r.uploadedBy || 'You',
                 doctorName: r.doctorName || '',
                 hospitalName: r.hospitalName || '',
                 notes: r.notes || '',
+                tags: r.tags || [],
+                isFavorite: r.isFavorite ?? false,
               }))
 
-              set({ records: formatted, isLoadingReports: false })
+              set({
+                records: formatted,
+                // Default select the first report if none selected
+                selectedRecord: get().selectedRecord || formatted[0] || null,
+                isLoadingReports: false,
+              })
             } else {
-              // No reports in database: keep empty array
-              set({ records: [], isLoadingReports: false })
+              set({ records: [], selectedRecord: null, isLoadingReports: false })
             }
           } catch (err: any) {
             console.warn('Server reports unavailable:', err)
@@ -401,7 +450,12 @@ export const usePatientStore = create<PatientStoreState>()(
                 fileUrl: payload.fileUrl,
                 fileType: payload.fileType || 'PDF',
                 category: payload.category || 'Lab Report',
-              })
+                fileSize: payload.fileSize || '245 KB',
+                doctorName: payload.doctorName || '',
+                hospitalName: payload.hospitalName || '',
+                notes: payload.notes || '',
+                tags: payload.tags || [],
+              } as any)
             }
 
             const createdDoc = created?.report || created
@@ -411,16 +465,19 @@ export const usePatientStore = create<PatientStoreState>()(
               category: createdDoc?.category || (payload instanceof FormData ? (payload.get('category') as string) : payload.category) || 'Lab Report',
               fileUrl: createdDoc?.fileUrl || (payload instanceof FormData ? URL.createObjectURL(payload.get('report') as File) : payload.fileUrl),
               fileType: createdDoc?.fileType || (payload instanceof FormData ? 'PDF' : payload.fileType || 'PDF'),
-              fileSize: (payload as any)?.fileSize || '1.0 MB',
+              fileSize: createdDoc?.fileSize || (payload instanceof FormData ? (payload.get('fileSize') as string) : (payload as any)?.fileSize) || '245 KB',
               uploadedAt: createdDoc?.uploadedAt || new Date().toISOString(),
               uploadedBy: 'You',
-              doctorName: (payload as any)?.doctorName || '',
-              hospitalName: (payload as any)?.hospitalName || '',
-              notes: (payload as any)?.notes || '',
+              doctorName: createdDoc?.doctorName || (payload instanceof FormData ? (payload.get('doctorName') as string) : (payload as any)?.doctorName) || '',
+              hospitalName: createdDoc?.hospitalName || (payload instanceof FormData ? (payload.get('hospitalName') as string) : (payload as any)?.hospitalName) || '',
+              notes: createdDoc?.notes || (payload instanceof FormData ? (payload.get('notes') as string) : (payload as any)?.notes) || '',
+              tags: createdDoc?.tags || (payload as any)?.tags || [],
+              isFavorite: false,
             }
 
             set((state) => ({
               records: [newReportItem, ...state.records],
+              selectedRecord: newReportItem,
               isUploading: false,
               isUploadModalOpen: false,
             }))
@@ -441,14 +498,20 @@ export const usePatientStore = create<PatientStoreState>()(
             console.warn('Backend delete error:', err)
           }
 
-          set((state) => ({
-            records: state.records.filter((r) => r._id !== recordId),
-            selectedRecord: state.selectedRecord?._id === recordId ? null : state.selectedRecord,
-            isViewerOpen: state.selectedRecord?._id === recordId ? false : state.isViewerOpen,
-            isDeleting: false,
-            isDeleteModalOpen: false,
-            recordToDelete: null,
-          }))
+          set((state) => {
+            const nextRecords = state.records.filter((r) => r._id !== recordId)
+            return {
+              records: nextRecords,
+              selectedRecord:
+                state.selectedRecord?._id === recordId
+                  ? nextRecords[0] || null
+                  : state.selectedRecord,
+              isViewerOpen: state.selectedRecord?._id === recordId ? false : state.isViewerOpen,
+              isDeleting: false,
+              isDeleteModalOpen: false,
+              recordToDelete: null,
+            }
+          })
           return true
         },
 

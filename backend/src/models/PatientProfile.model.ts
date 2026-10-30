@@ -6,7 +6,13 @@ export interface IMedicalReport {
   title: string;
   fileUrl: string;
   fileType: string;
+  fileSize?: string;
   category?: string;
+  doctorName?: string;
+  hospitalName?: string;
+  notes?: string;
+  tags?: string[];
+  isFavorite?: boolean;
   uploadedAt: Date;
 }
 
@@ -96,7 +102,13 @@ const PatientProfileSchema = new Schema<IPatientProfile>(
         title: { type: String, required: true, trim: true },
         fileUrl: { type: String, required: true },
         fileType: { type: String, default: "PDF" },
-        category: { type: String, default: "General" },
+        fileSize: { type: String, default: "245 KB" },
+        category: { type: String, default: "Lab Report" },
+        doctorName: { type: String, trim: true, default: "" },
+        hospitalName: { type: String, trim: true, default: "" },
+        notes: { type: String, trim: true, default: "" },
+        tags: { type: [String], default: [] },
+        isFavorite: { type: Boolean, default: false },
         uploadedAt: { type: Date, default: Date.now },
       },
     ],
