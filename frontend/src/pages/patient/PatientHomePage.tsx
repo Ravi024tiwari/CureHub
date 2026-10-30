@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type FC } from 'react'
+import { useState, useEffect, useMemo, useRef, type FC } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { PatientSidebar } from '@/components/patient/PatientSidebar'
@@ -15,6 +15,8 @@ import { MobileBottomNav } from '@/components/patient/MobileBottomNav'
 import { HospitalDetailModal } from '@/components/patient/HospitalDetailModal'
 import { BookAppointmentModal } from '@/components/patient/BookAppointmentModal'
 import { UploadReportModal } from '@/components/patient/UploadReportModal'
+import { EmergencySosBanner } from '@/components/patient/EmergencySosBanner'
+import { AppointmentDetailView } from '@/components/patient/AppointmentDetailView'
 
 import apolloImg from '@/assets/apollo-hospital.jpg'
 import cityCareImg from '@/assets/city-care-hospital.jpg'
@@ -48,6 +50,8 @@ export const PatientHomePage: FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [preselectedDoctor, setPreselectedDoctor] = useState<DoctorCardData | null>(null)
   const [preselectedHospital, setPreselectedHospital] = useState<HospitalCardData | null>(null)
+  const [selectedAppointmentForModal, setSelectedAppointmentForModal] = useState<AppointmentCardData | null>(null)
+  const resultsRef = useRef<HTMLDivElement>(null)
 
   // Mock initial data matching mockup exactly
   const initialHospitals: HospitalCardData[] = [
@@ -306,7 +310,8 @@ export const PatientHomePage: FC = () => {
               patientName={patientDisplayName}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
-              onSearchSubmit={() => {}}
+              onSearchSubmit={() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' })}
+              onSelectCity={setSelectedCity}
               selectedCity={selectedCity}
             />
 
@@ -331,8 +336,50 @@ export const PatientHomePage: FC = () => {
               />
             </section>
 
+            {/* 24/7 Emergency & Rapid Response Banner */}
+            <EmergencySosBanner
+              nearestHospitalName={filteredHospitals[0]?.name || 'Apollo Multispeciality Hospital'}
+              nearestHospitalDistance={filteredHospitals[0]?.distance || '2.3 km'}
+              onFindEmergencyHospitals={() => {
+                setHospitalFilter('emergency')
+                resultsRef.current?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            />
+
+            {/* Active Filter & Search Summary Bar */}
+            {(searchQuery.trim() !== '' || selectedSpecialty) && (
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-blue-50/70 border border-blue-200/60 rounded-2xl animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-700">
+                  <span className="font-semibold text-slate-900">Active Results:</span>
+                  {searchQuery.trim() !== '' && (
+                    <span className="px-2.5 py-0.5 rounded-lg bg-white border border-blue-200 text-blue-700 font-medium">
+                      Query: "{searchQuery}"
+                    </span>
+                  )}
+                  {selectedSpecialty && (
+                    <span className="px-2.5 py-0.5 rounded-lg bg-white border border-blue-200 text-blue-700 font-medium">
+                      Specialty: {selectedSpecialty}
+                    </span>
+                  )}
+                  <span className="text-slate-500 hidden sm:inline">
+                    ({filteredHospitals.length} {filteredHospitals.length === 1 ? 'hospital' : 'hospitals'}, {filteredDoctors.length} {filteredDoctors.length === 1 ? 'doctor' : 'doctors'})
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    setSearchQuery('')
+                    setSelectedSpecialty(null)
+                    setHospitalFilter('all')
+                  }}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            )}
+
             {/* Main Content Grid: 2 columns (Left: Hospitals & Doctors | Right: Appointments & Vitals) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
+            <div ref={resultsRef} className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start scroll-mt-6">
               {/* Left / Center Column (Col 8 on lg) */}
               <div className="lg:col-span-8 space-y-8">
                 {/* Top Hospitals Near You Section */}
@@ -418,7 +465,7 @@ export const PatientHomePage: FC = () => {
                   appointments={appointments}
                   onViewAll={() => setActiveTab('appointments')}
                   onSelectAppointment={(appt) => {
-                    alert(`Viewing appointment details with ${appt.doctorName} on ${appt.date}`)
+                    setSelectedAppointmentForModal(appt)
                   }}
                 />
 
@@ -481,6 +528,32 @@ export const PatientHomePage: FC = () => {
         doctorsList={activeDoctorsList}
         onAppointmentBooked={handleAppointmentBooked}
       />
+
+      {/* Full Interactive Appointment Detail Modal */}
+      {selectedAppointmentForModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5">
+          <div
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200"
+            onClick={() => setSelectedAppointmentForModal(null)}
+          />
+          <div className="relative z-10 w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-200 border border-slate-100">
+            <AppointmentDetailView
+              appointment={selectedAppointmentForModal}
+              onBack={() => setSelectedAppointmentForModal(null)}
+              onReschedule={() => {
+                setSelectedAppointmentForModal(null)
+                handleOpenBooking()
+              }}
+              onCancel={(appt) => {
+                setAppointments((prev) =>
+                  prev.map((a) => (a._id === appt._id ? { ...a, status: 'Cancelled' } : a))
+                )
+                setSelectedAppointmentForModal(null)
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       <UploadReportModal
         isOpen={isUploadModalOpen}
