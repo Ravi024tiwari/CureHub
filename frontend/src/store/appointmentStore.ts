@@ -315,6 +315,7 @@ export interface AppointmentStoreState {
   handleRescheduleAppointment: (id: string, newSlotId: string, reason?: string) => Promise<boolean>
   downloadPrescriptionPdf: (appointment: AppointmentCardData) => Promise<void>
   addAppointmentLocally: (newAppt: AppointmentCardData) => void
+  updateAppointmentLocally: (updatedAppt: AppointmentCardData) => void
 }
 
 export const useAppointmentStore = create<AppointmentStoreState>()(
@@ -719,6 +720,17 @@ ${appointment.prescription?.notes || 'Avoid harsh soaps and keep skin moisturize
           upcoming: get().counts.upcoming + 1,
         },
       })
+    },
+    updateAppointmentLocally: (updatedAppt: AppointmentCardData) => {
+      set((state) => ({
+        appointments: state.appointments.map((a) =>
+          a._id === updatedAppt._id ? updatedAppt : a
+        ),
+        selectedAppointment:
+          state.selectedAppointment?._id === updatedAppt._id
+            ? updatedAppt
+            : state.selectedAppointment,
+      }))
     },
   }))
 )

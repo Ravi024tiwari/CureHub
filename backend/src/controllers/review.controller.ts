@@ -13,7 +13,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
  */
 export const createReview = asyncHandler(async (req: Request, res: Response) => {
   const patientId = req.user?.userId;
-  const { appointmentId, rating, comment } = req.body;
+  const { appointmentId, rating, comment, tags } = req.body;
 
   if (!appointmentId || !rating || !comment || !comment.trim()) {
     throw new ApiError(400, "Appointment ID, rating (1-5), and feedback comment are required.");
@@ -66,6 +66,13 @@ export const createReview = asyncHandler(async (req: Request, res: Response) => 
     hospitalId: appointment.hospitalId,
     rating: numericRating,
     comment: comment.trim(),
+    tags: Array.isArray(tags) ? tags : [],
+  });
+
+  // 5. Atomically mark Appointment as reviewed
+  await Appointment.findByIdAndUpdate(appointment._id, {
+    isReviewed: true,
+    reviewId: review._id,
   });
 
   const populatedReview = await Review.findById(review._id)
@@ -92,7 +99,7 @@ export const createReview = asyncHandler(async (req: Request, res: Response) => 
 export const updateReview = asyncHandler(async (req: Request, res: Response) => {
   const patientId = req.user?.userId;
   const { id } = req.params;
-  const { rating, comment } = req.body;
+  const { rating, comment, tags } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(400, "Invalid review ID format");
@@ -120,6 +127,10 @@ export const updateReview = asyncHandler(async (req: Request, res: Response) => 
       throw new ApiError(400, "Review comment cannot be empty.");
     }
     review.comment = comment.trim();
+  }
+
+  if (tags !== undefined && Array.isArray(tags)) {
+    review.tags = tags;
   }
 
   await review.save();
@@ -150,6 +161,17 @@ export const deleteReview = asyncHandler(async (req: Request, res: Response) => 
   }
 
   const doctorId = review.doctorId;
+  const appointmentId = review.appointmentId;
+
+
+  // Reset appointment review status
+  if (appointmentId) {
+    await Appointment.findByIdAndUpdate(appointmentId, {
+      isReviewed: false,
+      $unset: { reviewId: 1 },
+    });
+  }
+
 
   await Review.deleteOne({ _id: review._id });
 

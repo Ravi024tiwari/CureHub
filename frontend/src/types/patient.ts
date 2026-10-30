@@ -204,6 +204,14 @@ export interface AppointmentCardData {
   cancellation?: AppointmentCancellationData
   canCancel?: boolean
   canReschedule?: boolean
+  isReviewed?: boolean
+  review?: {
+    _id: string
+    rating: number
+    comment: string
+    tags?: string[]
+    createdAt?: string
+  }
 }
 
 export type AppointmentFilterTab = 'all' | 'upcoming' | 'completed' | 'cancelled'

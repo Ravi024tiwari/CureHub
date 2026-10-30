@@ -127,6 +127,7 @@ export const getAppointmentHistory = asyncHandler(async (req: Request, res: Resp
       })
       .populate("hospitalId", "name slug address contactPhone contactEmail website images image")
       .populate("slotId", "date startTime endTime")
+      .populate("reviewId", "rating comment tags createdAt")
       .sort(sortOrder)
       .skip(skip)
       .limit(limit),
@@ -205,7 +206,8 @@ export const getAppointmentDetails = asyncHandler(async (req: Request, res: Resp
     })
     .populate("hospitalId", "name slug address contactPhone contactEmail")
     .populate("slotId", "date startTime endTime")
-    .populate("cancellation.cancelledBy", "name role");
+    .populate("cancellation.cancelledBy", "name role")
+    .populate("reviewId", "rating comment tags createdAt");
 
   if (!appointment) {
     throw new ApiError(404, "Appointment not found or you do not have permission to view it.");

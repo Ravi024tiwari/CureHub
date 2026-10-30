@@ -25,6 +25,7 @@ interface AppointmentCardProps {
   onDownloadPrescription?: (appointment: AppointmentCardData) => void
   onBookAgain?: (appointment: AppointmentCardData) => void
   onPayNow?: (appointment: AppointmentCardData) => void
+  onWriteReview?: (appointment: AppointmentCardData) => void
 }
 
 export const AppointmentCard: FC<AppointmentCardProps> = ({
@@ -36,6 +37,7 @@ export const AppointmentCard: FC<AppointmentCardProps> = ({
   onDownloadPrescription,
   onBookAgain,
   onPayNow,
+  onWriteReview,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [hasCopied, setHasCopied] = useState(false)
@@ -278,6 +280,29 @@ export const AppointmentCard: FC<AppointmentCardProps> = ({
               </Button>
             )}
 
+            {appointment.status === 'Completed' && onWriteReview && (
+              appointment.isReviewed ? (
+                <button
+                  type="button"
+                  onClick={() => onWriteReview(appointment)}
+                  className="text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/90 rounded-xl h-8 sm:h-8.5 px-2.5 inline-flex items-center gap-1 cursor-pointer transition-all shrink-0"
+                  title="Click to view or edit your review"
+                >
+                  <Star className="size-3.5 fill-amber-400 text-amber-500" />
+                  <span>★ {appointment.review?.rating || 5}/5</span>
+                  <span className="text-[10px] text-amber-600 font-medium underline ml-0.5">Edit</span>
+                </button>
+              ) : (
+                <Button
+                  onClick={() => onWriteReview(appointment)}
+                  className="text-[11px] sm:text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-xl h-8 sm:h-8.5 px-2.5 sm:px-3 shadow-xs cursor-pointer inline-flex items-center gap-1 shrink-0"
+                >
+                  <Star className="size-3 sm:size-3.5 fill-white" />
+                  <span>Rate</span>
+                </Button>
+              )
+            )}
+
             {/* Three dots menu */}
             <div className="relative shrink-0">
               <button
@@ -447,6 +472,28 @@ export const AppointmentCard: FC<AppointmentCardProps> = ({
               >
                 <Download className="size-3.5" />
               </Button>
+            )}
+            {appointment.status === 'Completed' && onWriteReview && (
+              appointment.isReviewed ? (
+                <button
+                  type="button"
+                  onClick={() => onWriteReview(appointment)}
+                  className="text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/90 rounded-xl h-8 px-2.5 inline-flex items-center gap-1 cursor-pointer transition-all"
+                  title="Click to view or edit your review"
+                >
+                  <Star className="size-3.5 fill-amber-400 text-amber-500" />
+                  <span>★ {appointment.review?.rating || 5}/5</span>
+                  <span className="text-[10px] text-amber-600 font-medium underline ml-0.5">Edit</span>
+                </button>
+              ) : (
+                <Button
+                  onClick={() => onWriteReview(appointment)}
+                  className="text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-xl h-8 px-2.5 shadow-xs cursor-pointer inline-flex items-center gap-1"
+                >
+                  <Star className="size-3 fill-white" />
+                  <span>Rate</span>
+                </Button>
+              )
             )}
             <div className="relative">
               <button
@@ -787,6 +834,27 @@ export const AppointmentCard: FC<AppointmentCardProps> = ({
                 >
                   View Details
                 </Button>
+                {onWriteReview && (
+                  appointment.isReviewed ? (
+                    <button
+                      type="button"
+                      onClick={() => onWriteReview(appointment)}
+                      className="w-full text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/90 rounded-xl h-8 px-2.5 inline-flex items-center justify-center gap-1 cursor-pointer transition-all"
+                    >
+                      <Star className="size-3.5 fill-amber-400 text-amber-500" />
+                      <span>★ {appointment.review?.rating || 5}/5 Reviewed</span>
+                      <span className="text-[10px] text-amber-600 underline ml-0.5">Edit</span>
+                    </button>
+                  ) : (
+                    <Button
+                      onClick={() => onWriteReview(appointment)}
+                      className="w-full text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-xl h-8 px-3 shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5"
+                    >
+                      <Star className="size-3.5 fill-white" />
+                      <span>Rate & Review</span>
+                    </Button>
+                  )
+                )}
                 {onDownloadPrescription && (
                   <button
                     type="button"

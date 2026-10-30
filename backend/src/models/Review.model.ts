@@ -8,6 +8,7 @@ export interface IReview extends Document {
   hospitalId: mongoose.Types.ObjectId;
   rating: number; // 1 to 5
   comment: string;
+  tags?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,6 +55,10 @@ const ReviewSchema = new Schema<IReview, IReviewModel>(
       required: [true, "Review comment is required"],
       trim: true,
       maxlength: [1000, "Review comment cannot exceed 1000 characters"],
+    },
+    tags: {
+      type: [String],
+      default: [],
     },
   },
   {

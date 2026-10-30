@@ -58,6 +58,8 @@ export interface IAppointment extends Document {
   rescheduleDeadline?: Date | null;
   doctorLeaveReason?: string | null;
   rescheduleHistory?: IRescheduleHistory[];
+  isReviewed?: boolean;
+  reviewId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -162,6 +164,16 @@ const AppointmentSchema = new Schema<IAppointment>(
     },
     doctorLeaveReason: {
       type: String,
+      default: null,
+    },
+    isReviewed: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    reviewId: {
+      type: Schema.Types.ObjectId,
+      ref: "Review",
       default: null,
     },
     rescheduleHistory: [

@@ -24,6 +24,7 @@ import { AppointmentFiltersDrawer } from '@/components/patient/AppointmentFilter
 import { CancelAppointmentModal } from '@/components/patient/CancelAppointmentModal'
 import { RescheduleAppointmentModal } from '@/components/patient/RescheduleAppointmentModal'
 import { BookAppointmentModal } from '@/components/patient/BookAppointmentModal'
+import { WriteReviewModal } from '@/components/patient/appointments/WriteReviewModal'
 import { useAppointmentStore } from '@/store/appointmentStore'
 import { useDoctorStore } from '@/store/doctorStore'
 import type { AppointmentCardData, AppointmentFilterTab } from '@/types/patient'
@@ -36,6 +37,20 @@ export const PatientAppointmentsPage: FC = () => {
   const [isFiltersDrawerOpen, setIsFiltersDrawerOpen] = useState(false)
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false)
   const [selectedDoctorForBooking, setSelectedDoctorForBooking] = useState<any>(null)
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+  const [reviewTargetAppointment, setReviewTargetAppointment] = useState<AppointmentCardData | null>(null)
+
+  const handleOpenReviewModal = (appt: AppointmentCardData) => {
+    setReviewTargetAppointment(appt)
+    setIsReviewModalOpen(true)
+  }
+
+  const handleReviewSubmitted = (updatedAppt: AppointmentCardData) => {
+    updateAppointmentLocally(updatedAppt)
+    if (selectedAppointment?._id === updatedAppt._id) {
+      setSelectedAppointment(updatedAppt)
+    }
+  }
 
   // Live Appointment Store
   const {
@@ -75,6 +90,7 @@ export const PatientAppointmentsPage: FC = () => {
     handleCancelAppointment,
     handleRescheduleAppointment,
     downloadPrescriptionPdf,
+    updateAppointmentLocally,
   } = useAppointmentStore()
 
   const { doctors } = useDoctorStore()
@@ -175,6 +191,7 @@ export const PatientAppointmentsPage: FC = () => {
                 onCancel={(appt) => openCancelModal(appt)}
                 onDownloadPrescription={(appt) => downloadPrescriptionPdf(appt)}
                 onBookAgain={handleBookAgain}
+                onWriteReview={handleOpenReviewModal}
                 onPayNow={(appt) => {
                   alert(
                     `Redirecting to secure Razorpay checkout for ${appt.appointmentNumber} (₹${appt.consultationFee || 700})...`
@@ -520,6 +537,7 @@ export const PatientAppointmentsPage: FC = () => {
                           onCancel={(appt) => openCancelModal(appt)}
                           onDownloadPrescription={(appt) => downloadPrescriptionPdf(appt)}
                           onBookAgain={handleBookAgain}
+                          onWriteReview={handleOpenReviewModal}
                           onPayNow={(appt) => {
                             alert(
                               `Redirecting to secure Razorpay checkout for ${appt.appointmentNumber} (₹${appt.consultationFee || 700})...`
@@ -637,6 +655,19 @@ export const PatientAppointmentsPage: FC = () => {
         appointment={appointmentToReschedule}
         onConfirmReschedule={handleRescheduleAppointment}
       />
+
+      {/* Verified Consultation Review Modal */}
+      {reviewTargetAppointment && (
+        <WriteReviewModal
+          isOpen={isReviewModalOpen}
+          onClose={() => {
+            setIsReviewModalOpen(false)
+            setReviewTargetAppointment(null)
+          }}
+          appointment={reviewTargetAppointment}
+          onReviewSubmitted={handleReviewSubmitted}
+        />
+      )}
 
       {/* Book New Appointment Modal */}
       {isBookingModalOpen && (

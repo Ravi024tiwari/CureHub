@@ -34,6 +34,7 @@ interface AppointmentDetailViewProps {
   onDownloadPrescription?: (appointment: AppointmentCardData) => void
   onBookAgain?: (appointment: AppointmentCardData) => void
   onPayNow?: (appointment: AppointmentCardData) => void
+  onWriteReview?: (appointment: AppointmentCardData) => void
 }
 
 export const AppointmentDetailView: FC<AppointmentDetailViewProps> = ({
@@ -44,6 +45,7 @@ export const AppointmentDetailView: FC<AppointmentDetailViewProps> = ({
   onDownloadPrescription,
   onBookAgain,
   onPayNow,
+  onWriteReview,
 }) => {
   const [activeTab, setActiveTab] = useState<
     'overview' | 'prescription' | 'reschedule-history' | 'invoices'
@@ -125,6 +127,27 @@ export const AppointmentDetailView: FC<AppointmentDetailViewProps> = ({
               <Download className="size-3.5" />
               <span>Download PDF</span>
             </Button>
+          )}
+
+          {appointment.status === 'Completed' && onWriteReview && (
+            appointment.isReviewed ? (
+              <Button
+                variant="outline"
+                onClick={() => onWriteReview(appointment)}
+                className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200/90 rounded-xl h-10 px-4 cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
+              >
+                <Star className="size-4 fill-amber-400 text-amber-500" />
+                <span>★ {appointment.review?.rating || 5}/5 (Edit Review)</span>
+              </Button>
+            ) : (
+              <Button
+                onClick={() => onWriteReview(appointment)}
+                className="text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-xl h-10 px-4 cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
+              >
+                <Star className="size-4 fill-white" />
+                <span>Rate & Review</span>
+              </Button>
+            )
           )}
         </div>
       </div>
@@ -504,6 +527,101 @@ export const AppointmentDetailView: FC<AppointmentDetailViewProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Dedicated Doctor Feedback & Verified Review Card for Completed Appointments */}
+          {appointment.status === 'Completed' && onWriteReview && (
+            <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="size-8 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center">
+                    <Star className="size-4.5 fill-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
+                      Your Consultation Feedback
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Verified consultation experience with {appointment.doctorName}
+                    </p>
+                  </div>
+                </div>
+
+                {appointment.isReviewed && (
+                  <button
+                    type="button"
+                    onClick={() => onWriteReview(appointment)}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 underline cursor-pointer"
+                  >
+                    Edit Review
+                  </button>
+                )}
+              </div>
+
+              {appointment.isReviewed && appointment.review ? (
+                <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center text-amber-400">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            className={`size-4 ${
+                              s <= (appointment.review?.rating || 5)
+                                ? 'fill-amber-400 text-amber-400'
+                                : 'fill-slate-200 text-slate-200'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xs font-black text-slate-800">
+                        {appointment.review.rating}.0 / 5.0
+                      </span>
+                    </div>
+
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <ShieldCheck className="size-3" />
+                      Verified Patient
+                    </span>
+                  </div>
+
+                  {appointment.review.tags && appointment.review.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {appointment.review.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2.5 py-0.5 rounded-lg bg-white border border-amber-200 text-[10px] font-bold text-slate-700 shadow-2xs"
+                        >
+                          ✓ {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-xs font-medium text-slate-700 leading-relaxed italic">
+                    "{appointment.review.comment}"
+                  </p>
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">
+                      Share your experience with {appointment.doctorName}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Your genuine rating helps thousands of other patients make confident healthcare decisions.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => onWriteReview(appointment)}
+                    className="shrink-0 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-xl h-9 px-4 cursor-pointer shadow-xs inline-flex items-center gap-1.5"
+                  >
+                    <Star className="size-3.5 fill-white" />
+                    <span>Rate Consultation</span>
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 

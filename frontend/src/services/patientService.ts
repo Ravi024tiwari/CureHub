@@ -229,6 +229,14 @@ export async function fetchMyPatientAppointmentsPaginatedApi(params: {
         } : undefined,
         canCancel: uiStatus === 'Confirmed' || uiStatus === 'Pending',
         canReschedule: uiStatus === 'Confirmed' || uiStatus === 'Pending',
+        isReviewed: Boolean(a.isReviewed || (a.reviewId && typeof a.reviewId === 'object')),
+        review: a.reviewId && typeof a.reviewId === 'object' ? {
+          _id: a.reviewId._id,
+          rating: a.reviewId.rating,
+          comment: a.reviewId.comment,
+          tags: a.reviewId.tags || [],
+          createdAt: a.reviewId.createdAt ? new Date(a.reviewId.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : undefined,
+        } : undefined,
       }
     })
 
@@ -271,6 +279,38 @@ export async function downloadPrescriptionPdfApi(appointmentId: string) {
   return response
 }
 
+
+// Submit Doctor Review for a Completed Consultation
+export async function submitAppointmentReviewApi(payload: {
+  appointmentId: string
+  rating: number
+  comment: string
+  tags?: string[]
+}) {
+  const res: any = await apiClient.post('/reviews', payload)
+  return res?.data || res
+}
+
+// Update Existing Doctor Review
+export async function updateAppointmentReviewApi(
+  reviewId: string,
+  payload: { rating?: number; comment?: string; tags?: string[] }
+) {
+  const res: any = await apiClient.patch(`/reviews/${reviewId}`, payload)
+  return res?.data || res
+}
+
+// Delete Doctor Review
+export async function deleteAppointmentReviewApi(reviewId: string) {
+  const res: any = await apiClient.delete(`/reviews/${reviewId}`)
+  return res?.data || res
+}
+
+// Fetch Doctor Reviews with Rating Analytics (Public)
+export async function fetchDoctorReviewsApi(doctorId: string, page = 1, limit = 10) {
+  const res: any = await apiClient.get(`/reviews/doctor/${doctorId}?page=${page}&limit=${limit}`)
+  return res?.data || res
+}
 
 // Fetch Paginated Doctors for Discovery (with infinite scroll support)
 export async function fetchDoctorsListApi(params: {
