@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Calendar,
+  CalendarOff,
   Building2,
   Stethoscope,
   Menu,
@@ -29,6 +30,12 @@ export const HospitalAdminMobileNav: FC<HospitalAdminMobileNavProps> = ({ onTogg
       label: 'Appointments',
       icon: Calendar,
       path: '/hospital-admin/appointments',
+    },
+    {
+      id: 'leaves',
+      label: 'Leaves',
+      icon: CalendarOff,
+      path: '/hospital-admin/leaves',
     },
     {
       id: 'doctors',

@@ -556,3 +556,82 @@ export interface AdminAppointmentDetailResponse {
     prescription?: any
   }>
 }
+
+
+export const DoctorLeaveStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+} as const
+export type DoctorLeaveStatus = (typeof DoctorLeaveStatus)[keyof typeof DoctorLeaveStatus]
+
+export const DoctorLeaveType = {
+  FULL_DAY: 'FULL_DAY',
+  PARTIAL_DAY: 'PARTIAL_DAY',
+  MULTI_DAY: 'MULTI_DAY',
+} as const
+export type DoctorLeaveType = (typeof DoctorLeaveType)[keyof typeof DoctorLeaveType]
+
+export interface AdminDoctorLeaveItem {
+  _id: string
+  doctorId: {
+    _id: string
+    userId?: {
+      _id: string
+      name: string
+      email: string
+      phoneNumber?: string
+      avatar?: string
+    }
+    department?: string
+    specialization?: string[] | string
+    qualifications?: string[]
+    experienceYears?: number
+    consultationFee?: number
+  }
+  hospitalId: {
+    _id: string
+    name: string
+    slug?: string
+    address?: {
+      street?: string
+      city?: string
+      state?: string
+    }
+    contactPhone?: string
+    contactEmail?: string
+  }
+  startDateTime: string
+  endDateTime: string
+  leaveType: string
+  reason?: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+  approvedBy?: {
+    _id: string
+    name?: string
+    email?: string
+  } | null
+  rejectionReason?: string
+  affectedAppointmentsCount?: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminDoctorLeavesKpis {
+  total: number
+  pending: number
+  approved: number
+  rejected: number
+  cancelled: number
+  totalTrend?: string
+  pendingPercentage?: number
+  approvedPercentage?: number
+  rejectedPercentage?: number
+}
+
+export interface AdminDoctorLeavesFilterOptions {
+  hospitals: Array<{ id: string; name: string; city?: string }>
+  departments: string[]
+  statuses: Array<{ label: string; value: string }>
+}

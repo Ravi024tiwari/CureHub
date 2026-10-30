@@ -7,6 +7,7 @@ import {
   Stethoscope,
   UserPlus,
   Calendar,
+  CalendarOff,
   User,
   X,
   ChevronRight,
@@ -92,6 +93,13 @@ export const HospitalAdminSidebar: FC<HospitalAdminSidebarProps> = ({
       path: '/hospital-admin/appointments',
     },
     {
+      id: 'leaves',
+      label: 'Leave Requests',
+      icon: CalendarOff,
+      path: '/hospital-admin/leaves',
+      alias: ['/hospital-admin/leaves', '/hospital-admin/doctor-leaves'],
+    },
+    {
       id: 'profile',
       label: 'Profile',
       icon: User,
@@ -117,6 +125,8 @@ export const HospitalAdminSidebar: FC<HospitalAdminSidebarProps> = ({
     if (item.id === 'hospitals' && currentPath.startsWith('/hospital-admin/hospitals')) return true
     if (item.id === 'doctors' && currentPath.startsWith('/hospital-admin/doctors')) return true
     if (item.id === 'join-requests' && currentPath.startsWith('/hospital-admin/join-requests')) return true
+    if (item.id === 'appointments' && currentPath.startsWith('/hospital-admin/appointments')) return true
+    if (item.id === 'leaves' && currentPath.startsWith('/hospital-admin/leaves')) return true
     if (item.id === 'profile' && currentPath.startsWith('/hospital-admin/profile')) return true
     return false
   }

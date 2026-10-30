@@ -520,7 +520,7 @@ export const useDoctorStore = create<DoctorStoreState>()(
           try {
             const profile = await doctorService.getMyDoctorProfile()
             const rawLeaves = await doctorService.getDoctorLeaves()
-            const leaves = Array.isArray(rawLeaves) ? rawLeaves : (rawLeaves as any)?.leaves || profile?.leaves || []
+            const leaves = Array.isArray(rawLeaves) ? rawLeaves : (rawLeaves as any)?.leaves || (profile as any)?.leaves || []
             const rules =
               profile?.scheduleRules && profile.scheduleRules.length > 0
                 ? profile.scheduleRules

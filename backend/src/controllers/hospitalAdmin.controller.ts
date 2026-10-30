@@ -28,6 +28,8 @@ import {
   PaymentStatus,
   SlotStatus,
   ConsultationType,
+  DoctorLeaveStatus,
+  DoctorLeaveType,
 } from "../constants/index.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
@@ -2419,12 +2421,7 @@ const getAdminHospitalIds = async (
 // 5. DOCTOR LEAVES REVIEW & APPROVAL WORKFLOW
 // ==========================================
 
-/**
- * Hospital Admin: List all leave applications for hospitals managed by this admin
- * - Supports filtering by: status (PENDING, APPROVED, REJECTED, CANCELLED), hospitalId, doctorId, search, date
- * - Returns detailed metrics/KPIs: total, pending, approved, rejected
- * - Fully paginated
- */
+
 export const getAdminDoctorLeaves = asyncHandler(async (req: Request, res: Response) => {
   const adminUserId = req.user?.userId;
   const userRole = req.user?.role;
@@ -2449,7 +2446,10 @@ export const getAdminDoctorLeaves = asyncHandler(async (req: Request, res: Respo
   const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
   const skip = (page - 1) * limit;
 
-  const { status, hospitalId, doctorId, search, startDate, endDate, leaveType } = req.query;
+  const { status, hospitalId, doctorId, search, startDate, endDate, leaveType, department } = req.query;
+  const deptFilter = (department && typeof department === "string" && department !== "ALL")
+    ? (await DoctorProfile.find({ department: new RegExp(`^${department.trim()}$`, "i") }).select("_id")).map((d) => d._id)
+    : null;
 
   const filter: any = {
     hospitalId: { $in: managedHospitalIds },
@@ -2463,6 +2463,9 @@ export const getAdminDoctorLeaves = asyncHandler(async (req: Request, res: Respo
   }
 
   // Doctor override
+  if (deptFilter) {
+    filter.doctorId = { $in: deptFilter };
+  }
   if (doctorId && typeof doctorId === "string" && doctorId !== "ALL") {
     if (mongoose.Types.ObjectId.isValid(doctorId)) {
       filter.doctorId = new mongoose.Types.ObjectId(doctorId);
@@ -2655,7 +2658,11 @@ export const updateAdminDoctorLeaveStatus = asyncHandler(async (req: Request, re
     throw new ApiError(400, "Invalid leave ID format");
   }
 
-  if (!status || !["APPROVED", "REJECTED"].includes(status)) {
+  let normalizedStatus = status ? status.toString().trim().toUpperCase() : "";
+  if (normalizedStatus === "APPROVE") normalizedStatus = DoctorLeaveStatus.APPROVED;
+  if (normalizedStatus === "REJECT") normalizedStatus = DoctorLeaveStatus.REJECTED;
+
+  if (!normalizedStatus || ![DoctorLeaveStatus.APPROVED, DoctorLeaveStatus.REJECTED].includes(normalizedStatus as DoctorLeaveStatus)) {
     throw new ApiError(400, "Status must be either 'APPROVED' or 'REJECTED'.");
   }
 
@@ -2670,19 +2677,19 @@ export const updateAdminDoctorLeaveStatus = asyncHandler(async (req: Request, re
     throw new ApiError(404, "Leave request not found or you are not authorized to manage this hospital.");
   }
 
-  if (leave.status !== "PENDING") {
+  if (leave.status !== DoctorLeaveStatus.PENDING) {
     throw new ApiError(
       400,
       `Cannot update a leave request that is already '${leave.status}'.`
     );
   }
 
-  if (status === "REJECTED") {
+  if (normalizedStatus === DoctorLeaveStatus.REJECTED) {
     if (!rejectionReason || !rejectionReason.trim()) {
       throw new ApiError(400, "A clear rejection reason is required when rejecting a doctor's leave request.");
     }
 
-    leave.status = "REJECTED";
+    leave.status = DoctorLeaveStatus.REJECTED;
     leave.rejectionReason = rejectionReason.trim();
     await leave.save();
 
@@ -2703,7 +2710,7 @@ export const updateAdminDoctorLeaveStatus = asyncHandler(async (req: Request, re
   }
 
   // --- APPROVED WORKFLOW ---
-  leave.status = "APPROVED";
+  leave.status = DoctorLeaveStatus.APPROVED;
   leave.approvedBy = new mongoose.Types.ObjectId(adminUserId);
 
   // Process affected active appointments (RESCHEDULE_REQUIRED + 7-day window) & lock slots

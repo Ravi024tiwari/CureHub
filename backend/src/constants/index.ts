@@ -59,3 +59,16 @@ export enum PaymentStatus {
   FAILED = "FAILED",
   REFUNDED = "REFUNDED",
 }
+
+export enum DoctorLeaveStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+  CANCELLED = "CANCELLED",
+}
+
+export enum DoctorLeaveType {
+  FULL_DAY = "FULL_DAY",
+  PARTIAL_DAY = "PARTIAL_DAY",
+  MULTI_DAY = "MULTI_DAY",
+}

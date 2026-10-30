@@ -88,7 +88,7 @@ export const DoctorSchedulePage: FC<DoctorSchedulePageProps> = ({
       toast.success(
         res.affectedCount
           ? `Leave confirmed. ${res.affectedCount} appointment(s) moved to priority rescheduling.`
-          : `Leave scheduled for ${date}. Patient booking slots blocked.`,
+          : 'Leave scheduled. Patient booking slots blocked.',
         'Leave Scheduled Successfully!'
       )
     } else {
@@ -102,7 +102,7 @@ export const DoctorSchedulePage: FC<DoctorSchedulePageProps> = ({
     const success = await cancelLeave(idOrDate)
     if (success) {
       toast.success(
-        `Leave for ${date} has been cancelled. Booking slots reopened.`,
+        'Leave has been cancelled. Booking slots reopened.',
         'Leave Cancelled'
       )
     } else {

@@ -1,4 +1,5 @@
 import apiClient from './apiClient'
+import { DoctorLeaveStatus } from '@/types/hospitalAdmin'
 import type {
   HospitalAdminDashboardData,
   DoctorJoinRequestFull,
@@ -263,8 +264,20 @@ export const hospitalAdminService = {
     status?: string
     hospitalId?: string
     doctorId?: string
+    department?: string
+    search?: string
+    leaveType?: string
+    startDate?: string
+    endDate?: string
   }): Promise<{
     leaves: any[]
+    counts: {
+      total: number
+      pending: number
+      approved: number
+      rejected: number
+      cancelled: number
+    }
     summary: {
       total: number
       pending: number
@@ -274,20 +287,55 @@ export const hospitalAdminService = {
     }
     pagination: {
       totalDocs: number
-      page: number
+      currentPage: number
       limit: number
       totalPages: number
+      hasNextPage?: boolean
+      hasPrevPage?: boolean
     }
   }> => {
     const q = new URLSearchParams()
     if (params?.page) q.append('page', params.page.toString())
     if (params?.limit) q.append('limit', params.limit.toString())
     if (params?.status && params.status !== 'ALL') q.append('status', params.status)
-    if (params?.hospitalId && params.hospitalId !== 'all') q.append('hospitalId', params.hospitalId)
-    if (params?.doctorId && params.doctorId !== 'all') q.append('doctorId', params.doctorId)
+    if (params?.hospitalId && params.hospitalId !== 'ALL' && params.hospitalId !== 'all') {
+      q.append('hospitalId', params.hospitalId)
+    }
+    if (params?.doctorId && params.doctorId !== 'ALL' && params.doctorId !== 'all') {
+      q.append('doctorId', params.doctorId)
+    }
+    if (params?.department && params.department !== 'ALL' && params.department !== 'all') {
+      q.append('department', params.department)
+    }
+    if (params?.search && params.search.trim()) {
+      q.append('search', params.search.trim())
+    }
+    if (params?.leaveType && params.leaveType !== 'ALL' && params.leaveType !== 'all') {
+      q.append('leaveType', params.leaveType)
+    }
+    if (params?.startDate) q.append('startDate', params.startDate)
+    if (params?.endDate) q.append('endDate', params.endDate)
 
     const response = await apiClient.get(`/hospital-admin/leaves?${q.toString()}`)
-    return (response as any)?.data || response
+    const payload = (response as any)?.data || response || {}
+    const counts = payload.counts || payload.summary || {
+      total: 0,
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+      cancelled: 0,
+    }
+    return {
+      leaves: payload.leaves || [],
+      counts,
+      summary: counts,
+      pagination: payload.pagination || {
+        totalDocs: 0,
+        currentPage: 1,
+        limit: 10,
+        totalPages: 1,
+      },
+    }
   },
 
   getDoctorLeaveById: async (leaveId: string): Promise<any> => {
@@ -297,11 +345,13 @@ export const hospitalAdminService = {
 
   updateDoctorLeaveStatus: async (
     leaveId: string,
-    status: 'APPROVED' | 'REJECTED',
+    status: DoctorLeaveStatus | 'APPROVED' | 'REJECTED' | 'APPROVE' | 'REJECT' | string,
     rejectionReason?: string
   ): Promise<any> => {
+    const normalizedStatus =
+      status === 'APPROVE' ? 'APPROVED' : status === 'REJECT' ? 'REJECTED' : status
     const response = await apiClient.patch(`/hospital-admin/leaves/${leaveId}/status`, {
-      status,
+      status: normalizedStatus,
       rejectionReason,
     })
     return (response as any)?.data || response

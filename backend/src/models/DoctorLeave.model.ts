@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
+import { DoctorLeaveStatus, DoctorLeaveType } from "../constants/index.js";
 
-export type DoctorLeaveType = "FULL_DAY" | "PARTIAL_DAY" | "MULTI_DAY";
-export type DoctorLeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export { DoctorLeaveStatus, DoctorLeaveType };
 
 export interface IDoctorLeave extends Document {
   doctorId: mongoose.Types.ObjectId;
@@ -46,10 +46,7 @@ const doctorLeaveSchema = new Schema<IDoctorLeave>(
 
     leaveType: {
       type: String,
-      enum: {
-        values: ["FULL_DAY", "PARTIAL_DAY", "MULTI_DAY"],
-        message: "Invalid leave type. Must be FULL_DAY, PARTIAL_DAY, or MULTI_DAY",
-      },
+      enum: Object.values(DoctorLeaveType),
       required: [true, "Leave type is required"],
     },
 
@@ -62,11 +59,8 @@ const doctorLeaveSchema = new Schema<IDoctorLeave>(
 
     status: {
       type: String,
-      enum: {
-        values: ["PENDING", "APPROVED", "REJECTED", "CANCELLED"],
-        message: "Invalid status. Must be PENDING, APPROVED, REJECTED, or CANCELLED",
-      },
-      default: "PENDING",
+      enum: Object.values(DoctorLeaveStatus),
+      default: DoctorLeaveStatus.PENDING,
       index: true,
     },
 
@@ -120,7 +114,7 @@ doctorLeaveSchema.index({
 });
 
 // Validation: End date-time must be strictly after start date-time
-doctorLeaveSchema.path("endDateTime").validate(function (this: IDoctorLeave, value: Date) {
+doctorLeaveSchema.path("endDateTime").validate(function (this: any, value: Date) {
   return value > this.startDateTime;
 }, "End date-time must be after start date-time");
 
