@@ -37,8 +37,8 @@ export const TopHospitalsCard: FC = () => {
         </button>
       </div>
 
-      {/* Responsive Table with smooth scroll if constrained */}
-      <div className="overflow-x-auto -mx-2 sm:mx-0">
+      {/* 1. Desktop & Tablet Responsive Table View */}
+      <div className="hidden sm:block overflow-x-auto -mx-2 sm:mx-0">
         <table className="w-full text-left text-xs min-w-[420px]">
           <thead>
             <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
@@ -101,6 +101,65 @@ export const TopHospitalsCard: FC = () => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* 2. Mobile View: High-Context Interactive Cards (No Horizontal Scrolling) */}
+      <div className="space-y-3 sm:hidden">
+        {displayHospitals.map((hosp) => (
+          <div
+            key={hosp.id}
+            onClick={() => navigate('/hospital-admin/hospitals')}
+            className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/80 hover:border-blue-300 hover:bg-blue-50/20 transition-all cursor-pointer space-y-3 active:scale-[0.99]"
+          >
+            {/* Facility Header */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="size-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                  <Building2 className="size-4 stroke-[2.2]" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="font-bold text-slate-900 text-xs truncate">{hosp.name}</h4>
+                  <p className="text-[10px] text-slate-500 truncate">{hosp.city}</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg shrink-0">
+                {hosp.revenueFormatted}
+              </span>
+            </div>
+
+            {/* 3-Column Metrics Snapshot */}
+            <div className="grid grid-cols-3 gap-2 py-1.5 px-2 bg-white rounded-xl border border-slate-100 text-center shadow-2xs">
+              <div>
+                <span className="text-[10px] text-slate-400 block font-medium">Appointments</span>
+                <span className="text-xs font-bold text-slate-800">{hosp.appointments}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-medium">Patients</span>
+                <span className="text-xs font-bold text-slate-800">
+                  {hosp.patients.toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-medium">Occupancy</span>
+                <span className="text-xs font-bold text-slate-800">{hosp.occupancyRate}%</span>
+              </div>
+            </div>
+
+            {/* Capacity Meter */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] font-semibold text-slate-500">
+                <span>Bed Capacity</span>
+                <span className="font-bold text-slate-700">{hosp.occupancyRate}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-200/90 rounded-full overflow-hidden">
+                <div
+                  style={{ width: `${hosp.occupancyRate}%` }}
+                  className={`h-full rounded-full ${getOccupancyColor(hosp.occupancyRate)}`}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

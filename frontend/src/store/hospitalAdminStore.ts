@@ -10,212 +10,55 @@ import type {
   DoctorJoinRequestItem,
 } from '@/types/hospitalAdmin'
 
-// Default fallback mock matching the exact UI mockup
+// Clean Initial State (100% Real DB Data Hydration, Zero Fake Data)
+const generateDailyAppointmentStats = (): AppointmentDailyStat[] => {
+  const stats: AppointmentDailyStat[] = [];
+  const now = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const dateKey = d.toISOString().split('T')[0];
+    const dayLabel = d.getDate() + ' ' + d.toLocaleString('en-US', { month: 'short' });
+    stats.push({
+      date: dateKey,
+      dayLabel,
+      appointments: 0,
+      total: 0,
+    });
+  }
+  return stats;
+};
+
 const INITIAL_KPIS: HospitalAdminKpis = {
-  totalHospitals: 3,
-  totalDoctors: 48,
-  totalAppointments: 842,
-  activePatients: 5280,
-  pendingJoinRequests: 12,
-  totalRevenue: 1240000,
-  hospitalsTrend: '+1 from last month',
-  doctorsTrend: '+6 from last month',
-  appointmentsTrend: '+12% from last month',
-  patientsTrend: '+18% from last month',
-  requestsTrend: '-5 from last week',
-  revenueTrend: '+22% from last month',
-}
+  totalHospitals: 0,
+  totalDoctors: 0,
+  totalAppointments: 0,
+  activePatients: 0,
+  pendingJoinRequests: 0,
+  totalRevenue: 0,
+  hospitalsTrend: '0 registered',
+  doctorsTrend: '0 affiliated',
+  appointmentsTrend: '0 total',
+  patientsTrend: '0 active',
+  requestsTrend: '0 pending',
+  revenueTrend: '₹0',
+};
 
 const INITIAL_STATUS_BREAKDOWN: AppointmentStatusBreakdown = {
-  completed: 520,
-  completedPct: 61.8,
-  upcoming: 180,
-  upcomingPct: 21.4,
-  cancelled: 60,
-  cancelledPct: 7.1,
-  pending: 82,
-  pendingPct: 9.7,
-  total: 842,
-}
+  completed: 0,
+  completedPct: 0,
+  upcoming: 0,
+  upcomingPct: 0,
+  cancelled: 0,
+  cancelledPct: 0,
+  pending: 0,
+  pendingPct: 0,
+  total: 0,
+};
 
-const INITIAL_TOP_HOSPITALS: TopHospitalStat[] = [
-  {
-    id: 'hosp-1',
-    name: 'Apollo Multispeciality',
-    city: 'Bilaspur, Chhattisgarh',
-    appointments: 412,
-    patients: 2680,
-    revenue: 640000,
-    revenueFormatted: '₹6.4L',
-    occupancyRate: 78,
-  },
-  {
-    id: 'hosp-2',
-    name: 'City Care Hospital',
-    city: 'Delhi NCR',
-    appointments: 286,
-    patients: 1920,
-    revenue: 420000,
-    revenueFormatted: '₹4.2L',
-    occupancyRate: 64,
-  },
-  {
-    id: 'hosp-3',
-    name: 'Shree Sai Hospital',
-    city: 'Raipur, Chhattisgarh',
-    appointments: 144,
-    patients: 680,
-    revenue: 180000,
-    revenueFormatted: '₹1.8L',
-    occupancyRate: 52,
-  },
-]
-
-const INITIAL_DEPARTMENT_STATS: DepartmentAppointmentStat[] = [
-  { department: 'General Medicine', appointments: 220, percentage: 26 },
-  { department: 'Cardiology', appointments: 150, percentage: 18 },
-  { department: 'Dermatology', appointments: 120, percentage: 14 },
-  { department: 'Orthopedics', appointments: 98, percentage: 12 },
-  { department: 'Pediatrics', appointments: 84, percentage: 10 },
-  { department: 'Gynecology', appointments: 72, percentage: 9 },
-  { department: 'Neurology', appointments: 56, percentage: 7 },
-  { department: 'Others', appointments: 32, percentage: 4 },
-]
-
-const INITIAL_ACTIVITIES: AdminActivityItem[] = [
-  {
-    id: 'act-1',
-    type: 'doctor_application',
-    title: 'New doctor application received',
-    description: 'Dr. Neha Gupta applied for Dermatology department affiliation.',
-    timestamp: '2 hours ago',
-    doctorName: 'Dr. Neha Gupta',
-  },
-  {
-    id: 'act-2',
-    type: 'appointment_completed',
-    title: 'Appointment completed',
-    description: 'Dr. Amit Singh completed consultation with Rahul Verma.',
-    timestamp: '3 hours ago',
-    doctorName: 'Dr. Amit Singh',
-    patientName: 'Rahul Verma',
-  },
-  {
-    id: 'act-3',
-    type: 'hospital_updated',
-    title: 'Hospital updated',
-    description: 'City Care Hospital capacity updated to 120 beds.',
-    timestamp: '5 hours ago',
-    hospitalName: 'City Care Hospital',
-  },
-  {
-    id: 'act-4',
-    type: 'appointment_booked',
-    title: 'New appointment booked',
-    description: 'Patient Rahul Verma booked Cardiology OPD consultation.',
-    timestamp: '6 hours ago',
-    patientName: 'Rahul Verma',
-  },
-  {
-    id: 'act-5',
-    type: 'doctor_updated',
-    title: 'Doctor profile updated',
-    description: 'Dr. Sneha Patel added new consultation hours.',
-    timestamp: '1 day ago',
-    doctorName: 'Dr. Sneha Patel',
-  },
-]
-
-const INITIAL_PENDING_REQUESTS: DoctorJoinRequestItem[] = [
-  {
-    id: 'req-1',
-    doctorId: 'doc-1',
-    doctorName: 'Dr. Vikram Jain',
-    doctorEmail: 'dr.vikram.jain@curehealth.org',
-    doctorPhone: '+91 98271 22345',
-    specialization: ['Cardiologist', 'Interventional Cardiology'],
-    department: 'Cardiology',
-    experienceYears: 12,
-    qualifications: ['MBBS', 'MD (Medicine)', 'DM (Cardiology)'],
-    consultationFee: 800,
-    medicalCouncilRegistrationNumber: 'MCI-2012-44912',
-    appliedDaysAgo: 'Applied 2 days ago',
-    status: 'PENDING',
-    hospitalId: 'hosp-1',
-    hospitalName: 'Apollo Multispeciality',
-    message: 'Seeking affiliation for adult cardiology outpatient clinic.',
-  },
-  {
-    id: 'req-2',
-    doctorId: 'doc-2',
-    doctorName: 'Dr. Neha Gupta',
-    doctorEmail: 'dr.neha.gupta@curehealth.org',
-    doctorPhone: '+91 97112 88412',
-    specialization: ['Dermatologist', 'Cosmetic Dermatology'],
-    department: 'Dermatology',
-    experienceYears: 8,
-    qualifications: ['MBBS', 'MD (Dermatology, Venereology & Leprosy)'],
-    consultationFee: 650,
-    medicalCouncilRegistrationNumber: 'DMC-2016-19482',
-    appliedDaysAgo: 'Applied 3 days ago',
-    status: 'PENDING',
-    hospitalId: 'hosp-1',
-    hospitalName: 'Apollo Multispeciality',
-    message: 'Available 3 days a week for dermatology procedures.',
-  },
-  {
-    id: 'req-3',
-    doctorId: 'doc-3',
-    doctorName: 'Dr. Karan Mehta',
-    doctorEmail: 'dr.karan.mehta@curehealth.org',
-    doctorPhone: '+91 94250 91823',
-    specialization: ['Orthopedist', 'Joint Replacement Surgeon'],
-    department: 'Orthopedics',
-    experienceYears: 15,
-    qualifications: ['MBBS', 'MS (Orthopaedics)', 'Fellow Joint Replacement'],
-    consultationFee: 900,
-    medicalCouncilRegistrationNumber: 'CGMC-2009-8812',
-    appliedDaysAgo: 'Applied 4 days ago',
-    status: 'PENDING',
-    hospitalId: 'hosp-2',
-    hospitalName: 'City Care Hospital',
-    message: 'Affiliation request for joint replacement surgery roster.',
-  },
-  {
-    id: 'req-4',
-    doctorId: 'doc-4',
-    doctorName: 'Dr. Ananya Rao',
-    doctorEmail: 'dr.ananya.rao@curehealth.org',
-    doctorPhone: '+91 91312 00981',
-    specialization: ['Pediatrician', 'Child Healthcare'],
-    department: 'Pediatrics',
-    experienceYears: 6,
-    qualifications: ['MBBS', 'DNB (Pediatrics)'],
-    consultationFee: 500,
-    medicalCouncilRegistrationNumber: 'DMC-2018-77189',
-    appliedDaysAgo: 'Applied 5 days ago',
-    status: 'PENDING',
-    hospitalId: 'hosp-3',
-    hospitalName: 'Shree Sai Hospital',
-    message: 'Pediatric outpatient clinic and vaccination supervision.',
-  },
-]
-
-// Generate realistic daily appointment bars for October (pure in-person hospital visits)
-const generateDailyAppointmentStats = (): AppointmentDailyStat[] => {
-  const stats: AppointmentDailyStat[] = []
-  for (let day = 1; day <= 31; day++) {
-    const isWeekend = day % 7 === 0 || day % 7 === 6
-    const count = isWeekend ? 16 : 28 + Math.floor(Math.sin(day * 0.5) * 14 + ((day * 7) % 20))
-    stats.push({
-      date: `2026-10-${day.toString().padStart(2, '0')}`,
-      dayLabel: `${day} Oct`,
-      appointments: Math.max(8, Math.min(75, count)),
-      total: Math.max(8, Math.min(75, count)),
-    })
-  }
-  return stats
-}
+const INITIAL_TOP_HOSPITALS: TopHospitalStat[] = [];
+const INITIAL_DEPARTMENT_STATS: DepartmentAppointmentStat[] = [];
+const INITIAL_ACTIVITIES: AdminActivityItem[] = [];
+const INITIAL_PENDING_REQUESTS: DoctorJoinRequestItem[] = [];
 
 interface HospitalAdminState {
   isLoading: boolean
@@ -386,13 +229,28 @@ export const useHospitalAdminStore = create<HospitalAdminState>((set, get) => ({
         }
 
         // C) 30-Day Daily Consultation Volume Timeline from DB
-        if (Array.isArray(liveDash.appointmentsTrend) && liveDash.appointmentsTrend.length > 0) {
+        if (Array.isArray(liveDash.appointmentsTrend)) {
           set({ appointmentsTrend: liveDash.appointmentsTrend })
         }
 
         // D) Top Performing Hospitals Leaderboard from DB
-        if (Array.isArray(liveDash.topHospitals) && liveDash.topHospitals.length > 0) {
+        if (Array.isArray(liveDash.topHospitals)) {
           set({ topHospitals: liveDash.topHospitals })
+        }
+
+        // E) Department Wise Appointments from DB
+        if (Array.isArray(liveDash.departmentStats)) {
+          set({ departmentStats: liveDash.departmentStats })
+        }
+
+        // F) Recent Activity from DB
+        if (Array.isArray(liveDash.recentActivities)) {
+          set({ recentActivities: liveDash.recentActivities })
+        }
+
+        // G) Pending Doctor Requests from DB
+        if (Array.isArray(liveDash.pendingRequests)) {
+          set({ pendingRequests: liveDash.pendingRequests })
         }
 
         // E) Department Wise Appointments from DB

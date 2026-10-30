@@ -1,4 +1,5 @@
 import { type FC } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Building2,
   Stethoscope,
@@ -8,10 +9,12 @@ import {
   IndianRupee,
   ArrowUpRight,
   ArrowDownRight,
+  ChevronRight,
 } from 'lucide-react'
 import { useHospitalAdminStore } from '@/store/hospitalAdminStore'
 
 export const KpiMetricsGrid: FC = () => {
+  const navigate = useNavigate()
   const { kpis } = useHospitalAdminStore()
 
   // Format Indian currency in Lakhs (L)
@@ -34,6 +37,7 @@ export const KpiMetricsGrid: FC = () => {
       isPositive: true,
       icon: Building2,
       iconBg: 'bg-blue-50 text-blue-600',
+      route: '/hospital-admin/hospitals',
     },
     {
       id: 'doctors',
@@ -43,6 +47,7 @@ export const KpiMetricsGrid: FC = () => {
       isPositive: true,
       icon: Stethoscope,
       iconBg: 'bg-cyan-50 text-cyan-600',
+      route: '/hospital-admin/doctors',
     },
     {
       id: 'appointments',
@@ -52,6 +57,7 @@ export const KpiMetricsGrid: FC = () => {
       isPositive: true,
       icon: Calendar,
       iconBg: 'bg-purple-50 text-purple-600',
+      route: '/hospital-admin/appointments',
     },
     {
       id: 'patients',
@@ -61,6 +67,7 @@ export const KpiMetricsGrid: FC = () => {
       isPositive: true,
       icon: Users,
       iconBg: 'bg-indigo-50 text-indigo-600',
+      route: '/hospital-admin/appointments',
     },
     {
       id: 'requests',
@@ -70,6 +77,7 @@ export const KpiMetricsGrid: FC = () => {
       isPositive: false, // decreasing pending queue is positive or highlighted amber
       icon: UserCheck,
       iconBg: 'bg-amber-50 text-amber-600',
+      route: '/hospital-admin/join-requests',
     },
     {
       id: 'revenue',
@@ -79,6 +87,7 @@ export const KpiMetricsGrid: FC = () => {
       isPositive: true,
       icon: IndianRupee,
       iconBg: 'bg-emerald-50 text-emerald-600',
+      route: '/hospital-admin/hospitals',
     },
   ]
 
@@ -91,25 +100,41 @@ export const KpiMetricsGrid: FC = () => {
         return (
           <div
             key={card.id}
-            className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-4.5 shadow-2xs hover:shadow-md hover:border-slate-300/80 transition-all group flex flex-col justify-between"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate(card.route)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                navigate(card.route)
+              }
+            }}
+            className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-4.5 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all duration-200 group flex flex-col justify-between cursor-pointer active:scale-[0.98] select-none relative overflow-hidden"
+            title={`View ${card.title} details`}
           >
+            {/* Top Row: Title + Icon with hover indicator */}
             <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-[11px] sm:text-xs font-bold text-slate-500 truncate leading-snug">
+              <span className="text-[11px] sm:text-xs font-bold text-slate-500 truncate leading-snug group-hover:text-slate-800 transition-colors">
                 {card.title}
               </span>
-              <div
-                className={`size-8 rounded-xl ${card.iconBg} flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform`}
-              >
-                <Icon className="size-4 stroke-[2.2]" />
+              <div className="flex items-center gap-1">
+                <div
+                  className={`size-8 rounded-xl ${card.iconBg} flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform`}
+                >
+                  <Icon className="size-4 stroke-[2.2]" />
+                </div>
+                <ChevronRight className="size-3 text-slate-300 group-hover:text-blue-600 -mr-1 opacity-0 group-hover:opacity-100 transition-all shrink-0 hidden sm:block" />
               </div>
             </div>
 
+            {/* Middle: Metric Value */}
             <div className="my-1">
-              <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight block">
+              <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight block group-hover:text-blue-700 transition-colors">
                 {card.value}
               </span>
             </div>
 
+            {/* Bottom: Trend Indicator */}
             <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-bold mt-1">
               <TrendIcon
                 className={`size-3 stroke-[2.5] ${

@@ -1163,6 +1163,7 @@ export const getHospitalAdminPortalDashboard = asyncHandler(async (req: Request,
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOf30DaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgoDateStr = startOf30DaysAgo.toISOString().split("T")[0];
 
   // 3. Parallel Database Aggregations for Maximum Performance
   const [
@@ -1223,18 +1224,24 @@ export const getHospitalAdminPortalDashboard = asyncHandler(async (req: Request,
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]),
 
-    // Daily Timeline (Last 30 Days)
+    // Daily Timeline (Last 30 Days) - Aggregated by consultation date (or fallback to createdAt)
     Appointment.aggregate([
       {
         $match: {
           hospitalId: { $in: targetHospitalIds },
-          createdAt: { $gte: startOf30DaysAgo },
+          $or: [
+            { date: { $gte: thirtyDaysAgoDateStr } },
+            { createdAt: { $gte: startOf30DaysAgo } },
+          ],
         },
       },
       {
         $group: {
           _id: {
-            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+            $ifNull: [
+              "$date",
+              { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            ],
           },
           count: { $sum: 1 },
         },

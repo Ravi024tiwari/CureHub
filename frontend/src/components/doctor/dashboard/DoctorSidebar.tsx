@@ -3,8 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Calendar,
-  FileText,
-  FileCheck2,
   CalendarOff,
   Clock,
   UserCheck,
@@ -36,8 +34,6 @@ export const DoctorSidebar: FC<DoctorSidebarProps> = ({ onCloseMobile }) => {
     { label: 'Appointments', icon: Calendar, path: '/doctor/appointments' },
     { label: 'Hospitals', icon: Building2, path: '/doctor/hospitals' },
     { label: 'My Schedule', icon: Clock, path: '/doctor/schedule' },
-    { label: 'Prescriptions', icon: FileText, path: '/doctor/prescriptions' },
-    { label: 'Medical Reports', icon: FileCheck2, path: '/doctor/reports' },
     { label: 'Leave Management', icon: CalendarOff, path: '/doctor/leaves' },
     { label: 'My Profile', icon: UserCheck, path: '/doctor/profile' },
     { label: 'Settings', icon: Settings, path: '/doctor/settings' },
