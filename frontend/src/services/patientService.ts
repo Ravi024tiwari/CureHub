@@ -266,9 +266,16 @@ export async function cancelAppointmentApi(appointmentId: string, reason: string
   return apiClient.patch(`/appointments/${appointmentId}/cancel`, { reason })
 }
 
-// Reschedule Appointment
-export async function rescheduleAppointmentApi(appointmentId: string, newSlotId: string, reason?: string) {
-  return apiClient.patch(`/appointments/${appointmentId}/reschedule`, { newSlotId, reason })
+// Reschedule Appointment (Supports newSlotId or virtual date/startTime)
+export async function rescheduleAppointmentApi(
+  appointmentId: string,
+  params: string | { newSlotId?: string; date?: string; startTime?: string; reason?: string },
+  reason?: string
+) {
+  const body = typeof params === 'string'
+    ? { newSlotId: params, reason }
+    : params
+  return apiClient.patch(`/appointments/${appointmentId}/reschedule`, body)
 }
 
 // Download Prescription PDF

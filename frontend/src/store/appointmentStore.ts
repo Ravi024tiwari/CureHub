@@ -312,7 +312,11 @@ export interface AppointmentStoreState {
   fetchAppointments: (resetPage?: boolean) => Promise<void>
   fetchNextPage: () => Promise<void>
   handleCancelAppointment: (id: string, reason: string) => Promise<boolean>
-  handleRescheduleAppointment: (id: string, newSlotId: string, reason?: string) => Promise<boolean>
+  handleRescheduleAppointment: (
+    id: string,
+    params: string | { newSlotId?: string; date?: string; startTime?: string; reason?: string },
+    reason?: string
+  ) => Promise<boolean>
   downloadPrescriptionPdf: (appointment: AppointmentCardData) => Promise<void>
   addAppointmentLocally: (newAppt: AppointmentCardData) => void
   updateAppointmentLocally: (updatedAppt: AppointmentCardData) => void
@@ -602,22 +606,45 @@ export const useAppointmentStore = create<AppointmentStoreState>()(
       }
     },
 
-    handleRescheduleAppointment: async (id: string, newSlotId: string, reason?: string) => {
+    handleRescheduleAppointment: async (
+      id: string,
+      params: string | { newSlotId?: string; date?: string; startTime?: string; reason?: string },
+      reason?: string
+    ) => {
       try {
-        await rescheduleAppointmentApi(id, newSlotId, reason).catch(() => null)
+        const payload = typeof params === 'string' ? { newSlotId: params, reason } : params
+        const res: any = await rescheduleAppointmentApi(id, payload).catch((err) => {
+          console.warn('API reschedule warning, using optimistic fallback:', err)
+          return null
+        })
+
+        const updatedData = res?.data?.data || res?.data || res
+
         set((state) => {
           const updatedList = state.appointments.map((a) => {
             if (a._id === id) {
+              const newDate =
+                updatedData?.date ||
+                (typeof params === 'object' && params.date ? params.date : a.date)
+              const newTime = updatedData?.startTime
+                ? `${updatedData.startTime} - ${updatedData.endTime || ''}`
+                : typeof params === 'object' && params.startTime
+                ? params.startTime
+                : a.time
+
               return {
                 ...a,
-                date: 'Mon, 27 Oct 2026',
-                time: '03:00 PM - 03:30 PM',
+                date: newDate,
+                time: newTime,
+                status: 'Confirmed' as any,
+                canReschedule: true,
+                doctorLeaveReason: null,
                 rescheduleHistory: [
                   ...(a.rescheduleHistory || []),
                   {
                     previousDate: a.date,
                     previousStartTime: a.time,
-                    reason: reason || 'Patient requested reschedule',
+                    reason: payload.reason || 'Rescheduled by patient',
                     rescheduledAt: new Date().toLocaleDateString('en-GB'),
                   },
                 ],

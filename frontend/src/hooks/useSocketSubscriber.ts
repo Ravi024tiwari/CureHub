@@ -199,6 +199,27 @@ export const useSocketSubscriber = () => {
       }
     }
 
+    // 11. Event: Appointment Rescheduled by Patient (Doctor & Hospital Admin receive)
+    const handleAppointmentRescheduled = (data: {
+      appointmentId: string
+      appointmentNumber?: string
+      patientName?: string
+      newDate: string
+      newTime: string
+      isLeaveReschedule?: boolean
+    }) => {
+      if (user.role === UserRole.DOCTOR || user.role === UserRole.HOSPITAL_ADMIN) {
+        const pName = data.patientName || 'A Patient'
+        const toastTitle = data.isLeaveReschedule
+          ? 'Leave Appointment Rescheduled'
+          : 'Appointment Rescheduled'
+        toast.info(
+          `${pName} has rescheduled appointment #${data.appointmentNumber || ''} to ${data.newDate} at ${data.newTime}.`,
+          toastTitle
+        )
+      }
+    }
+
     // Bind listeners
     socket.on('join-request:created', handleJoinRequestCreated)
     socket.on('join-request:status-updated', handleJoinRequestStatusUpdated)
@@ -210,6 +231,7 @@ export const useSocketSubscriber = () => {
     socket.on('doctor-leave:status-updated', handleDoctorLeaveStatusUpdated)
     socket.on('doctor-leave:cancelled', handleDoctorLeaveCancelled)
     socket.on('appointment:reschedule-required', handleAppointmentRescheduleRequired)
+    socket.on('appointment:rescheduled', handleAppointmentRescheduled)
 
     // Cleanup on unmount or user logout
     return () => {
@@ -223,6 +245,7 @@ export const useSocketSubscriber = () => {
       socket.off('doctor-leave:status-updated', handleDoctorLeaveStatusUpdated)
       socket.off('doctor-leave:cancelled', handleDoctorLeaveCancelled)
       socket.off('appointment:reschedule-required', handleAppointmentRescheduleRequired)
+      socket.off('appointment:rescheduled', handleAppointmentRescheduled)
     }
   }, [user, token, isAuthenticated, updateUserApproval])
 }

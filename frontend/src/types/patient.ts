@@ -173,7 +173,13 @@ export interface AppointmentCancellationData {
   cancelledBy?: string
 }
 
-export type AppointmentStatusType = 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled'
+export type AppointmentStatusType =
+  | 'Confirmed'
+  | 'Pending'
+  | 'Completed'
+  | 'Cancelled'
+  | 'Reschedule Required'
+  | 'RESCHEDULE_REQUIRED'
 
 export interface AppointmentCardData {
   _id: string
@@ -199,6 +205,8 @@ export interface AppointmentCardData {
   symptoms?: string
   consultationFee?: number
   bookedOn?: string
+  doctorLeaveReason?: string | null
+  rescheduleDeadline?: string | Date | null
   prescription?: AppointmentPrescriptionData
   rescheduleHistory?: AppointmentRescheduleItem[]
   cancellation?: AppointmentCancellationData

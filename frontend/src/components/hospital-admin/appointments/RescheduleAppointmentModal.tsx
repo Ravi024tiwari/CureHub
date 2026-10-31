@@ -1,5 +1,5 @@
 import { useState, type FC } from 'react'
-import { X, Calendar, Clock, Loader2 } from 'lucide-react'
+import { X, Calendar, Loader2 } from 'lucide-react'
 import { useHospitalAdminAppointmentsStore } from '@/store/hospitalAdminAppointmentsStore'
 import type { AdminAppointmentItem } from '@/types/hospitalAdmin'
 

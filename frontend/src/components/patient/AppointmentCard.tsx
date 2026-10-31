@@ -12,6 +12,7 @@ import {
   Building2,
   Copy,
   Check,
+  AlertTriangle,
 } from 'lucide-react'
 import type { AppointmentCardData } from '@/types/patient'
 import { Button } from '@/components/ui/button'
@@ -102,6 +103,13 @@ export const AppointmentCard: FC<AppointmentCardProps> = ({
           dot: 'bg-rose-500',
           label: 'CANCELLED',
         }
+      case 'Reschedule Required':
+      case 'RESCHEDULE_REQUIRED':
+        return {
+          bg: 'bg-amber-100/90 text-amber-900 border-amber-300 font-extrabold',
+          dot: 'bg-amber-600 animate-ping',
+          label: 'RESCHEDULE REQUIRED',
+        }
       default:
         return {
           bg: 'bg-slate-50 text-slate-700 border-slate-200',
@@ -113,6 +121,9 @@ export const AppointmentCard: FC<AppointmentCardProps> = ({
 
   const badge = getStatusBadge(appointment.status)
   const startTime = appointment.time.split('-')[0].trim()
+  const isRescheduleRequired =
+    appointment.status === 'Reschedule Required' ||
+    (appointment.status as string) === 'RESCHEDULE_REQUIRED'
 
   // ════════════════════════════════════════════════════════════════════════════
   // 1. GRID VIEW VARIANT (Responsive Multi-Column Card)
@@ -196,6 +207,29 @@ export const AppointmentCard: FC<AppointmentCardProps> = ({
           </div>
         </div>
 
+        {/* Doctor Leave Priority Reschedule Banner (Grid View) */}
+        {isRescheduleRequired && (
+          <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200/90 space-y-1.5 animate-in fade-in">
+            <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
+              <AlertTriangle className="size-4 text-amber-600 shrink-0" />
+              <span>Doctor on Leave • Priority Reschedule</span>
+            </div>
+            <p className="text-[11px] text-amber-700 leading-relaxed">
+              {appointment.doctorLeaveReason || 'Doctor is on scheduled hospital leave.'} Select any future working slot at zero additional charge.
+            </p>
+            {onReschedule && (
+              <button
+                type="button"
+                onClick={() => onReschedule(appointment)}
+                className="w-full py-1.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <RotateCcw className="size-3.5" />
+                Reschedule for Free
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Clinical Info Box: Mode & Symptoms */}
         <div className="bg-slate-50/80 border border-slate-100 rounded-2xl p-2.5 sm:p-3 space-y-2 text-xs">
           <div className="flex items-center justify-between">
@@ -258,6 +292,16 @@ export const AppointmentCard: FC<AppointmentCardProps> = ({
             >
               View Details
             </Button>
+
+            {isRescheduleRequired && onReschedule && (
+              <Button
+                onClick={() => onReschedule(appointment)}
+                className="text-[11px] sm:text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-8 sm:h-8.5 px-2.5 sm:px-3 shadow-xs cursor-pointer inline-flex items-center gap-1 shrink-0"
+              >
+                <RotateCcw className="size-3 sm:size-3.5" />
+                <span>Reschedule</span>
+              </Button>
+            )}
 
             {appointment.status === 'Pending' && onPayNow && (
               <Button
@@ -420,6 +464,28 @@ export const AppointmentCard: FC<AppointmentCardProps> = ({
           </div>
         </div>
 
+        {/* Doctor Leave Priority Reschedule Banner (List View) */}
+        {isRescheduleRequired && (
+          <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/80 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-amber-900">
+              <AlertTriangle className="size-4 text-amber-600 shrink-0" />
+              <span className="font-semibold text-[11px]">
+                {appointment.doctorLeaveReason || 'Doctor on scheduled leave.'} Free priority reschedule available.
+              </span>
+            </div>
+            {onReschedule && (
+              <button
+                type="button"
+                onClick={() => onReschedule(appointment)}
+                className="py-1 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shrink-0 cursor-pointer transition-colors flex items-center gap-1 shadow-2xs"
+              >
+                <RotateCcw className="size-3" />
+                Reschedule Free
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Compact Clinical Mode & Symptoms row */}
         <div className="flex items-center gap-2 bg-slate-50/80 rounded-xl px-2.5 py-1.5 text-[11px] border border-slate-100 text-slate-600 truncate">
           <span className="font-bold text-slate-700 shrink-0 flex items-center gap-1 text-[10px]">
@@ -454,6 +520,15 @@ export const AppointmentCard: FC<AppointmentCardProps> = ({
             >
               View Details
             </Button>
+            {isRescheduleRequired && onReschedule && (
+              <Button
+                onClick={() => onReschedule(appointment)}
+                className="text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-8 px-2.5 inline-flex items-center gap-1 cursor-pointer shadow-xs"
+              >
+                <RotateCcw className="size-3" />
+                <span>Reschedule</span>
+              </Button>
+            )}
             {appointment.status === 'Pending' && onPayNow && (
               <Button
                 onClick={() => onPayNow(appointment)}
@@ -774,6 +849,36 @@ export const AppointmentCard: FC<AppointmentCardProps> = ({
 
           {/* Action Buttons */}
           <div className="flex flex-col items-end gap-1.5 w-full">
+            {isRescheduleRequired && (
+              <>
+                <Button
+                  onClick={() => (onReschedule ? onReschedule(appointment) : onViewDetails(appointment))}
+                  className="w-full text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-8.5 px-3 shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5"
+                >
+                  <RotateCcw className="size-3.5" />
+                  <span>Reschedule Now (Free)</span>
+                </Button>
+                <div className="flex items-center justify-between w-full px-1 text-[11px] font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => onViewDetails(appointment)}
+                    className="text-slate-600 hover:text-blue-600 cursor-pointer transition-colors"
+                  >
+                    View Details
+                  </button>
+                  {onCancel && (
+                    <button
+                      type="button"
+                      onClick={() => onCancel(appointment)}
+                      className="text-rose-600 hover:text-rose-700 font-bold cursor-pointer transition-colors ml-2"
+                    >
+                      Full Refund
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+
             {appointment.status === 'Confirmed' && (
               <>
                 <Button

@@ -10,6 +10,7 @@ import { generatePrescriptionPdfBuffer } from "../services/prescriptionPdf.servi
 import { razorpayInstance } from "../config/razorpay.js";
 
 import { isDoctorOnLeave } from "../services/doctorLeave.service.js";
+import { emitToUser, emitToHospital } from "../services/socket.service.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -602,6 +603,30 @@ export const rescheduleAppointment = asyncHandler(async (req: Request, res: Resp
     })
     .populate("hospitalId", "name slug address")
     .populate("slotId", "date startTime endTime");
+
+  // Real-time Socket Event: Notify doctor and hospital admin that appointment was rescheduled
+  const doctor = populatedAppointment?.doctorId as any;
+  const doctorUserId = doctor?.userId?._id?.toString() || doctor?.userId?.toString();
+  if (doctorUserId) {
+    emitToUser(doctorUserId, "appointment:rescheduled", {
+      appointmentId: appointment._id.toString(),
+      appointmentNumber: appointment.appointmentNumber,
+      patientName: (req.user as any)?.name || "Patient",
+      newDate: appointment.date,
+      newTime: appointment.startTime,
+      isLeaveReschedule,
+    });
+  }
+  if (appointment.hospitalId) {
+    emitToHospital(appointment.hospitalId.toString(), "appointment:rescheduled", {
+      appointmentId: appointment._id.toString(),
+      appointmentNumber: appointment.appointmentNumber,
+      doctorId: appointment.doctorId?._id?.toString() || appointment.doctorId?.toString(),
+      newDate: appointment.date,
+      newTime: appointment.startTime,
+      isLeaveReschedule,
+    });
+  }
 
   return res.status(200).json(
     new ApiResponse(
