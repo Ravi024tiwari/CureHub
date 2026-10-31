@@ -69,6 +69,10 @@ export interface HospitalAdminLeavesState {
     directRemark?: string
   ) => Promise<boolean>
   clearActionMessages: () => void
+
+  // Real-time Socket Store Mutations
+  addLeaveLocally: (leave: any) => void
+  updateLeaveStatusLocally: (leaveId: string, status: string, rejectionReason?: string) => void
 }
 
 const DEFAULT_DEPARTMENTS = [
@@ -407,6 +411,105 @@ export const useHospitalAdminLeavesStore = create<HospitalAdminLeavesState>((set
 
   clearActionMessages: () => {
     set({ actionSuccessMessage: null, actionErrorMessage: null })
+  },
+
+  // Real-time Socket Store Mutations
+  addLeaveLocally: (rawLeave: any) => {
+    set((state) => {
+      const leaveId = rawLeave._id || rawLeave.leaveId || rawLeave.id
+      if (state.leaves.some((l) => l._id === leaveId)) {
+        return state
+      }
+
+      const formattedLeave: AdminDoctorLeaveItem = {
+        _id: leaveId,
+        doctorId: {
+          _id: rawLeave.doctorId?._id || rawLeave.doctorId || '',
+          userId: {
+            _id: rawLeave.doctorUserId || rawLeave.doctorId?.userId?._id || '',
+            name: rawLeave.doctorName || rawLeave.doctorId?.userId?.name || 'Dr. Specialist',
+            email: rawLeave.doctorId?.userId?.email || '',
+            avatar: rawLeave.doctorAvatar || rawLeave.doctorId?.userId?.avatar || '',
+          },
+          department: rawLeave.department || rawLeave.doctorId?.department || 'General Medicine',
+          specialization: rawLeave.doctorId?.specialization || [],
+        },
+        hospitalId: {
+          _id: rawLeave.hospitalId?._id || rawLeave.hospitalId || '',
+          name: rawLeave.hospitalId?.name || rawLeave.hospitalName || 'Hospital',
+        },
+        startDateTime: rawLeave.startDateTime,
+        endDateTime: rawLeave.endDateTime,
+        leaveType: rawLeave.leaveType || 'FULL_DAY',
+        reason: rawLeave.reason || 'Personal Leave',
+        status: (rawLeave.status || 'PENDING') as any,
+        affectedAppointmentsCount: rawLeave.affectedAppointmentsCount || 0,
+        createdAt: rawLeave.createdAt || new Date().toISOString(),
+        updatedAt: rawLeave.updatedAt || new Date().toISOString(),
+      }
+
+      return {
+        leaves: [formattedLeave, ...state.leaves],
+        totalDocs: state.totalDocs + 1,
+        kpis: {
+          ...state.kpis,
+          total: state.kpis.total + 1,
+          pending: state.kpis.pending + 1,
+        },
+      }
+    })
+  },
+
+  updateLeaveStatusLocally: (leaveId: string, status: string, rejectionReason?: string) => {
+    set((state) => {
+      const existing = state.leaves.find((l) => l._id === leaveId)
+      if (!existing) return state
+
+      const prevStatus = existing.status
+      const updatedLeaves = state.leaves.map((l) =>
+        l._id === leaveId
+          ? {
+              ...l,
+              status: status as any,
+              rejectionReason: rejectionReason ?? l.rejectionReason,
+            }
+          : l
+      )
+
+      let pendingDelta = 0
+      let approvedDelta = 0
+      let rejectedDelta = 0
+      let cancelledDelta = 0
+
+      if (prevStatus === 'PENDING') pendingDelta = -1
+      else if (prevStatus === 'APPROVED') approvedDelta = -1
+      else if (prevStatus === 'REJECTED') rejectedDelta = -1
+
+      if (status === 'APPROVED') approvedDelta += 1
+      else if (status === 'REJECTED') rejectedDelta += 1
+      else if (status === 'CANCELLED') cancelledDelta += 1
+
+      const updatedSelected =
+        state.selectedLeave?._id === leaveId
+          ? {
+              ...state.selectedLeave,
+              status: status as any,
+              rejectionReason: rejectionReason ?? state.selectedLeave.rejectionReason,
+            }
+          : state.selectedLeave
+
+      return {
+        leaves: updatedLeaves,
+        selectedLeave: updatedSelected,
+        kpis: {
+          ...state.kpis,
+          pending: Math.max(0, state.kpis.pending + pendingDelta),
+          approved: Math.max(0, state.kpis.approved + approvedDelta),
+          rejected: Math.max(0, state.kpis.rejected + rejectedDelta),
+          cancelled: Math.max(0, state.kpis.cancelled + cancelledDelta),
+        },
+      }
+    })
   },
 }))
 

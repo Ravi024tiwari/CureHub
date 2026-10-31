@@ -30,6 +30,7 @@ import {
   emitToHospital,
   emitToRole,
   emitToSuperAdmins,
+  emitToUser,
 } from "../services/socket.service.js";
 
 /**
@@ -980,9 +981,9 @@ export const getDoctorLeaveAffectedAppointments = asyncHandler(async (req: Reque
 
 export const applyDoctorLeave = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.userId;
-  if (!req.user?.userId) throw new ApiError(401, "Unauthorized");
+  if (!userId) throw new ApiError(401, "Unauthorized");
 
-  const doctor = await getDoctorProfileByUserId(req.user.userId);
+  const doctor = await getDoctorProfileByUserId(userId);
   const hospitalId = (doctor.hospitalId as any)?._id || doctor.hospitalId;
   if (!hospitalId) {
     throw new ApiError(400, "You must be affiliated with an active hospital to apply for leave.");
@@ -1218,7 +1219,32 @@ export const applyDoctorLeave = asyncHandler(async (req: Request, res: Response)
 
   const populatedLeave = await DoctorLeave.findById(newLeave._id)
     .populate("hospitalId", "name slug address contactPhone")
-    .populate("doctorId", "department specialization");
+    .populate({
+      path: "doctorId",
+      select: "department specialization userId",
+      populate: { path: "userId", select: "name email phoneNumber avatar" },
+    });
+
+  const doctorUser = await User.findById(userId).select("name avatar email").lean();
+
+  // Real-time Socket Event: Notify Hospital Admin about the new doctor leave request
+  emitToHospital(hospitalId.toString(), "doctor-leave:created", {
+    leave: populatedLeave || newLeave,
+    leaveId: newLeave._id.toString(),
+    doctorId: doctor._id.toString(),
+    doctorUserId: userId.toString(),
+    doctorName: doctorUser?.name || "Dr. Specialist",
+    doctorAvatar: doctorUser?.avatar,
+    department: doctor.department,
+    hospitalId: hospitalId.toString(),
+    startDateTime: calculatedStart,
+    endDateTime: calculatedEnd,
+    leaveType,
+    reason: newLeave.reason,
+    status: "PENDING",
+    affectedAppointmentsCount: rescheduledCount + unrescheduledCount,
+    createdAt: newLeave.createdAt,
+  });
 
   return res.status(201).json(
     new ApiResponse(
@@ -1360,6 +1386,17 @@ export const cancelDoctorLeave = asyncHandler(async (req: Request, res: Response
   if (legIdx !== -1) {
     doctor.leaves.splice(legIdx, 1);
     await doctor.save();
+  }
+
+  // Real-time Socket Event: Notify Hospital Admin that leave was cancelled and slots reopened
+  if (leave.hospitalId) {
+    emitToHospital(leave.hospitalId.toString(), "doctor-leave:cancelled", {
+      leaveId: leave._id.toString(),
+      doctorId: doctor._id.toString(),
+      reopenedSlotsCount: reopenedCount,
+      startDateTime: leave.startDateTime,
+      endDateTime: leave.endDateTime,
+    });
   }
 
   return res.status(200).json(

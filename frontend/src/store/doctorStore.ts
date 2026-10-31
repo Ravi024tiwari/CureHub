@@ -107,6 +107,7 @@ export interface DoctorStoreState {
     reason?: string
   ) => Promise<{ success: boolean; affectedCount?: number; message?: string }>
   cancelLeave: (idOrDate: string) => Promise<boolean>
+  updateLeaveStatusLocally: (leaveId: string, status: string, rejectionReason?: string) => void
 
   // Doctor Appointments Management
   appointments: DoctorAppointmentItem[]
@@ -615,6 +616,16 @@ export const useDoctorStore = create<DoctorStoreState>()(
             console.error('API cancel leave failed:', err)
             return false
           }
+        },
+
+        updateLeaveStatusLocally: (leaveId: string, status: string, rejectionReason?: string) => {
+          set((state) => ({
+            leaves: state.leaves.map((l: any) =>
+              l._id === leaveId || l.id === leaveId
+                ? { ...l, status, rejectionReason: rejectionReason ?? l.rejectionReason }
+                : l
+            ),
+          }))
         },
 
         setSelectedAppointment: (appt) => {

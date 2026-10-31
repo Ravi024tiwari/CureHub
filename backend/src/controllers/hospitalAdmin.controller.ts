@@ -2718,6 +2718,9 @@ export const updateAdminDoctorLeaveStatus = asyncHandler(async (req: Request, re
     );
   }
 
+  const docProfile = await DoctorProfile.findById(leave.doctorId).select("userId").lean();
+  const hospital = await Hospital.findById(leave.hospitalId).select("name").lean();
+
   if (normalizedStatus === DoctorLeaveStatus.REJECTED) {
     if (!rejectionReason || !rejectionReason.trim()) {
       throw new ApiError(400, "A clear rejection reason is required when rejecting a doctor's leave request.");
@@ -2733,6 +2736,25 @@ export const updateAdminDoctorLeaveStatus = asyncHandler(async (req: Request, re
       leave.startDateTime,
       leave.endDateTime
     );
+
+    // Real-time Socket Event: Notify doctor of rejection
+    if (docProfile && docProfile.userId) {
+      emitToUser(docProfile.userId.toString(), "doctor-leave:status-updated", {
+        leaveId: leave._id.toString(),
+        status: "REJECTED",
+        rejectionReason: leave.rejectionReason,
+        hospitalName: hospital?.name || "Hospital Administration",
+        startDateTime: leave.startDateTime,
+        endDateTime: leave.endDateTime,
+      });
+    }
+
+    // Real-time Socket Event: Notify hospital admin room of status update
+    emitToHospital(leave.hospitalId.toString(), "doctor-leave:status-updated", {
+      leaveId: leave._id.toString(),
+      status: "REJECTED",
+      rejectionReason: leave.rejectionReason,
+    });
 
     return res.status(200).json(
       new ApiResponse(
@@ -2761,6 +2783,42 @@ export const updateAdminDoctorLeaveStatus = asyncHandler(async (req: Request, re
     })
     .populate("hospitalId", "name slug address")
     .populate("approvedBy", "name email");
+
+  // Real-time Socket Event: Notify doctor of approval
+  if (docProfile && docProfile.userId) {
+    emitToUser(docProfile.userId.toString(), "doctor-leave:status-updated", {
+      leaveId: leave._id.toString(),
+      status: "APPROVED",
+      hospitalName: hospital?.name || "Hospital Administration",
+      startDateTime: leave.startDateTime,
+      endDateTime: leave.endDateTime,
+      affectedAppointmentsCount: affectedCount,
+    });
+  }
+
+  // Real-time Socket Event: Notify hospital admin room of status update
+  emitToHospital(leave.hospitalId.toString(), "doctor-leave:status-updated", {
+    leaveId: leave._id.toString(),
+    status: "APPROVED",
+    affectedAppointmentsCount: affectedCount,
+  });
+
+  // Real-time Socket Event: Notify each affected patient about priority reschedule window
+  const doctorName = (populatedLeave?.doctorId as any)?.userId?.name || "Dr. Specialist";
+  for (const appt of affectedAppointments) {
+    const patientUserId = appt.patientId?._id || appt.patientId?.userId || appt.patientId;
+    if (patientUserId) {
+      emitToUser(patientUserId.toString(), "appointment:reschedule-required", {
+        appointmentId: appt._id.toString(),
+        appointmentNumber: appt.appointmentNumber,
+        doctorName,
+        doctorLeaveReason: leave.reason || "Doctor on approved leave",
+        rescheduleDeadline: appt.rescheduleDeadline,
+        date: appt.date,
+        time: appt.startTime,
+      });
+    }
+  }
 
   return res.status(200).json(
     new ApiResponse(
