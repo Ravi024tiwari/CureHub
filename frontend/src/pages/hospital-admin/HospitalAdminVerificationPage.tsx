@@ -171,6 +171,13 @@ export const HospitalAdminVerificationPage: FC = () => {
     }
   }, [user])
 
+  // Sync verification status when real-time socket approval arrives
+  useEffect(() => {
+    if (user?.isAccountApproved) {
+      setVerificationStatus('APPROVED')
+    }
+  }, [user?.isAccountApproved])
+
   // Build FormData for saving
   const buildFormData = (isSubmittingFinal = false) => {
     const formData = new FormData()

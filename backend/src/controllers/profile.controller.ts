@@ -9,6 +9,7 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFileToS3, deleteFileFromS3 } from "../utils/s3.util.js";
+import { emitToSuperAdmins } from "../services/socket.service.js";
 
 /**
  * Helper to safely parse multipart form array/object fields
@@ -548,6 +549,14 @@ export const updateHospitalAdminProfile = asyncHandler(
       profile.isSubmitted = true;
       profile.submittedAt = new Date();
       profile.verificationStatus = VerificationStatus.PENDING;
+
+      // Real-time Socket Event: Alert Super Admins of hospital admin verification submission
+      emitToSuperAdmins("verification:hospital-admin:submitted", {
+        adminProfileId: profile._id.toString(),
+        adminUserId: userId,
+        adminName: user?.name || "Hospital Admin",
+        submittedAt: profile.submittedAt,
+      });
     }
 
     await profile.save();

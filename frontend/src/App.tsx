@@ -48,8 +48,10 @@ import {
   DoctorHospitalDetailPage,
 } from '@/pages/doctor'
 import { ToastContainer } from '@/components/common'
+import { useSocketSubscriber } from '@/hooks/useSocketSubscriber'
 
 function App() {
+  useSocketSubscriber()
   return (
     <BrowserRouter>
       <ToastContainer />

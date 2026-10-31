@@ -26,6 +26,11 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { seedDoctors } from "../data/seedDoctors.js";
+import {
+  emitToHospital,
+  emitToRole,
+  emitToSuperAdmins,
+} from "../services/socket.service.js";
 
 /**
  * Helper to fetch DoctorProfile for the authenticated user
@@ -157,6 +162,18 @@ export const updateDoctorProfile = asyncHandler(async (req: Request, res: Respon
   const populatedDoctor = await DoctorProfile.findById(doctor._id)
     .populate("userId", "name email phoneNumber avatar isAccountApproved isActive")
     .populate("hospitalId", "name slug address");
+
+  // Real-time Socket Event: Alert Super Admins of new pending doctor verification
+  if (shouldSubmit) {
+    emitToSuperAdmins("verification:doctor:submitted", {
+      doctorId: doctor._id.toString(),
+      doctorUserId: req.user!.userId,
+      doctorName: (populatedDoctor?.userId as any)?.name || "Doctor",
+      specialization: doctor.specialization,
+      department: doctor.department,
+      submittedAt: doctor.submittedAt,
+    });
+  }
 
   const message = shouldSubmit
     ? "Doctor profile submitted for Super Admin verification successfully."
@@ -1990,6 +2007,10 @@ export const sendHospitalJoinRequest = asyncHandler(async (req: Request, res: Re
       select: "department specialization consultationFee",
       populate: { path: "userId", select: "name avatar" },
     });
+
+  // Real-time Socket Event: Alert Hospital Admin and hospital room in real time
+  emitToHospital(hospitalId.toString(), "join-request:created", populatedRequest);
+  emitToRole("hospital_admin", "join-request:created", populatedRequest);
 
   return res.status(201).json(
     new ApiResponse(

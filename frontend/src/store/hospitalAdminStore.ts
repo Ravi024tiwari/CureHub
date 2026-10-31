@@ -100,6 +100,10 @@ interface HospitalAdminState {
   // Workflow actions
   approveDoctorRequest: (requestId: string) => Promise<void>
   rejectDoctorRequest: (requestId: string, reason?: string) => Promise<void>
+
+  // Real-time Socket Event Handlers
+  addPendingRequestLocally: (rawReq: any) => void
+  updatePendingRequestStatusLocally: (requestId: string, status: string) => void
 }
 
 export const useHospitalAdminStore = create<HospitalAdminState>((set, get) => ({
@@ -354,6 +358,51 @@ export const useHospitalAdminStore = create<HospitalAdminState>((set, get) => ({
       pendingRequests: state.pendingRequests.filter((r) => r.id !== requestId),
       selectedApplicant: null,
       actionSuccessMessage: `${doctorName}'s application has been rejected.`,
+      kpis: {
+        ...state.kpis,
+        pendingJoinRequests: Math.max(0, state.kpis.pendingJoinRequests - 1),
+      },
+    }))
+  },
+
+  // Real-time Socket Dispatchers: Mutate state immediately on incoming socket events
+  addPendingRequestLocally: (rawReq: any) => {
+    const docProfile = rawReq.doctorId || {}
+    const docUser = rawReq.doctorUserId || docProfile.userId || {}
+    const formatted: DoctorJoinRequestItem = {
+      id: rawReq._id?.toString() || rawReq.id,
+      doctorId: docProfile._id?.toString() || rawReq.doctorId,
+      doctorName: docUser.name || 'Dr. Specialist',
+      doctorEmail: docUser.email || 'doctor@careplus.health',
+      doctorPhone: docUser.phoneNumber || '',
+      avatar: docUser.avatar || '',
+      specialization: docProfile.specialization || [rawReq.department || 'General Medicine'],
+      department: rawReq.department || 'General Medicine',
+      experienceYears: docProfile.experienceYears || 5,
+      qualifications: docProfile.qualifications || ['MBBS'],
+      consultationFee: docProfile.consultationFee || 500,
+      appliedDaysAgo: 'Just now',
+      status: 'PENDING',
+      hospitalId: rawReq.hospitalId?._id?.toString() || rawReq.hospitalId || '',
+      hospitalName: rawReq.hospitalId?.name || 'CarePlus Hospital',
+    }
+
+    set((state) => {
+      if (state.pendingRequests.some((r) => r.id === formatted.id)) return state
+      return {
+        pendingRequests: [formatted, ...state.pendingRequests],
+        kpis: {
+          ...state.kpis,
+          pendingJoinRequests: state.kpis.pendingJoinRequests + 1,
+        },
+        actionSuccessMessage: `New join request from ${formatted.doctorName}!`,
+      }
+    })
+  },
+
+  updatePendingRequestStatusLocally: (requestId: string) => {
+    set((state) => ({
+      pendingRequests: state.pendingRequests.filter((r) => r.id !== requestId),
       kpis: {
         ...state.kpis,
         pendingJoinRequests: Math.max(0, state.kpis.pendingJoinRequests - 1),

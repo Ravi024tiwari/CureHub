@@ -101,6 +101,13 @@ export const DoctorVerificationOnboardingPage: FC = () => {
     }
   }, [user])
 
+  // Sync verification status when real-time socket approval arrives
+  useEffect(() => {
+    if (user?.isAccountApproved) {
+      setVerificationStatus('APPROVED')
+    }
+  }, [user?.isAccountApproved])
+
   // Checklist computation
   const checklist = {
     basicInfo: Boolean(department.trim() && consultationFee > 0 && experienceYears >= 0),

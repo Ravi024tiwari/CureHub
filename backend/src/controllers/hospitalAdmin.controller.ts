@@ -20,6 +20,7 @@ import {
   blockSlotsForLeaveWindow,
 } from "../services/doctorLeave.service.js";
 import { razorpayInstance } from "../config/razorpay.js";
+import { emitToUser, emitToHospital } from "../services/socket.service.js";
 
 import {
   UserRole,
@@ -805,6 +806,19 @@ export const respondToJoinRequest = asyncHandler(async (req: Request, res: Respo
       department: joinRequest.department || "General Medicine",
     });
 
+    // Real-time Socket Event: Notify doctor and hospital room of approval
+    emitToUser(joinRequest.doctorUserId.toString(), "join-request:status-updated", {
+      requestId: joinRequest._id.toString(),
+      status: "APPROVED",
+      hospitalId: hospital._id.toString(),
+      hospitalName: hospital.name,
+      department: joinRequest.department || "General Medicine",
+    });
+    emitToHospital(hospital._id.toString(), "join-request:updated", {
+      requestId: joinRequest._id.toString(),
+      status: "APPROVED",
+    });
+
     return res.status(200).json(
       new ApiResponse(
         200,
@@ -823,6 +837,19 @@ export const respondToJoinRequest = asyncHandler(async (req: Request, res: Respo
     // Update Doctor Profile
     await DoctorProfile.findByIdAndUpdate(joinRequest.doctorId, {
       hospitalAffiliationStatus: "REJECTED",
+    });
+
+    // Real-time Socket Event: Notify doctor and hospital room of rejection
+    emitToUser(joinRequest.doctorUserId.toString(), "join-request:status-updated", {
+      requestId: joinRequest._id.toString(),
+      status: "REJECTED",
+      hospitalId: hospital._id.toString(),
+      hospitalName: hospital.name,
+      rejectionReason: joinRequest.rejectionReason,
+    });
+    emitToHospital(hospital._id.toString(), "join-request:updated", {
+      requestId: joinRequest._id.toString(),
+      status: "REJECTED",
     });
 
     return res.status(200).json(

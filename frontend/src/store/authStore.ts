@@ -22,6 +22,7 @@ export interface AuthState {
   login: (payload: LoginPayload) => Promise<AuthUser>
   logout: () => Promise<void>
   fetchMe: () => Promise<void>
+  updateUserApproval: (isApproved: boolean) => void
 }
 
 export const normalizeUser = (user: any): AuthUser | null => {
@@ -70,6 +71,16 @@ export const useAuthStore = create<AuthState>()(
       },
       setError: (error) => set({ error }),
       clearError: () => set({ error: null }),
+
+      // Real-time Approval Sync: Updates user approval state across components live
+      updateUserApproval: (isApproved: boolean) => {
+        const currentUser = get().user
+        if (currentUser) {
+          const updatedUser = { ...currentUser, isAccountApproved: isApproved }
+          localStorage.setItem('careplus_user', JSON.stringify(updatedUser))
+          set({ user: updatedUser })
+        }
+      },
 
       // API Setter: calls backend /auth/login, sets user, profile, and token
       login: async (payload: LoginPayload) => {

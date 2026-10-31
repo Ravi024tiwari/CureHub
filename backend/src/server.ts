@@ -2,11 +2,13 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import express, { Request, Response } from "express";
+import http from "http";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import { connectDB } from "./config/db.js";
+import { initSocket } from "./services/socket.service.js";
 import authRouter from "./routes/auth.routes.js";
 import adminRouter from "./routes/admin.routes.js";
 import hospitalRouter from "./routes/hospital.routes.js";
@@ -94,8 +96,11 @@ const startServer = async () => {
     // Start background cron workers
     initCronJobs();
 
-    app.listen(PORT, () => {
-      console.log(`Server is listening on PORT :${PORT}`);
+    const httpServer = http.createServer(app);
+    initSocket(httpServer);
+
+    httpServer.listen(PORT, () => {
+      console.log(`Server is listening on PORT :${PORT} with WebSockets enabled`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);

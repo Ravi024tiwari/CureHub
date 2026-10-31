@@ -9,6 +9,7 @@ import { VerificationStatus, UserRole, AppointmentStatus } from "../constants/in
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { emitToUser, emitToSuperAdmins } from "../services/socket.service.js";
 
 
 const buildPaginationMeta = (
@@ -98,6 +99,17 @@ export const verifyDoctor = asyncHandler(async (req: Request, res: Response) => 
   const populatedProfile = await DoctorProfile.findById(doctorProfile._id)
     .populate("userId", "name email phoneNumber avatar isAccountApproved isActive role")
     .populate("hospitalId", "name slug address");
+
+  // Real-time Socket Event: Notify doctor immediately and notify all Super Admins
+  emitToUser(doctorProfile.userId.toString(), "verification:doctor:status-updated", {
+    status,
+    isAccountApproved: doctorUser.isAccountApproved,
+    rejectionReason: doctorProfile.rejectionReason || "",
+  });
+  emitToSuperAdmins("verification:doctor:updated", {
+    doctorId: doctorProfile._id.toString(),
+    status,
+  });
 
   return res.status(200).json(
     new ApiResponse(
@@ -193,6 +205,17 @@ export const verifyHospitalAdmin = asyncHandler(async (req: Request, res: Respon
   const populatedProfile = await HospitalAdminProfile.findById(hospitalAdminProfile._id)
     .populate("userId", "name email phoneNumber avatar isAccountApproved isActive role")
     .populate("hospitalId", "name slug address");
+
+  // Real-time Socket Event: Notify hospital admin immediately and notify all Super Admins
+  emitToUser(hospitalAdminProfile.userId.toString(), "verification:hospital-admin:status-updated", {
+    status,
+    isAccountApproved: adminUser.isAccountApproved,
+    rejectionReason: hospitalAdminProfile.rejectionReason || "",
+  });
+  emitToSuperAdmins("verification:hospital-admin:updated", {
+    adminId: hospitalAdminProfile._id.toString(),
+    status,
+  });
 
   return res.status(200).json(
     new ApiResponse(

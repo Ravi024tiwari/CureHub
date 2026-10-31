@@ -12,7 +12,6 @@ import {
   type DoctorAppointmentCounts,
   type DoctorProfileData,
   type UpdateDoctorProfilePayload,
-  type DoctorExperience,
 } from '@/services/doctorService'
 
 export interface DoctorFilterParams {
@@ -85,6 +84,7 @@ export interface DoctorStoreState {
   fetchMyDoctorProfile: () => Promise<DoctorProfileData | null>
   updateMyDoctorProfile: (payload: UpdateDoctorProfilePayload) => Promise<DoctorProfileData | null>
   setMyDoctorProfile: (profile: DoctorProfileData | null) => void
+  updateAffiliationLocally: (status: string, hospitalId?: string, hospitalName?: string) => void
 
   // Logged-in Doctor Portal Practice Dashboard State & Actions
   dashboardData: DoctorDashboardData | null
@@ -458,6 +458,20 @@ export const useDoctorStore = create<DoctorStoreState>()(
         // Logged-in Doctor Profile Actions
         setMyDoctorProfile: (profile) => {
           set({ myDoctorProfile: profile })
+        },
+
+        updateAffiliationLocally: (status, hospitalId, hospitalName) => {
+          set((state) => {
+            if (!state.myDoctorProfile) return state
+            return {
+              myDoctorProfile: {
+                ...state.myDoctorProfile,
+                hospitalAffiliationStatus: status as any,
+                hospitalId: (hospitalId as any) || state.myDoctorProfile.hospitalId,
+                hospitalName: hospitalName || (state.myDoctorProfile as any)?.hospitalName,
+              },
+            }
+          })
         },
 
         fetchMyDoctorProfile: async () => {
