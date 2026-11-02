@@ -4,14 +4,16 @@ import { useSuperAdminStore } from '@/store/superAdminStore'
 
 export const HospitalTrendChart: FC = () => {
   const { hospitalTrend } = useSuperAdminStore()
-  const [hoveredMonth, setHoveredMonth] = useState<string>('Oct')
+  const currentMonthName = new Date().toLocaleString('en-US', { month: 'short' })
+  const [hoveredMonth, setHoveredMonth] = useState<string>(currentMonthName)
   const [filter, setFilter] = useState('This Year')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
-  const maxVal = 20
+  const peakHospitals = Math.max(5, ...hospitalTrend.map((h) => h.count || 0))
+  const maxVal = Math.max(10, Math.ceil(peakHospitals * 1.2))
   const chartHeightPx = 145
 
-  const activeStat = hospitalTrend.find((h) => h.month === hoveredMonth) || hospitalTrend[9]
+  const activeStat = hospitalTrend.find((h) => h.month === hoveredMonth) || hospitalTrend[hospitalTrend.length - 1] || hospitalTrend[0]
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-5 shadow-2xs flex flex-col justify-between">

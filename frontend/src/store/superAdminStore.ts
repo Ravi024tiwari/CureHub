@@ -13,266 +13,72 @@ import type {
   AdminActivityTimelineItem,
 } from '@/types/superAdmin'
 
-import apolloImg from '@/assets/apollo-hospital.jpg'
-import cityCareImg from '@/assets/city-care-hospital.jpg'
-import shreeSaiImg from '@/assets/shree-sai-hospital.jpg'
-import lifecareImg from '@/assets/lifecare-hospital.jpg'
-import drAmitImg from '@/assets/dr-amit-singh.jpg'
-import drPriyaImg from '@/assets/dr-priya-sharma.jpg'
-import drRajeshImg from '@/assets/dr-rajesh-verma.jpg'
-import drSnehaImg from '@/assets/dr-sneha-patel.jpg'
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 const INITIAL_KPIS: SuperAdminKpis = {
-  totalHospitals: 48,
-  totalHospitalsTrend: '+12%',
-  hospitalsMonthDelta: '+5 this month',
+  totalHospitals: 0,
+  totalHospitalsTrend: '0%',
+  hospitalsMonthDelta: '+0 this month',
 
-  totalDoctors: 320,
-  totalDoctorsTrend: '+18%',
-  doctorsMonthDelta: '+48 this month',
+  totalDoctors: 0,
+  totalDoctorsTrend: '0%',
+  doctorsMonthDelta: '+0 this month',
 
-  totalPatients: 12580,
-  totalPatientsTrend: '+25%',
-  patientsMonthDelta: '+2,490 this month',
+  totalPatients: 0,
+  totalPatientsTrend: '0%',
+  patientsMonthDelta: '+0 this month',
 
-  totalAppointments: 28420,
-  totalAppointmentsTrend: '+22%',
-  appointmentsMonthDelta: '+5,120 this month',
+  totalAppointments: 0,
+  totalAppointmentsTrend: '0%',
+  appointmentsMonthDelta: '+0 this month',
 
-  totalRevenue: 4280000,
-  totalRevenueFormatted: '₹ 42.8L',
-  totalRevenueTrend: '+28%',
-  revenueMonthDelta: '+₹ 9.4L this month',
+  totalRevenue: 0,
+  totalRevenueFormatted: '₹ 0',
+  totalRevenueTrend: '0%',
+  revenueMonthDelta: '+₹ 0 this month',
 
-  pendingVerifications: 18,
-  pendingVerificationsTrend: '-10%',
-  pendingBreakdown: '12 doctors • 6 hospitals',
+  pendingVerifications: 0,
+  pendingVerificationsTrend: '0 pending',
+  pendingBreakdown: '0 doctors • 0 hospitals',
 }
 
-const INITIAL_APPOINTMENTS_OVERVIEW: MonthlyAppointmentStat[] = [
-  { month: 'Jan', completed: 850, cancelled: 80, rescheduled: 60, noShow: 30 },
-  { month: 'Feb', completed: 920, cancelled: 90, rescheduled: 70, noShow: 40 },
-  { month: 'Mar', completed: 1050, cancelled: 110, rescheduled: 80, noShow: 50 },
-  { month: 'Apr', completed: 1180, cancelled: 130, rescheduled: 90, noShow: 45 },
-  { month: 'May', completed: 1300, cancelled: 140, rescheduled: 110, noShow: 60 },
-  { month: 'Jun', completed: 1250, cancelled: 120, rescheduled: 95, noShow: 50 },
-  { month: 'Jul', completed: 1380, cancelled: 150, rescheduled: 105, noShow: 55 },
-  { month: 'Aug', completed: 1420, cancelled: 160, rescheduled: 115, noShow: 60 },
-  { month: 'Sep', completed: 1510, cancelled: 140, rescheduled: 120, noShow: 65 },
-  { month: 'Oct', completed: 1680, cancelled: 170, rescheduled: 130, noShow: 70 },
-  { month: 'Nov', completed: 1750, cancelled: 180, rescheduled: 140, noShow: 75 },
-  { month: 'Dec', completed: 1890, cancelled: 190, rescheduled: 150, noShow: 80 },
-]
+const INITIAL_APPOINTMENTS_OVERVIEW: MonthlyAppointmentStat[] = MONTH_NAMES.map((month) => ({
+  month,
+  completed: 0,
+  cancelled: 0,
+  rescheduled: 0,
+  noShow: 0,
+}))
 
-const INITIAL_USER_GROWTH: MonthlyUserGrowthStat[] = [
-  { month: 'Jan', patients: 1400, doctors: 80, hospitalAdmins: 12 },
-  { month: 'Feb', patients: 2100, doctors: 110, hospitalAdmins: 16 },
-  { month: 'Mar', patients: 2900, doctors: 145, hospitalAdmins: 22 },
-  { month: 'Apr', patients: 3800, doctors: 180, hospitalAdmins: 26 },
-  { month: 'May', patients: 4500, doctors: 210, hospitalAdmins: 30 },
-  { month: 'Jun', patients: 5200, doctors: 240, hospitalAdmins: 34 },
-  { month: 'Jul', patients: 5800, doctors: 265, hospitalAdmins: 38 },
-  { month: 'Aug', patients: 6420, doctors: 290, hospitalAdmins: 42 },
-  { month: 'Sep', patients: 7100, doctors: 305, hospitalAdmins: 44 },
-  { month: 'Oct', patients: 7800, doctors: 320, hospitalAdmins: 48 },
-  { month: 'Nov', patients: 8400, doctors: 340, hospitalAdmins: 52 },
-  { month: 'Dec', patients: 9200, doctors: 360, hospitalAdmins: 56 },
-]
+const INITIAL_USER_GROWTH: MonthlyUserGrowthStat[] = MONTH_NAMES.map((month) => ({
+  month,
+  patients: 0,
+  doctors: 0,
+  hospitalAdmins: 0,
+}))
 
 const INITIAL_ROLE_DISTRIBUTION: RoleDistributionItem[] = [
-  { role: 'Patients', count: 12580, percentage: 82.4, color: '#3B82F6', bg: 'bg-blue-500' },
-  { role: 'Doctors', count: 320, percentage: 2.1, color: '#10B981', bg: 'bg-emerald-500' },
-  { role: 'Hospital Admins', count: 48, percentage: 0.3, color: '#EC4899', bg: 'bg-pink-500' },
-  { role: 'Super Admins', count: 2, percentage: 0.0, color: '#F59E0B', bg: 'bg-amber-500' },
+  { role: 'Patients', count: 0, percentage: 0, color: '#3B82F6', bg: 'bg-blue-500' },
+  { role: 'Doctors', count: 0, percentage: 0, color: '#10B981', bg: 'bg-emerald-500' },
+  { role: 'Hospital Admins', count: 0, percentage: 0, color: '#EC4899', bg: 'bg-pink-500' },
+  { role: 'Super Admins', count: 0, percentage: 0, color: '#F59E0B', bg: 'bg-amber-500' },
 ]
 
-const INITIAL_REVENUE_TREND: MonthlyRevenueStat[] = [
-  { month: 'Jan', revenue: 320000, revenueFormatted: '₹ 3.2L' },
-  { month: 'Feb', revenue: 410000, revenueFormatted: '₹ 4.1L' },
-  { month: 'Mar', revenue: 560000, revenueFormatted: '₹ 5.6L' },
-  { month: 'Apr', revenue: 490000, revenueFormatted: '₹ 4.9L' },
-  { month: 'May', revenue: 680000, revenueFormatted: '₹ 6.8L' },
-  { month: 'Jun', revenue: 790000, revenueFormatted: '₹ 7.9L' },
-  { month: 'Jul', revenue: 710000, revenueFormatted: '₹ 7.1L' },
-  { month: 'Aug', revenue: 880000, revenueFormatted: '₹ 8.8L' },
-  { month: 'Sep', revenue: 940000, revenueFormatted: '₹ 9.4L' },
-  { month: 'Oct', revenue: 1240000, revenueFormatted: '₹ 12.4L' },
-  { month: 'Nov', revenue: 1350000, revenueFormatted: '₹ 13.5L' },
-  { month: 'Dec', revenue: 1520000, revenueFormatted: '₹ 15.2L' },
-]
+const INITIAL_REVENUE_TREND: MonthlyRevenueStat[] = MONTH_NAMES.map((month) => ({
+  month,
+  revenue: 0,
+  revenueFormatted: '₹ 0',
+}))
 
-const INITIAL_HOSPITAL_TREND: MonthlyHospitalTrendStat[] = [
-  { month: 'Jan', count: 4 },
-  { month: 'Feb', count: 5 },
-  { month: 'Mar', count: 6 },
-  { month: 'Apr', count: 9 },
-  { month: 'May', count: 8 },
-  { month: 'Jun', count: 11 },
-  { month: 'Jul', count: 10 },
-  { month: 'Aug', count: 8 },
-  { month: 'Sep', count: 11 },
-  { month: 'Oct', count: 13 },
-  { month: 'Nov', count: 15 },
-  { month: 'Dec', count: 17 },
-]
+const INITIAL_HOSPITAL_TREND: MonthlyHospitalTrendStat[] = MONTH_NAMES.map((month) => ({
+  month,
+  count: 0,
+}))
 
-const INITIAL_TOP_HOSPITALS: TopPerformingHospital[] = [
-  {
-    id: 'hosp-1',
-    name: 'Apollo Multispeciality Hospital',
-    city: 'Bilaspur, Chhattisgarh',
-    image: apolloImg,
-    rating: 4.8,
-    appointmentsCount: 2420,
-  },
-  {
-    id: 'hosp-2',
-    name: 'City Care Hospital',
-    city: 'Raipur, Chhattisgarh',
-    image: cityCareImg,
-    rating: 4.6,
-    appointmentsCount: 1890,
-  },
-  {
-    id: 'hosp-3',
-    name: 'Shree Sai Hospital',
-    city: 'Bilaspur, Chhattisgarh',
-    image: shreeSaiImg,
-    rating: 4.5,
-    appointmentsCount: 1420,
-  },
-  {
-    id: 'hosp-4',
-    name: 'LifeCare Hospital',
-    city: 'Durg, Chhattisgarh',
-    image: lifecareImg,
-    rating: 4.4,
-    appointmentsCount: 980,
-  },
-]
-
-const INITIAL_RECENT_APPOINTMENTS: RecentAppointmentRow[] = [
-  {
-    id: 'appt-1',
-    patientName: 'Priya Sharma',
-    patientAvatar: drPriyaImg,
-    department: 'General Consultation',
-    status: 'Completed',
-    time: 'Today, 10:30 AM',
-    doctorName: 'Dr. Amit Singh',
-    doctorAvatar: drAmitImg,
-  },
-  {
-    id: 'appt-2',
-    patientName: 'Rohit Verma',
-    patientAvatar: drRajeshImg,
-    department: 'Cardiology',
-    status: 'Scheduled',
-    time: 'Today, 11:00 AM',
-    doctorName: 'Dr. Neha Gupta',
-    doctorAvatar: drSnehaImg,
-  },
-  {
-    id: 'appt-3',
-    patientName: 'Anjali Patel',
-    patientAvatar: drSnehaImg,
-    department: 'Dermatology',
-    status: 'Completed',
-    time: 'Today, 12:15 PM',
-    doctorName: 'Dr. Vikram Jain',
-    doctorAvatar: drAmitImg,
-  },
-  {
-    id: 'appt-4',
-    patientName: 'Suresh Yadav',
-    patientAvatar: drRajeshImg,
-    department: 'Orthopedics',
-    status: 'Cancelled',
-    time: 'Today, 01:00 PM',
-    doctorName: 'Dr. Sneha Patel',
-    doctorAvatar: drSnehaImg,
-  },
-]
-
-const INITIAL_PENDING_VERIFICATIONS: PendingVerificationItem[] = [
-  {
-    id: 'ver-1',
-    name: 'Dr. Karan Mehta',
-    avatar: drAmitImg,
-    type: 'Doctor Verification',
-    category: 'doctor',
-    timeAgo: '2 hours ago',
-    status: 'Pending',
-    departmentOrCity: 'Neurology • MCI-84920',
-    registrationNumber: 'MCI-84920',
-  },
-  {
-    id: 'ver-2',
-    name: 'Dr. Ritu Sharma',
-    avatar: drPriyaImg,
-    type: 'Doctor Verification',
-    category: 'doctor',
-    timeAgo: '5 hours ago',
-    status: 'Pending',
-    departmentOrCity: 'Pediatrics • MCI-61245',
-    registrationNumber: 'MCI-61245',
-  },
-  {
-    id: 'ver-3',
-    name: 'City Health Hospital',
-    avatar: cityCareImg,
-    type: 'Hospital Verification',
-    category: 'hospital',
-    timeAgo: '1 day ago',
-    status: 'Pending',
-    departmentOrCity: 'Raipur, Chhattisgarh • Reg: HOSP-4412',
-    registrationNumber: 'HOSP-4412',
-  },
-  {
-    id: 'ver-4',
-    name: 'Medicare Hospital',
-    avatar: shreeSaiImg,
-    type: 'Hospital Verification',
-    category: 'hospital',
-    timeAgo: '2 days ago',
-    status: 'Pending',
-    departmentOrCity: 'Bilaspur, Chhattisgarh • Reg: HOSP-9921',
-    registrationNumber: 'HOSP-9921',
-  },
-]
-
-const INITIAL_RECENT_ACTIVITIES: AdminActivityTimelineItem[] = [
-  {
-    id: 'act-1',
-    title: 'New doctor registered',
-    type: 'doctor',
-    timestamp: '10 minutes ago',
-  },
-  {
-    id: 'act-2',
-    title: 'Hospital application submitted',
-    type: 'hospital',
-    timestamp: '1 hour ago',
-  },
-  {
-    id: 'act-3',
-    title: 'Doctor leave request approved',
-    type: 'leave',
-    timestamp: '2 hours ago',
-  },
-  {
-    id: 'act-4',
-    title: 'New appointment booked',
-    type: 'appointment',
-    timestamp: '3 hours ago',
-  },
-  {
-    id: 'act-5',
-    title: 'Hospital verified',
-    type: 'verification',
-    timestamp: '5 hours ago',
-  },
-]
+const INITIAL_TOP_HOSPITALS: TopPerformingHospital[] = []
+const INITIAL_RECENT_APPOINTMENTS: RecentAppointmentRow[] = []
+const INITIAL_PENDING_VERIFICATIONS: PendingVerificationItem[] = []
+const INITIAL_RECENT_ACTIVITIES: AdminActivityTimelineItem[] = []
 
 interface SuperAdminState {
   isLoading: boolean
@@ -314,7 +120,7 @@ interface SuperAdminState {
   clearNotification: () => void
 
   // Actions
-  fetchDashboard: () => Promise<void>
+  fetchDashboard: (year?: number) => Promise<void>
   quickApproveVerification: (id: string, name: string) => Promise<void>
   quickRejectVerification: (id: string, name: string, reason?: string) => Promise<void>
 }
@@ -362,23 +168,46 @@ export const useSuperAdminStore = create<SuperAdminState>((set, get) => ({
   actionNotification: null,
   clearNotification: () => set({ actionNotification: null }),
 
-  fetchDashboard: async () => {
+  fetchDashboard: async (year?: number) => {
     set({ isLoading: true, error: null })
     try {
-      const data = await superAdminService.getDashboard(2026)
-      if (data && data.kpis) {
+      const targetYear = year || 2026
+      const data = await superAdminService.getDashboard(targetYear)
+      if (data) {
         set((state) => ({
-          kpis: {
-            ...state.kpis,
-            totalHospitals: data.kpis.totalHospitals || state.kpis.totalHospitals,
-            totalDoctors: data.kpis.totalDoctors || state.kpis.totalDoctors,
-            totalPatients: data.kpis.totalPatients || state.kpis.totalPatients,
-            totalAppointments: data.kpis.totalAppointments || state.kpis.totalAppointments,
-          },
+          kpis: data.kpis ? { ...data.kpis } : state.kpis,
+          appointmentsOverview: Array.isArray(data.appointmentsOverview)
+            ? data.appointmentsOverview
+            : state.appointmentsOverview,
+          userGrowth: Array.isArray(data.userGrowth)
+            ? data.userGrowth
+            : state.userGrowth,
+          roleDistribution: Array.isArray(data.roleDistribution)
+            ? data.roleDistribution
+            : state.roleDistribution,
+          revenueTrend: Array.isArray(data.revenueTrend)
+            ? data.revenueTrend
+            : state.revenueTrend,
+          hospitalTrend: Array.isArray(data.hospitalTrend)
+            ? data.hospitalTrend
+            : state.hospitalTrend,
+          topHospitals: Array.isArray(data.topHospitals)
+            ? data.topHospitals
+            : state.topHospitals,
+          recentAppointments: Array.isArray(data.recentAppointments)
+            ? data.recentAppointments
+            : state.recentAppointments,
+          pendingVerifications: Array.isArray(data.pendingVerifications)
+            ? data.pendingVerifications
+            : state.pendingVerifications,
+          recentActivities: Array.isArray(data.recentActivities)
+            ? data.recentActivities
+            : state.recentActivities,
         }))
       }
     } catch (e: any) {
-      console.warn('Backend sync failed, continuing with cached dashboard mock dataset:', e)
+      console.warn('Backend sync error for Super Admin dashboard:', e)
+      set({ error: e?.message || 'Failed to fetch dashboard data' })
     } finally {
       set({ isLoading: false })
     }

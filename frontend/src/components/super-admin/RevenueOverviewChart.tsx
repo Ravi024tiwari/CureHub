@@ -4,7 +4,8 @@ import { useSuperAdminStore } from '@/store/superAdminStore'
 
 export const RevenueOverviewChart: FC = () => {
   const { revenueTrend, revenueFilter, setRevenueFilter } = useSuperAdminStore()
-  const [hoveredMonth, setHoveredMonth] = useState<string>('Oct')
+  const currentMonthName = new Date().toLocaleString('en-US', { month: 'short' })
+  const [hoveredMonth, setHoveredMonth] = useState<string>(currentMonthName)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
   const filterOptions = ['This Year', 'Quarterly', 'Last 6 Months']
@@ -13,7 +14,8 @@ export const RevenueOverviewChart: FC = () => {
   const height = 180
   const paddingX = 25
   const paddingY = 25
-  const maxRevenue = 1800000
+  const peakRevenue = Math.max(1000, ...revenueTrend.map((d) => d.revenue || 0))
+  const maxRevenue = Math.max(5000, Math.ceil(peakRevenue * 1.15))
 
   const points = revenueTrend.map((d, i) => {
     const x = paddingX + (i / (revenueTrend.length - 1)) * (width - 2 * paddingX)
@@ -32,7 +34,12 @@ export const RevenueOverviewChart: FC = () => {
   // Area path with bottom close
   const areaPath = `${curvePath} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`
 
-  const activePoint = points.find((p) => p.month === hoveredMonth) || points[9]
+  const activePoint = points.find((p) => p.month === hoveredMonth) || points[points.length - 1] || points[0]
+  const activeIdx = points.findIndex((p) => p.month === activePoint?.month)
+  const prevRev = activeIdx > 0 ? points[activeIdx - 1]?.revenue || 0 : 0
+  const activeRev = activePoint?.revenue || 0
+  const monthTrendPct = prevRev > 0 ? Math.round(((activeRev - prevRev) / prevRev) * 100) : (activeRev > 0 ? 100 : 0)
+  const monthTrendStr = `${monthTrendPct >= 0 ? '+' : ''}${monthTrendPct}%`
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
@@ -94,7 +101,7 @@ export const RevenueOverviewChart: FC = () => {
             <div className="flex items-center gap-1 text-xs font-black text-slate-900">
               <IndianRupee className="size-3 text-emerald-600 stroke-[2.5]" />
               <span>{activePoint.revenueFormatted}</span>
-              <span className="text-[10px] text-emerald-600 font-extrabold">+32%</span>
+              <span className={`text-[10px] font-extrabold ${monthTrendPct >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{monthTrendStr}</span>
             </div>
           </div>
         )}

@@ -4,17 +4,18 @@ import { useSuperAdminStore } from '@/store/superAdminStore'
 
 export const AppointmentsOverviewChart: FC = () => {
   const { appointmentsOverview, appointmentsFilter, setAppointmentsFilter } = useSuperAdminStore()
-  const [hoveredMonth, setHoveredMonth] = useState<string>('Oct')
+  const currentMonthName = new Date().toLocaleString('en-US', { month: 'short' })
+  const [hoveredMonth, setHoveredMonth] = useState<string>(currentMonthName)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
   const filterOptions = ['This Year', 'Last 6 Months', 'This Quarter']
 
-  // Max scale reference for 2,000
-  const maxScale = 2200
+  const maxAppointments = Math.max(10, ...appointmentsOverview.map((s) => s.completed + s.cancelled + s.rescheduled + s.noShow))
+  const maxScale = Math.max(50, Math.ceil(maxAppointments * 1.15))
   const chartHeightPx = 150
 
   const activeStat =
-    appointmentsOverview.find((s) => s.month === hoveredMonth) || appointmentsOverview[9]
+    appointmentsOverview.find((s) => s.month === hoveredMonth) || appointmentsOverview[appointmentsOverview.length - 1] || appointmentsOverview[0]
   const totalActive = activeStat
     ? activeStat.completed + activeStat.cancelled + activeStat.rescheduled + activeStat.noShow
     : 0
@@ -172,12 +173,12 @@ export const AppointmentsOverviewChart: FC = () => {
             {appointmentsOverview.map((item) => {
               const isSelected = hoveredMonth === item.month
               const total = item.completed + item.cancelled + item.rescheduled + item.noShow
-              const totalHeight = Math.max(12, Math.min(chartHeightPx, (total / maxScale) * chartHeightPx))
+              const totalHeight = total > 0 ? Math.max(12, Math.min(chartHeightPx, (total / maxScale) * chartHeightPx)) : 6
 
-              const hCompleted = (item.completed / total) * totalHeight
-              const hCancelled = (item.cancelled / total) * totalHeight
-              const hRescheduled = (item.rescheduled / total) * totalHeight
-              const hNoShow = (item.noShow / total) * totalHeight
+              const hCompleted = total > 0 ? (item.completed / total) * totalHeight : 0
+              const hCancelled = total > 0 ? (item.cancelled / total) * totalHeight : 0
+              const hRescheduled = total > 0 ? (item.rescheduled / total) * totalHeight : 0
+              const hNoShow = total > 0 ? (item.noShow / total) * totalHeight : 0
 
               return (
                 <div

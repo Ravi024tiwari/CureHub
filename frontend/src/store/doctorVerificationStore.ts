@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { superAdminService } from '@/services/superAdminService'
+import { useSuperAdminStore } from '@/store/superAdminStore'
 import type {
   DoctorVerificationRecord,
   DoctorVerificationStats,
@@ -242,6 +243,7 @@ export const useDoctorVerificationStore = create<DoctorVerificationState>((set, 
 
       // Refetch fresh list and stats from database to stay in sync
       get().fetchStats()
+      useSuperAdminStore.getState().fetchDashboard()
       return true
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Failed to approve doctor'
@@ -292,6 +294,7 @@ export const useDoctorVerificationStore = create<DoctorVerificationState>((set, 
 
       // Refetch fresh list and stats from database
       get().fetchStats()
+      useSuperAdminStore.getState().fetchDashboard()
       return true
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Failed to reject doctor'

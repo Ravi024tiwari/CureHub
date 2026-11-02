@@ -30,6 +30,17 @@ export const TopPerformingHospitalsCard: FC = () => {
       </div>
 
       {/* Hospital Ranking Items */}
+      {topHospitals.length === 0 ? (
+        <div className="py-8 text-center flex flex-col items-center justify-center">
+          <div className="size-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-2 shadow-2xs">
+            <Building2 className="size-5 stroke-[2]" />
+          </div>
+          <p className="text-xs font-bold text-slate-700">No Hospitals Registered Yet</p>
+          <p className="text-[11px] text-slate-400 max-w-[200px] mt-0.5">
+            Verified hospital facilities will appear here once onboarded.
+          </p>
+        </div>
+      ) : (
       <div className="space-y-3 divide-y divide-slate-100">
         {topHospitals.map((hosp, idx) => (
           <div
@@ -80,6 +91,7 @@ export const TopPerformingHospitalsCard: FC = () => {
           </div>
         ))}
       </div>
+      )}
     </div>
   )
 }

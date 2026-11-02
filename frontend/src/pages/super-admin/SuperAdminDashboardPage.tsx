@@ -44,7 +44,7 @@ export const SuperAdminDashboardPage: FC = () => {
     }
   }, [actionNotification, clearNotification])
 
-  const adminName = user?.name || 'Dr. Ramesh Kumar'
+  const adminName = user?.name || 'Super Admin'
 
   return (
     <div className="h-screen w-full overflow-hidden bg-[#F8FAFC] text-slate-900 flex selection:bg-blue-100 selection:text-blue-700 antialiased">

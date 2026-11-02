@@ -1,4 +1,4 @@
-import { type FC } from 'react'
+import { useEffect, type FC } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Activity,
@@ -7,8 +7,6 @@ import {
   Stethoscope,
   Building2,
   Building,
-  BarChart3,
-  FileText,
   Headphones,
   X,
   PanelLeftClose,
@@ -26,7 +24,11 @@ export const SuperAdminSidebar: FC<SuperAdminSidebarProps> = ({
 }) => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { kpis, setIsSidebarCollapsed } = useSuperAdminStore()
+  const { kpis, fetchDashboard, setIsSidebarCollapsed } = useSuperAdminStore()
+
+  useEffect(() => {
+    fetchDashboard()
+  }, [fetchDashboard])
 
   const currentPath = location.pathname
 
@@ -43,7 +45,7 @@ export const SuperAdminSidebar: FC<SuperAdminSidebarProps> = ({
       label: 'Verifications',
       icon: ShieldCheck,
       path: '/super-admin/verifications',
-      badge: kpis.pendingVerifications || 18,
+      badge: kpis.pendingVerifications > 0 ? kpis.pendingVerifications : undefined,
     },
     {
       id: 'doctors',
@@ -62,18 +64,6 @@ export const SuperAdminSidebar: FC<SuperAdminSidebarProps> = ({
       label: 'Hospitals',
       icon: Building,
       path: '/super-admin/hospitals',
-    },
-    {
-      id: 'analytics',
-      label: 'Reports & Analytics',
-      icon: BarChart3,
-      path: '/super-admin/analytics',
-    },
-    {
-      id: 'audit-logs',
-      label: 'Audit Logs',
-      icon: FileText,
-      path: '/super-admin/audit-logs',
     },
   ]
 

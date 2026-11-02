@@ -31,6 +31,17 @@ export const PendingVerificationsCard: FC = () => {
       </div>
 
       {/* Verification List Items */}
+      {pendingVerifications.length === 0 ? (
+        <div className="py-8 text-center flex flex-col items-center justify-center">
+          <div className="size-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2 shadow-2xs border border-emerald-100/60">
+            <ShieldCheck className="size-5 stroke-[2]" />
+          </div>
+          <p className="text-xs font-bold text-slate-800">All Verifications Cleared</p>
+          <p className="text-[11px] text-slate-400 max-w-[220px] mt-0.5">
+            No pending medical council licenses or hospital applications in queue.
+          </p>
+        </div>
+      ) : (
       <div className="space-y-2.5">
         {pendingVerifications.map((item) => (
           <div
@@ -106,6 +117,7 @@ export const PendingVerificationsCard: FC = () => {
           </div>
         ))}
       </div>
+      )}
     </div>
   )
 }

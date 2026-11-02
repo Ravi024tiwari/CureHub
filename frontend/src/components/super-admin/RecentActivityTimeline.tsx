@@ -1,5 +1,4 @@
 import { type FC } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   ChevronRight,
   UserPlus,
@@ -11,7 +10,6 @@ import {
 import { useSuperAdminStore } from '@/store/superAdminStore'
 
 export const RecentActivityTimeline: FC = () => {
-  const navigate = useNavigate()
   const { recentActivities } = useSuperAdminStore()
 
   const getIconConfig = (type: string) => {
@@ -57,16 +55,24 @@ export const RecentActivityTimeline: FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => navigate('/super-admin/audit-logs')}
-          className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-0.5 cursor-pointer"
-        >
-          <span>View All</span>
-          <ChevronRight className="size-3.5" />
-        </button>
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold">
+          <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Live Updates</span>
+        </div>
       </div>
 
       {/* Activity Timeline List */}
+      {recentActivities.length === 0 ? (
+        <div className="py-8 text-center flex flex-col items-center justify-center">
+          <div className="size-11 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center mb-2 shadow-2xs border border-slate-100">
+            <ShieldCheck className="size-5 stroke-[2]" />
+          </div>
+          <p className="text-xs font-bold text-slate-700">No Recent Activity</p>
+          <p className="text-[11px] text-slate-400 max-w-[220px] mt-0.5">
+            Platform actions and registrations will stream here.
+          </p>
+        </div>
+      ) : (
       <div className="space-y-3 divide-y divide-slate-100">
         {recentActivities.map((act) => {
           const config = getIconConfig(act.type)
@@ -98,6 +104,7 @@ export const RecentActivityTimeline: FC = () => {
           )
         })}
       </div>
+      )}
     </div>
   )
 }

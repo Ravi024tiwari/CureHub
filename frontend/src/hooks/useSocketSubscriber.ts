@@ -5,6 +5,7 @@ import { useHospitalAdminStore } from '@/store/hospitalAdminStore'
 import { useHospitalAdminLeavesStore } from '@/store/hospitalAdminLeavesStore'
 import { useDoctorStore } from '@/store/doctorStore'
 import { useAppointmentStore } from '@/store/appointmentStore'
+import { useSuperAdminStore } from '@/store/superAdminStore'
 import { toast } from '@/store/toastStore'
 import { UserRole } from '@/types/auth'
 
@@ -111,6 +112,7 @@ export const useSocketSubscriber = () => {
           `Dr. ${data.doctorName || 'Specialist'} submitted verification documents for review.`,
           'Doctor Verification'
         )
+        useSuperAdminStore.getState().fetchDashboard()
       }
     }
 
@@ -120,6 +122,7 @@ export const useSocketSubscriber = () => {
           `Hospital Admin (${data.adminName || 'Admin'}) submitted verification application for review.`,
           'Hospital Admin Verification'
         )
+        useSuperAdminStore.getState().fetchDashboard()
       }
     }
 

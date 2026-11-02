@@ -5,7 +5,9 @@ import { DoctorProfile } from "../models/DoctorProfile.model.js";
 import { HospitalAdminProfile } from "../models/HospitalAdminProfile.model.js";
 import { Hospital } from "../models/Hospital.model.js";
 import { Appointment } from "../models/Appointment.model.js";
-import { VerificationStatus, UserRole, AppointmentStatus } from "../constants/index.js";
+import { Payment } from "../models/Payment.model.js";
+import { DoctorLeave } from "../models/DoctorLeave.model.js";
+import { VerificationStatus, UserRole, AppointmentStatus, PaymentStatus } from "../constants/index.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -499,9 +501,44 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
   // Month names for time-series charts
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  // Utility helpers
+  const formatCurrency = (amount: number): string => {
+    if (amount >= 10000000) {
+      return `₹ ${(amount / 10000000).toFixed(1)}Cr`;
+    }
+    if (amount >= 100000) {
+      return `₹ ${(amount / 100000).toFixed(1)}L`;
+    }
+    if (amount >= 1000) {
+      return `₹ ${(amount / 1000).toFixed(1)}K`;
+    }
+    return `₹ ${amount.toLocaleString()}`;
+  };
+
+  const calculateTrend = (current: number, previous: number): string => {
+    if (previous === 0) {
+      return current > 0 ? "+100%" : "0%";
+    }
+    const pct = Math.round(((current - previous) / previous) * 100);
+    return `${pct >= 0 ? "+" : ""}${pct}%`;
+  };
+
+  const formatTimeAgo = (date?: Date): string => {
+    if (!date) return "Recently";
+    const diffMs = Date.now() - new Date(date).getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    if (diffMins < 60) return `${Math.max(1, diffMins)}m ago`;
+    const diffHours = Math.floor(diffMins / (1000 * 60 * 60));
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffMins / (1000 * 60 * 60 * 24));
+    return `${diffDays}d ago`;
+  };
 
   // ── Parallel Execution of All Platform Metrics ─────────────────────────────
   const [
@@ -510,6 +547,9 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
     totalPatients,
     activePatients,
     newPatientsThisMonth,
+    newPatientsPrevMonth,
+    totalHospitalAdmins,
+    totalSuperAdmins,
 
     // 2. Doctor Metrics & Verification Breakdown
     totalDoctors,
@@ -517,14 +557,17 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
     pendingDoctors,
     rejectedDoctors,
     suspendedDoctors,
+    newDoctorsThisMonth,
+    newDoctorsPrevMonth,
     affiliatedDoctors,
     pendingAffiliationDoctors,
     unaffiliatedDoctors,
 
     // 3. Hospital Metrics
     totalHospitals,
-    verifiedHospitals,
-    pendingHospitals,
+    activeHospitals,
+    newHospitalsThisMonth,
+    newHospitalsPrevMonth,
     pendingHospitalAdmins,
 
     // 4. Appointment Operations
@@ -534,31 +577,51 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
     cancelledByPatientAppointments,
     cancelledByDoctorAppointments,
     rescheduleRequiredAppointments,
+    newAppointmentsThisMonth,
+    newAppointmentsPrevMonth,
 
-    // 5. Monthly User Registrations Aggregation
+    // 5. Payment & Revenue Metrics
+    totalPaymentRevenueAgg,
+    paymentRevenueThisMonthAgg,
+    paymentRevenuePrevMonthAgg,
+    monthlyRevenueAgg,
+    appointmentFeeFallbackAgg,
+
+    // 6. Time-Series Aggregations
     userGrowthAgg,
-
-    // 6. Monthly Hospital Onboarding Aggregation
     hospitalGrowthAgg,
-
-    // 7. Monthly Appointment Activity Aggregation
     appointmentActivityAgg,
 
-    // 8. Department Distribution (Top Specialties)
+    // 7. Department Distribution (Top Specialties)
     departmentAgg,
 
-    // 9. Top Verified Hospitals by Bed Capacity
-    topHospitals,
+    // 8. Hospital Appointment Counts Aggregation for ranking
+    hospitalAppointmentCountsAgg,
 
-    // 10. Urgent Action Queues (Latest 5 pending doctors & admins)
+    // 9. Top Hospitals
+    hospitalsList,
+
+    // 10. Recent Appointments (Populated)
+    recentAppointmentsDocs,
+
+    // 11. Urgent Action Queues
     recentPendingDoctors,
     recentPendingHospitalAdmins,
+
+    // 12. Live Platform Activity Sources
+    latestUsers,
+    latestAppointments,
+    latestDoctorLeaves,
+    latestHospitals,
   ] = await Promise.all([
     // 1. Users
     User.countDocuments(),
     User.countDocuments({ role: UserRole.PATIENT }),
     User.countDocuments({ role: UserRole.PATIENT, isActive: true }),
     User.countDocuments({ role: UserRole.PATIENT, createdAt: { $gte: startOfMonth } }),
+    User.countDocuments({ role: UserRole.PATIENT, createdAt: { $gte: startOfPrevMonth, $lte: endOfPrevMonth } }),
+    User.countDocuments({ role: UserRole.HOSPITAL_ADMIN }),
+    User.countDocuments({ role: UserRole.SUPER_ADMIN }),
 
     // 2. Doctors
     DoctorProfile.countDocuments(),
@@ -566,14 +629,17 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
     DoctorProfile.countDocuments({ verificationStatus: VerificationStatus.PENDING }),
     DoctorProfile.countDocuments({ verificationStatus: VerificationStatus.REJECTED }),
     DoctorProfile.countDocuments({ verificationStatus: VerificationStatus.SUSPENDED }),
+    DoctorProfile.countDocuments({ createdAt: { $gte: startOfMonth } }),
+    DoctorProfile.countDocuments({ createdAt: { $gte: startOfPrevMonth, $lte: endOfPrevMonth } }),
     DoctorProfile.countDocuments({ hospitalAffiliationStatus: "APPROVED" }),
     DoctorProfile.countDocuments({ hospitalAffiliationStatus: "PENDING_APPROVAL" }),
     DoctorProfile.countDocuments({ hospitalAffiliationStatus: "NOT_AFFILIATED" }),
 
     // 3. Hospitals
     Hospital.countDocuments(),
-    Hospital.countDocuments({ verified: true }),
-    Hospital.countDocuments({ verified: false }),
+    Hospital.countDocuments({ isActive: true }),
+    Hospital.countDocuments({ createdAt: { $gte: startOfMonth } }),
+    Hospital.countDocuments({ createdAt: { $gte: startOfPrevMonth, $lte: endOfPrevMonth } }),
     HospitalAdminProfile.countDocuments({ verificationStatus: VerificationStatus.PENDING }),
 
     // 4. Appointments
@@ -583,8 +649,42 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
     Appointment.countDocuments({ status: AppointmentStatus.CANCELLED_BY_PATIENT }),
     Appointment.countDocuments({ status: AppointmentStatus.CANCELLED_BY_DOCTOR }),
     Appointment.countDocuments({ status: AppointmentStatus.RESCHEDULE_REQUIRED }),
+    Appointment.countDocuments({ createdAt: { $gte: startOfMonth } }),
+    Appointment.countDocuments({ createdAt: { $gte: startOfPrevMonth, $lte: endOfPrevMonth } }),
 
-    // 5. Monthly User Growth Aggregation
+    // 5. Payment & Revenue
+    Payment.aggregate([
+      { $match: { status: PaymentStatus.COMPLETED } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]),
+    Payment.aggregate([
+      { $match: { status: PaymentStatus.COMPLETED, createdAt: { $gte: startOfMonth } } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]),
+    Payment.aggregate([
+      { $match: { status: PaymentStatus.COMPLETED, createdAt: { $gte: startOfPrevMonth, $lte: endOfPrevMonth } } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]),
+    Payment.aggregate([
+      {
+        $match: {
+          status: PaymentStatus.COMPLETED,
+          createdAt: { $gte: startOfYear, $lte: endOfYear },
+        },
+      },
+      {
+        $group: {
+          _id: { month: { $month: "$createdAt" } },
+          revenue: { $sum: "$amount" },
+        },
+      },
+    ]),
+    Appointment.aggregate([
+      { $match: { status: AppointmentStatus.COMPLETED, consultationFee: { $gt: 0 } } },
+      { $group: { _id: null, total: { $sum: "$consultationFee" } } },
+    ]),
+
+    // 6. Time-Series Aggregations
     User.aggregate([
       {
         $match: {
@@ -603,7 +703,6 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
       },
     ]),
 
-    // 6. Monthly Hospital Growth Aggregation
     Hospital.aggregate([
       {
         $match: {
@@ -618,7 +717,6 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
       },
     ]),
 
-    // 7. Monthly Appointment Activity Aggregation
     Appointment.aggregate([
       {
         $match: {
@@ -636,7 +734,7 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
       },
     ]),
 
-    // 8. Department Distribution (Top 8 specialties)
+    // 7. Department Distribution (Top 8 specialties)
     DoctorProfile.aggregate([
       { $match: { verificationStatus: VerificationStatus.APPROVED } },
       {
@@ -651,13 +749,31 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
       { $limit: 8 },
     ]),
 
-    // 9. Top 5 Hospitals by Capacity
-    Hospital.find({ verified: true })
-      .select("name address.city address.state totalBeds icuBeds emergencyServices contactPhone")
-      .sort({ totalBeds: -1 })
-      .limit(5),
+    // 8. Hospital Appointments Count Aggregation
+    Appointment.aggregate([
+      { $match: { hospitalId: { $ne: null } } },
+      { $group: { _id: "$hospitalId", appointmentsCount: { $sum: 1 } } },
+      { $sort: { appointmentsCount: -1 } },
+    ]),
 
-    // 10. Urgent Action Queues
+    // 9. Hospitals List
+    Hospital.find()
+      .select("name address images totalBeds rating")
+      .limit(10),
+
+    // 10. Recent Appointments (Latest 5)
+    Appointment.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate({ path: "patientId", select: "name avatar email phoneNumber" })
+      .populate({
+        path: "doctorId",
+        populate: { path: "userId", select: "name avatar" },
+        select: "department specialization userId",
+      })
+      .populate("hospitalId", "name address"),
+
+    // 11. Urgent Action Queues
     DoctorProfile.find({ verificationStatus: VerificationStatus.PENDING })
       .populate("userId", "name email phoneNumber avatar createdAt")
       .select("department specialization medicalCouncilRegistrationNumber experienceYears createdAt")
@@ -669,7 +785,40 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
       .select("hospitalName hospitalRegistrationNumber designation createdAt")
       .sort({ createdAt: -1 })
       .limit(5),
+
+    // 12. Live Platform Activity Sources
+    User.find()
+      .sort({ createdAt: -1 })
+      .limit(4)
+      .select("name role createdAt"),
+
+    Appointment.find()
+      .sort({ createdAt: -1 })
+      .limit(4)
+      .populate("patientId", "name")
+      .select("patientDetails createdAt status patientId"),
+
+    DoctorLeave.find()
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .populate({ path: "doctorId", populate: { path: "userId", select: "name" } })
+      .select("status createdAt doctorId"),
+
+    Hospital.find()
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .select("name createdAt"),
   ]);
+
+  // ── Calculate Platform Revenue ──────────────────────────────────────────────
+  let totalRevenue = totalPaymentRevenueAgg[0]?.total || 0;
+  let revenueThisMonth = paymentRevenueThisMonthAgg[0]?.total || 0;
+  let revenuePrevMonth = paymentRevenuePrevMonthAgg[0]?.total || 0;
+
+  // Fallback to completed appointments consultation fee if payment records not yet seeded
+  if (totalRevenue === 0 && appointmentFeeFallbackAgg[0]?.total) {
+    totalRevenue = appointmentFeeFallbackAgg[0].total;
+  }
 
   // ── Format Monthly User Growth Trend (Jan - Dec) ───────────────────────────
   const monthlyUserGrowth = monthNames.map((name, index) => {
@@ -733,8 +882,188 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
       completed,
       cancelled,
       rescheduled,
+      noShow: monthAppointments.find((a) => a._id.status === AppointmentStatus.NO_SHOW)?.count || 0,
     };
   });
+
+  // ── Format Monthly Revenue Trend (Jan - Dec) ───────────────────────────────
+  const monthlyRevenueTrend = monthNames.map((name, index) => {
+    const monthNum = index + 1;
+    const monthRev = monthlyRevenueAgg.find((r) => r._id.month === monthNum)?.revenue || 0;
+    return {
+      month: name,
+      revenue: monthRev,
+      revenueFormatted: formatCurrency(monthRev),
+    };
+  });
+
+  // ── Format Monthly Hospital Onboarding Trend (Jan - Dec) ───────────────────
+  const monthlyHospitalTrend = monthNames.map((name, index) => {
+    const monthNum = index + 1;
+    const count = hospitalGrowthAgg.find((h) => h._id.month === monthNum)?.count || 0;
+    return {
+      month: name,
+      count,
+    };
+  });
+
+  // ── Format Role Distribution with Percentages ──────────────────────────────
+  const safeTotalUsers = totalUsers || (totalPatients + totalDoctors + totalHospitalAdmins + totalSuperAdmins);
+  const patientsPct = safeTotalUsers > 0 ? Math.round((totalPatients / safeTotalUsers) * 1000) / 10 : 0;
+  const doctorsPct = safeTotalUsers > 0 ? Math.round((totalDoctors / safeTotalUsers) * 1000) / 10 : 0;
+  const adminsPct = safeTotalUsers > 0 ? Math.round((totalHospitalAdmins / safeTotalUsers) * 1000) / 10 : 0;
+  const superAdminsPct = safeTotalUsers > 0 ? Math.max(0, Math.round((100 - patientsPct - doctorsPct - adminsPct) * 10) / 10) : 0;
+
+  const roleDistribution = [
+    { role: "Patients", count: totalPatients, percentage: patientsPct, color: "#3B82F6", bg: "bg-blue-500" },
+    { role: "Doctors", count: totalDoctors, percentage: doctorsPct, color: "#10B981", bg: "bg-emerald-500" },
+    { role: "Hospital Admins", count: totalHospitalAdmins, percentage: adminsPct, color: "#EC4899", bg: "bg-pink-500" },
+    { role: "Super Admins", count: totalSuperAdmins, percentage: superAdminsPct, color: "#F59E0B", bg: "bg-amber-500" },
+  ];
+
+  // ── Format Top Performing Hospitals ────────────────────────────────────────
+  const hospitalCountsMap = new Map<string, number>();
+  hospitalAppointmentCountsAgg.forEach((item: any) => {
+    if (item._id) {
+      hospitalCountsMap.set(item._id.toString(), item.appointmentsCount);
+    }
+  });
+
+  const topHospitals = hospitalsList
+    .map((hosp: any) => {
+      const id = hosp._id.toString();
+      const appointmentsCount = hospitalCountsMap.get(id) || 0;
+      const city = [hosp.address?.city, hosp.address?.state].filter(Boolean).join(", ") || "India";
+      return {
+        id,
+        name: hosp.name,
+        city,
+        image: hosp.images?.coverImage || "",
+        rating: hosp.rating || 4.5,
+        appointmentsCount,
+      };
+    })
+    .sort((a, b) => b.appointmentsCount - a.appointmentsCount || b.rating - a.rating)
+    .slice(0, 5);
+
+  // ── Format Recent Appointments ─────────────────────────────────────────────
+  const mapStatusToDisplay = (status: AppointmentStatus): "Completed" | "Scheduled" | "Cancelled" | "Rescheduled" => {
+    switch (status) {
+      case AppointmentStatus.COMPLETED:
+        return "Completed";
+      case AppointmentStatus.CONFIRMED:
+      case AppointmentStatus.PENDING_PAYMENT:
+    case AppointmentStatus.CHECKED_IN:
+    case AppointmentStatus.IN_PROGRESS:
+        return "Scheduled";
+      case AppointmentStatus.CANCELLED_BY_PATIENT:
+      case AppointmentStatus.CANCELLED_BY_DOCTOR:
+        return "Cancelled";
+      case AppointmentStatus.RESCHEDULE_REQUIRED:
+        return "Rescheduled";
+      default:
+        return "Scheduled";
+    }
+  };
+
+  const recentAppointments = recentAppointmentsDocs.map((apt: any) => {
+    const patient = apt.patientId;
+    const doctor = apt.doctorId;
+    const doctorUser = doctor?.userId;
+    const aptDate = apt.date || (apt.createdAt ? new Date(apt.createdAt).toISOString().split("T")[0] : "");
+    const timeStr = apt.startTime ? `${aptDate}, ${apt.startTime}` : "Scheduled";
+
+    return {
+      id: apt._id.toString(),
+      patientName: patient?.name || apt.patientDetails?.fullName || "Patient",
+      patientAvatar: patient?.avatar || "",
+      department: doctor?.department || "General Consultation",
+      status: mapStatusToDisplay(apt.status),
+      time: timeStr,
+      doctorName: doctorUser?.name ? `Dr. ${doctorUser.name}` : "Doctor",
+      doctorAvatar: doctorUser?.avatar || "",
+    };
+  });
+
+  // ── Format Pending Verifications Queue ─────────────────────────────────────
+  const doctorVerificationsFormatted = recentPendingDoctors.map((doc: any) => ({
+    id: doc._id.toString(),
+    name: (doc.userId as any)?.name ? `Dr. ${(doc.userId as any).name}` : "Doctor Specialist",
+    avatar: (doc.userId as any)?.avatar || "",
+    type: "Doctor Verification" as const,
+    category: "doctor" as const,
+    timeAgo: formatTimeAgo(doc.createdAt),
+    status: "Pending" as const,
+    departmentOrCity: `${doc.department || "General"} • ${doc.medicalCouncilRegistrationNumber || "Reg. Pending"}`,
+    registrationNumber: doc.medicalCouncilRegistrationNumber || "",
+  }));
+
+  const hospitalVerificationsFormatted = recentPendingHospitalAdmins.map((admin: any) => ({
+    id: admin._id.toString(),
+    name: admin.hospitalName || (admin.userId as any)?.name || "Hospital Facility",
+    avatar: (admin.userId as any)?.avatar || "",
+    type: "Hospital Verification" as const,
+    category: "hospital" as const,
+    timeAgo: formatTimeAgo(admin.createdAt),
+    status: "Pending" as const,
+    departmentOrCity: `${admin.hospitalAddress || admin.hospitalName || "Hospital"} • Reg: ${admin.hospitalRegistrationNumber || "Pending"}`,
+    registrationNumber: admin.hospitalRegistrationNumber || "",
+  }));
+
+  const pendingVerifications = [
+    ...doctorVerificationsFormatted,
+    ...hospitalVerificationsFormatted,
+  ].slice(0, 5);
+
+  // ── Format Live Recent Activity Stream ─────────────────────────────────────
+  const activityList: Array<{ id: string; title: string; type: "doctor" | "hospital" | "leave" | "appointment" | "verification"; timestamp: string; date: Date }> = [];
+
+  latestUsers.forEach((u: any) => {
+    activityList.push({
+      id: `act-user-${u._id}`,
+      title: `New ${u.role === UserRole.DOCTOR ? "doctor" : u.role === UserRole.HOSPITAL_ADMIN ? "hospital admin" : "patient"} registered: ${u.name}`,
+      type: u.role === UserRole.DOCTOR ? "doctor" : u.role === UserRole.HOSPITAL_ADMIN ? "hospital" : "doctor",
+      timestamp: formatTimeAgo(u.createdAt),
+      date: u.createdAt || new Date(),
+    });
+  });
+
+  latestAppointments.forEach((a: any) => {
+    const patientName = (a.patientId as any)?.name || a.patientDetails?.fullName || "Patient";
+    activityList.push({
+      id: `act-apt-${a._id}`,
+      title: `New appointment booked by ${patientName}`,
+      type: "appointment",
+      timestamp: formatTimeAgo(a.createdAt),
+      date: a.createdAt || new Date(),
+    });
+  });
+
+  latestDoctorLeaves.forEach((l: any) => {
+    const docName = (l.doctorId as any)?.userId?.name ? `Dr. ${(l.doctorId as any).userId.name}` : "Doctor";
+    activityList.push({
+      id: `act-leave-${l._id}`,
+      title: `${docName} submitted leave request (${l.status.toLowerCase()})`,
+      type: "leave",
+      timestamp: formatTimeAgo(l.createdAt),
+      date: l.createdAt || new Date(),
+    });
+  });
+
+  latestHospitals.forEach((h: any) => {
+    activityList.push({
+      id: `act-hosp-${h._id}`,
+      title: `Hospital facility onboarded: ${h.name}`,
+      type: "hospital",
+      timestamp: formatTimeAgo(h.createdAt),
+      date: h.createdAt || new Date(),
+    });
+  });
+
+  const recentActivities = activityList
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5)
+    .map(({ id, title, type, timestamp }) => ({ id, title, type, timestamp }));
 
   // ── Format Department Distribution ─────────────────────────────────────────
   const departmentDistribution = departmentAgg.map((dept) => ({
@@ -764,6 +1093,35 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
         )
       : 0;
 
+  // ── Executive Super Admin KPIs ─────────────────────────────────────────────
+  const totalPendingVerifications = pendingDoctors + pendingHospitalAdmins;
+  const kpis = {
+    totalHospitals,
+    totalHospitalsTrend: calculateTrend(newHospitalsThisMonth, newHospitalsPrevMonth),
+    hospitalsMonthDelta: `+${newHospitalsThisMonth} this month`,
+
+    totalDoctors,
+    totalDoctorsTrend: calculateTrend(newDoctorsThisMonth, newDoctorsPrevMonth),
+    doctorsMonthDelta: `+${newDoctorsThisMonth} this month`,
+
+    totalPatients,
+    totalPatientsTrend: calculateTrend(newPatientsThisMonth, newPatientsPrevMonth),
+    patientsMonthDelta: `+${newPatientsThisMonth} this month`,
+
+    totalAppointments,
+    totalAppointmentsTrend: calculateTrend(newAppointmentsThisMonth, newAppointmentsPrevMonth),
+    appointmentsMonthDelta: `+${newAppointmentsThisMonth} this month`,
+
+    totalRevenue,
+    totalRevenueFormatted: formatCurrency(totalRevenue),
+    totalRevenueTrend: calculateTrend(revenueThisMonth, revenuePrevMonth),
+    revenueMonthDelta: `+${formatCurrency(revenueThisMonth)} this month`,
+
+    pendingVerifications: totalPendingVerifications,
+    pendingVerificationsTrend: totalPendingVerifications > 0 ? `${totalPendingVerifications} pending` : "0 pending",
+    pendingBreakdown: `${pendingDoctors} doctors • ${pendingHospitalAdmins} hospitals`,
+  };
+
   // ── Assemble Final Production Response ─────────────────────────────────────
   return res.status(200).json(
     new ApiResponse(
@@ -771,7 +1129,19 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
       {
         year: currentYear,
 
-        // 1. Executive KPI Summary Cards
+        // Direct Frontend Store Keys (100% Real Live MongoDB Data)
+        kpis,
+        appointmentsOverview: monthlyAppointmentTrends,
+        userGrowth: monthlyUserGrowth,
+        roleDistribution,
+        revenueTrend: monthlyRevenueTrend,
+        hospitalTrend: monthlyHospitalTrend,
+        topHospitals,
+        recentAppointments,
+        pendingVerifications,
+        recentActivities,
+
+        // Backward compatibility structures
         summary: {
           totalPlatformUsers: totalUsers,
           patients: {
@@ -788,8 +1158,8 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
           },
           hospitals: {
             total: totalHospitals,
-            verified: verifiedHospitals,
-            pending: pendingHospitals,
+            verified: activeHospitals,
+            pending: pendingHospitalAdmins,
           },
           appointments: {
             totalBooked: totalAppointments,
@@ -804,17 +1174,13 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
           operationalHealth: {
             completionRate: `${completionRate}%`,
             cancellationRate: `${cancellationRate}%`,
-            pendingVerificationsQueue: pendingDoctors + pendingHospitalAdmins,
+            pendingVerificationsQueue: totalPendingVerifications,
           },
         },
-
-        // 2. Time-Series Graphs (12-Month Arrays for Line / Bar Charts)
         charts: {
           monthlyUserGrowth,
           monthlyAppointmentTrends,
         },
-
-        // 3. Segmented Distribution Breakdowns (For Doughnut / Pie Charts)
         distribution: {
           departments: departmentDistribution,
           doctorAffiliations: {
@@ -836,11 +1202,7 @@ export const getAdminDashboardAnalytics = asyncHandler(async (req: Request, res:
             rescheduleRequired: rescheduleRequiredAppointments,
           },
         },
-
-        // 4. Hospital Capacity Highlights
         topHospitalsByCapacity: topHospitals,
-
-        // 5. Actionable Review Queues (Immediate Attention Needed)
         actionQueues: {
           pendingDoctors: recentPendingDoctors,
           pendingHospitalAdmins: recentPendingHospitalAdmins,

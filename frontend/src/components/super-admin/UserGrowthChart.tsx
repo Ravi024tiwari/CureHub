@@ -4,7 +4,7 @@ import { useSuperAdminStore } from '@/store/superAdminStore'
 
 export const UserGrowthChart: FC = () => {
   const { userGrowth, userGrowthFilter, setUserGrowthFilter } = useSuperAdminStore()
-  const [hoveredIdx, setHoveredIdx] = useState<number>(7) // Aug/Oct highlight
+  const [hoveredIdx, setHoveredIdx] = useState<number>(new Date().getMonth())
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
   const filterOptions = ['This Year', 'Last 6 Months', 'All Time']
@@ -15,7 +15,11 @@ export const UserGrowthChart: FC = () => {
   const paddingX = 25
   const paddingY = 20
 
-  const maxVal = 10000
+  const peakVal = Math.max(
+    10,
+    ...userGrowth.map((d) => Math.max(d.patients || 0, d.doctors || 0, d.hospitalAdmins || 0))
+  )
+  const maxVal = Math.max(20, Math.ceil(peakVal * 1.15))
 
   const getPoints = (key: 'patients' | 'doctors' | 'hospitalAdmins') => {
     return userGrowth.map((d, i) => {
@@ -42,8 +46,8 @@ export const UserGrowthChart: FC = () => {
   const doctorPath = toSvgPath(doctorPoints)
   const adminPath = toSvgPath(adminPoints)
 
-  const activeData = userGrowth[hoveredIdx] || userGrowth[7]
-  const activePatientPt = patientPoints[hoveredIdx] || patientPoints[7]
+  const activeData = userGrowth[hoveredIdx] || userGrowth[userGrowth.length - 1] || userGrowth[0]
+  const activePatientPt = patientPoints[hoveredIdx] || patientPoints[patientPoints.length - 1] || patientPoints[0]
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs flex flex-col justify-between">

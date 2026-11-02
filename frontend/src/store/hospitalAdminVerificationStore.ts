@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { superAdminService } from '@/services/superAdminService'
+import { useSuperAdminStore } from '@/store/superAdminStore'
 import type {
   HospitalAdminVerificationRecord,
   HospitalAdminVerificationStats,
@@ -220,6 +221,7 @@ export const useHospitalAdminVerificationStore = create<HospitalAdminVerificatio
 
         // Refresh stats in background
         get().fetchStats()
+        useSuperAdminStore.getState().fetchDashboard()
         return true
       } catch (err: any) {
         console.error('Approve hospital admin error:', err)
@@ -289,6 +291,7 @@ export const useHospitalAdminVerificationStore = create<HospitalAdminVerificatio
         })
 
         get().fetchStats()
+        useSuperAdminStore.getState().fetchDashboard()
         return true
       } catch (err: any) {
         console.error('Reject hospital admin error:', err)

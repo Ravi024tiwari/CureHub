@@ -43,6 +43,17 @@ export const RecentAppointmentsTable: FC = () => {
       </div>
 
       {/* Appointment Rows */}
+      {recentAppointments.length === 0 ? (
+        <div className="py-8 text-center flex flex-col items-center justify-center">
+          <div className="size-11 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center mb-2 shadow-2xs border border-slate-100">
+            <Calendar className="size-5 stroke-[2]" />
+          </div>
+          <p className="text-xs font-bold text-slate-700">No Consultations Recorded Yet</p>
+          <p className="text-[11px] text-slate-400 max-w-[220px] mt-0.5">
+            Recent patient appointments across OPDs will stream in real time.
+          </p>
+        </div>
+      ) : (
       <div className="space-y-2.5 overflow-x-auto">
         {recentAppointments.map((row) => (
           <div
@@ -100,6 +111,7 @@ export const RecentAppointmentsTable: FC = () => {
           </div>
         ))}
       </div>
+      )}
     </div>
   )
 }
