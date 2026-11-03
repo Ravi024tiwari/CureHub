@@ -1115,7 +1115,39 @@ export const getHospitalAdminPortalDashboard = asyncHandler(async (req: Request,
     throw new ApiError(401, "Authentication required");
   }
 
-  const { hospitalId } = req.query;
+  const { hospitalId, startDate, endDate } = req.query;
+
+  // Dynamic Date Range Parsing & UTC Normalization
+  let filterStartDate: Date;
+  let filterEndDate: Date;
+  let startDateStr: string;
+  let endDateStr: string;
+
+  if (startDate && endDate && typeof startDate === "string" && typeof endDate === "string") {
+    startDateStr = startDate.trim();
+    endDateStr = endDate.trim();
+    filterStartDate = new Date(`${startDateStr}T00:00:00.000Z`);
+    filterEndDate = new Date(`${endDateStr}T23:59:59.999Z`);
+    if (isNaN(filterStartDate.getTime()) || isNaN(filterEndDate.getTime()) || filterEndDate < filterStartDate) {
+      filterEndDate = new Date();
+      filterStartDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      startDateStr = filterStartDate.toISOString().split("T")[0];
+      endDateStr = filterEndDate.toISOString().split("T")[0];
+    }
+  } else {
+    // Default fallback: Last 30 Days
+    filterEndDate = new Date();
+    filterStartDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    startDateStr = filterStartDate.toISOString().split("T")[0];
+    endDateStr = filterEndDate.toISOString().split("T")[0];
+  }
+
+  // Calculate previous equivalent period for dynamic percentage comparison
+  const periodDurationMs = Math.max(24 * 60 * 60 * 1000, filterEndDate.getTime() - filterStartDate.getTime());
+  const prevPeriodEndDate = new Date(filterStartDate.getTime() - 1000);
+  const prevPeriodStartDate = new Date(prevPeriodEndDate.getTime() - periodDurationMs);
+  const prevStartDateStr = prevPeriodStartDate.toISOString().split("T")[0];
+  const prevEndDateStr = prevPeriodEndDate.toISOString().split("T")[0];
 
   // 1. Fetch all hospitals managed by this admin
   const adminHospitals = await Hospital.find({
@@ -1189,20 +1221,16 @@ export const getHospitalAdminPortalDashboard = asyncHandler(async (req: Request,
     }
   }
 
-  // Time boundaries
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const startOf30DaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const thirtyDaysAgoDateStr = startOf30DaysAgo.toISOString().split("T")[0];
-
-  // 3. Parallel Database Aggregations for Maximum Performance
+  // 3. Parallel Database Aggregations for Maximum Performance (Filtered by Dynamic Date Range)
   const [
     approvedDoctorsCount,
     pendingJoinRequestsCount,
     appointmentStatusAgg,
     distinctPatients,
     totalRevenueAgg,
-    monthRevenueAgg,
+    prevPeriodAppointmentsCount,
+    prevPeriodRevenueAgg,
+    prevPeriodPatients,
     dailyAppointmentsAgg,
     hospitalAppointmentStatsAgg,
     hospitalRevenueStatsAgg,
@@ -1210,7 +1238,7 @@ export const getHospitalAdminPortalDashboard = asyncHandler(async (req: Request,
     recentAppointments,
     pendingDoctorRequests,
   ] = await Promise.all([
-    // Doctors Count
+    // Doctors Count (Current Active)
     DoctorProfile.countDocuments({
       hospitalId: { $in: targetHospitalIds },
       hospitalAffiliationStatus: "APPROVED",
@@ -1220,68 +1248,80 @@ export const getHospitalAdminPortalDashboard = asyncHandler(async (req: Request,
       status: JoinRequestStatus.PENDING,
     }),
 
-    // Appointment Status Grouping
+    // Appointment Status Grouping (Filtered by Date Range)
     Appointment.aggregate([
-      { $match: { hospitalId: { $in: targetHospitalIds } } },
+      {
+        $match: {
+          hospitalId: { $in: targetHospitalIds },
+          date: { $gte: startDateStr, $lte: endDateStr },
+        },
+      },
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]),
 
-    // Distinct Patients Count
+    // Distinct Patients Count in this Date Range
     Appointment.distinct("patientId", {
       hospitalId: { $in: targetHospitalIds },
+      date: { $gte: startDateStr, $lte: endDateStr },
     }),
 
-    // Revenue All Time
+    // Revenue in Selected Date Range
     Payment.aggregate([
       {
         $match: {
           hospitalId: { $in: targetHospitalIds },
           status: PaymentStatus.COMPLETED,
+          createdAt: { $gte: filterStartDate, $lte: filterEndDate },
         },
       },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]),
 
-    // Revenue Current Month
+    // Previous Period Comparisons for Dynamic % Growth Calculation
+    Appointment.countDocuments({
+      hospitalId: { $in: targetHospitalIds },
+      date: { $gte: prevStartDateStr, $lte: prevEndDateStr },
+    }),
     Payment.aggregate([
       {
         $match: {
           hospitalId: { $in: targetHospitalIds },
           status: PaymentStatus.COMPLETED,
-          createdAt: { $gte: startOfMonth },
+          createdAt: { $gte: prevPeriodStartDate, $lte: prevPeriodEndDate },
         },
       },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]),
+    Appointment.distinct("patientId", {
+      hospitalId: { $in: targetHospitalIds },
+      date: { $gte: prevStartDateStr, $lte: prevEndDateStr },
+    }),
 
-    // Daily Timeline (Last 30 Days) - Aggregated by consultation date (or fallback to createdAt)
+    // Daily Timeline within selected Date Range
     Appointment.aggregate([
       {
         $match: {
           hospitalId: { $in: targetHospitalIds },
-          $or: [
-            { date: { $gte: thirtyDaysAgoDateStr } },
-            { createdAt: { $gte: startOf30DaysAgo } },
-          ],
+          date: { $gte: startDateStr, $lte: endDateStr },
         },
       },
       {
         $group: {
-          _id: {
-            $ifNull: [
-              "$date",
-              { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-            ],
-          },
+          _id: "$date",
           count: { $sum: 1 },
         },
       },
       { $sort: { _id: 1 } },
     ]),
 
-    // Cross-Hospital Appointments & Patients
+    // Cross-Hospital Appointments & Patients within Date Range
     Appointment.aggregate([
-      { $match: { hospitalId: { $in: targetHospitalIds } } },
+      {
+        $match: {
+          hospitalId: { $in: targetHospitalIds },
+          date: { $gte: startDateStr, $lte: endDateStr },
+        },
+      },
       {
         $group: {
           _id: "$hospitalId",
@@ -1291,12 +1331,13 @@ export const getHospitalAdminPortalDashboard = asyncHandler(async (req: Request,
       },
     ]),
 
-    // Cross-Hospital Revenue
+    // Cross-Hospital Revenue within Date Range
     Payment.aggregate([
       {
         $match: {
           hospitalId: { $in: targetHospitalIds },
           status: PaymentStatus.COMPLETED,
+          createdAt: { $gte: filterStartDate, $lte: filterEndDate },
         },
       },
       {
@@ -1390,15 +1431,24 @@ export const getHospitalAdminPortalDashboard = asyncHandler(async (req: Request,
     total: totalAppointments,
   };
 
-  // 5. Compute Continuous 30-Day Appointments Timeline
+  // 5. Compute Continuous Daily Appointments Timeline for the Selected Date Range
   const dailyMap = new Map<string, number>();
   dailyAppointmentsAgg.forEach((d: any) => dailyMap.set(d._id, d.count));
 
   const appointmentsTrend = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-    const dateKey = d.toISOString().split("T")[0];
-    const dayLabel = `${d.getDate()} ${d.toLocaleString("en-US", { month: "short" })}`;
+  const startRange = new Date(startDateStr);
+  const endRange = new Date(endDateStr);
+  const dayDifference = Math.min(
+    180,
+    Math.max(1, Math.round((endRange.getTime() - startRange.getTime()) / (24 * 60 * 60 * 1000)))
+  ) + 1;
+
+  for (let i = 0; i < dayDifference; i++) {
+    const curDate = new Date(startRange.getTime() + i * 24 * 60 * 60 * 1000);
+    const dateKey = curDate.toISOString().split("T")[0];
+    if (dateKey > endDateStr) break;
+
+    const dayLabel = `${curDate.getDate()} ${curDate.toLocaleString("en-US", { month: "short" })}`;
     const count = dailyMap.get(dateKey) || 0;
     appointmentsTrend.push({
       date: dateKey,
@@ -1507,20 +1557,41 @@ export const getHospitalAdminPortalDashboard = asyncHandler(async (req: Request,
           state: h.address?.state || "Chhattisgarh",
           active: h.isActive !== false,
         })),
-        kpis: {
-          totalHospitals: totalHospitalsCount,
-          totalDoctors: approvedDoctorsCount,
-          totalAppointments,
-          activePatients: distinctPatients.length,
-          pendingJoinRequests: pendingJoinRequestsCount,
-          totalRevenue: totalGrossRevenue,
-          hospitalsTrend: "+1 from last month",
-          doctorsTrend: "+6 from last month",
-          appointmentsTrend: "+12% from last month",
-          patientsTrend: "+18% from last month",
-          requestsTrend: "-5 from last week",
-          revenueTrend: "+22% from last month",
-        },
+        // Helper for dynamic percentage comparison
+        ...(() => {
+          const calcTrend = (current: number, previous: number) => {
+            if (previous === 0) {
+              return current > 0 ? "+100% vs prev period" : "0% vs prev period";
+            }
+            const pct = Math.round(((current - previous) / previous) * 100);
+            return `${pct >= 0 ? "+" : ""}${pct}% vs prev period`;
+          };
+
+          const prevRevenue = prevPeriodRevenueAgg[0]?.total || 0;
+
+          return {
+            dateRange: {
+              startDate: startDateStr,
+              endDate: endDateStr,
+              prevStartDate: prevStartDateStr,
+              prevEndDate: prevEndDateStr,
+            },
+            kpis: {
+              totalHospitals: totalHospitalsCount,
+              totalDoctors: approvedDoctorsCount,
+              totalAppointments,
+              activePatients: distinctPatients.length,
+              pendingJoinRequests: pendingJoinRequestsCount,
+              totalRevenue: totalGrossRevenue,
+              hospitalsTrend: `${totalHospitalsCount} managed`,
+              doctorsTrend: `${approvedDoctorsCount} affiliated`,
+              appointmentsTrend: calcTrend(totalAppointments, prevPeriodAppointmentsCount),
+              patientsTrend: calcTrend(distinctPatients.length, prevPeriodPatients.length),
+              requestsTrend: `${pendingJoinRequestsCount} pending`,
+              revenueTrend: calcTrend(totalGrossRevenue, prevRevenue),
+            },
+          };
+        })(),
         statusBreakdown,
         appointmentsTrend,
         topHospitals,

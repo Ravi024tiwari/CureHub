@@ -15,11 +15,16 @@ import type {
 } from '@/types/hospitalAdmin'
 
 export const hospitalAdminService = {
-  // Fetch executive dashboard analytics
-  getDashboard: async (year?: number, hospitalId?: string): Promise<HospitalAdminDashboardData> => {
+  // Fetch executive dashboard analytics with dynamic date range filtering
+  getDashboard: async (
+    hospitalId?: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<HospitalAdminDashboardData> => {
     const params = new URLSearchParams()
-    if (year) params.append('year', year.toString())
     if (hospitalId && hospitalId !== 'all') params.append('hospitalId', hospitalId)
+    if (startDate) params.append('startDate', startDate)
+    if (endDate) params.append('endDate', endDate)
 
     const response = await apiClient.get<{ data: HospitalAdminDashboardData }>(
       `/hospital-admin/dashboard?${params.toString()}`

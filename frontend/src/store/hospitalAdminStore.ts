@@ -60,6 +60,111 @@ const INITIAL_DEPARTMENT_STATS: DepartmentAppointmentStat[] = [];
 const INITIAL_ACTIVITIES: AdminActivityItem[] = [];
 const INITIAL_PENDING_REQUESTS: DoctorJoinRequestItem[] = [];
 
+export type DateRangePreset =
+  | 'today'
+  | 'last_7_days'
+  | 'last_30_days'
+  | 'this_month'
+  | 'last_month'
+  | 'this_quarter'
+  | 'this_year'
+  | 'custom';
+
+export interface DateRangeFilter {
+  preset: DateRangePreset;
+  startDate: string;
+  endDate: string;
+  label: string;
+}
+
+export const calculateDateRange = (
+  preset: DateRangePreset,
+  customStart?: string,
+  customEnd?: string
+): DateRangeFilter => {
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+
+  switch (preset) {
+    case 'today':
+      return { preset, startDate: todayStr, endDate: todayStr, label: 'Today' };
+
+    case 'last_7_days': {
+      const d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      return { preset, startDate: d.toISOString().split('T')[0], endDate: todayStr, label: 'Last 7 Days' };
+    }
+
+    case 'last_30_days': {
+      const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      return { preset, startDate: d.toISOString().split('T')[0], endDate: todayStr, label: 'Last 30 Days' };
+    }
+
+    case 'this_month': {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const monthName = now.toLocaleString('en-US', { month: 'short' });
+      return {
+        preset,
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+        label: `${monthName} ${now.getFullYear()}`,
+      };
+    }
+
+    case 'last_month': {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0);
+      const monthName = start.toLocaleString('en-US', { month: 'short' });
+      return {
+        preset,
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+        label: `${monthName} ${start.getFullYear()}`,
+      };
+    }
+
+    case 'this_quarter': {
+      const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
+      const startMonth = (currentQuarter - 1) * 3;
+      const start = new Date(now.getFullYear(), startMonth, 1);
+      const end = new Date(now.getFullYear(), startMonth + 3, 0);
+      return {
+        preset,
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+        label: `Q${currentQuarter} ${now.getFullYear()}`,
+      };
+    }
+
+    case 'this_year': {
+      const start = new Date(now.getFullYear(), 0, 1);
+      const end = new Date(now.getFullYear(), 11, 31);
+      return {
+        preset,
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+        label: `Year ${now.getFullYear()}`,
+      };
+    }
+
+    case 'custom':
+      if (customStart && customEnd) {
+        return {
+          preset,
+          startDate: customStart,
+          endDate: customEnd,
+          label: `${customStart} – ${customEnd}`,
+        };
+      }
+      return { preset: 'last_30_days', startDate: todayStr, endDate: todayStr, label: 'Last 30 Days' };
+
+    default:
+      return { preset: 'last_30_days', startDate: todayStr, endDate: todayStr, label: 'Last 30 Days' };
+  }
+};
+
+const INITIAL_DATE_FILTER = calculateDateRange('last_30_days');
+
 interface HospitalAdminState {
   isLoading: boolean
   error: string | null
@@ -67,6 +172,7 @@ interface HospitalAdminState {
   // Filters & Selected State
   selectedHospitalId: string // 'all' | hospitalId
   selectedDateRange: string // 'Oct 2026'
+  dateFilter: DateRangeFilter
   appointmentTimeframe: 'Last 30 Days' | 'Last 7 Days' | 'This Year'
   searchQuery: string
 
@@ -89,6 +195,7 @@ interface HospitalAdminState {
   fetchDashboard: () => Promise<void>
   setSelectedHospitalId: (id: string) => void
   setSelectedDateRange: (range: string) => void
+  setDateFilter: (preset: DateRangePreset, customStart?: string, customEnd?: string) => Promise<void>
   setAppointmentTimeframe: (tf: 'Last 30 Days' | 'Last 7 Days' | 'This Year') => void
   setSearchQuery: (query: string) => void
   setIsSidebarCollapsed: (collapsed: boolean) => void
@@ -111,7 +218,8 @@ export const useHospitalAdminStore = create<HospitalAdminState>((set, get) => ({
   error: null,
 
   selectedHospitalId: 'all',
-  selectedDateRange: 'Oct 2026',
+  selectedDateRange: INITIAL_DATE_FILTER.label,
+  dateFilter: INITIAL_DATE_FILTER,
   appointmentTimeframe: 'Last 30 Days',
   searchQuery: '',
 
@@ -161,16 +269,23 @@ export const useHospitalAdminStore = create<HospitalAdminState>((set, get) => ({
   },
 
   setSelectedDateRange: (range) => set({ selectedDateRange: range }),
+  setDateFilter: async (preset, customStart, customEnd) => {
+    const filter = calculateDateRange(preset, customStart, customEnd)
+    set({ dateFilter: filter, selectedDateRange: filter.label })
+    await get().fetchDashboard()
+  },
   setAppointmentTimeframe: (tf) => set({ appointmentTimeframe: tf }),
   setSearchQuery: (query) => set({ searchQuery: query }),
 
   fetchDashboard: async () => {
     set({ isLoading: true, error: null })
     try {
-      // 1. Fetch live metrics from production dashboard controller
+      const { selectedHospitalId, dateFilter } = get()
+      // 1. Fetch live metrics from production dashboard controller with dynamic date range
       const liveDash = (await hospitalAdminService.getDashboard(
-        2026,
-        get().selectedHospitalId
+        selectedHospitalId,
+        dateFilter.startDate,
+        dateFilter.endDate
       )) as any
 
       // 2. Hydrate Executive KPI Summary from live DB

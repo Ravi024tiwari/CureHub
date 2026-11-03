@@ -10,5 +10,5 @@ export * from './DepartmentDistributionCard'
 export * from './PendingJoinRequestsCard'
 export * from './RecentActivityCard'
 export * from './DoctorApplicationModal'
+export * from './DateRangeFilter'
 export * from './appointments'
-

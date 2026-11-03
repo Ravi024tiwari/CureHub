@@ -1,6 +1,6 @@
 import { useEffect, useState, type FC } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, ChevronDown, CheckCircle2, X, RefreshCw } from 'lucide-react'
+import { CheckCircle2, X, RefreshCw } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useHospitalAdminStore } from '@/store/hospitalAdminStore'
 
@@ -14,19 +14,17 @@ import { DepartmentDistributionCard } from '@/components/hospital-admin/Departme
 import { RecentActivityCard } from '@/components/hospital-admin/RecentActivityCard'
 import { PendingJoinRequestsCard } from '@/components/hospital-admin/PendingJoinRequestsCard'
 import { DoctorApplicationModal } from '@/components/hospital-admin/DoctorApplicationModal'
+import { DateRangeFilter } from '@/components/hospital-admin/DateRangeFilter'
 
 export const HospitalAdminDashboardPage: FC = () => {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const {
     fetchDashboard,
-    selectedDateRange,
-    setSelectedDateRange,
     actionSuccessMessage,
     clearActionSuccessMessage,
   } = useHospitalAdminStore()
 
-  const [isDateMenuOpen, setIsDateMenuOpen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const handleRefresh = async () => {
@@ -46,7 +44,7 @@ export const HospitalAdminDashboardPage: FC = () => {
     fetchDashboard()
   }, [user, fetchDashboard, navigate])
 
-  const dateOptions = ['Oct 2026', 'Sep 2026', 'Aug 2026', 'Q3 2026', 'Year 2026']
+
 
   // Auto-dismiss notification after 4 seconds
   useEffect(() => {
@@ -78,71 +76,39 @@ export const HospitalAdminDashboardPage: FC = () => {
         )}
 
         {/* Welcome Hero Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/90 text-[11px] font-bold shadow-2xs">
                 <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Live Operations</span>
               </span>
               <span className="text-xs text-slate-400 font-medium hidden sm:inline">• Real-time Feed</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
               Hospital Operations Overview
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-              Real-time monitoring across appointments, departmental occupancy, and staff
-              affiliations.
+              Real-time monitoring across appointments, departmental occupancy, and staff affiliations.
             </p>
           </div>
 
           {/* Quick Date Range Filter + Refresh Button */}
-          <div className="flex items-center gap-2 self-start md:self-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end shrink-0 pt-1 sm:pt-0">
             {/* Refresh Data Button */}
             <button
               type="button"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-xl text-xs sm:text-sm font-bold text-slate-700 shadow-2xs cursor-pointer transition-all disabled:opacity-60"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-xl text-xs sm:text-sm font-bold text-slate-700 shadow-2xs cursor-pointer transition-all disabled:opacity-60 active:scale-95 shrink-0"
               title="Refresh Operations Data"
             >
               <RefreshCw className={`size-3.5 text-blue-600 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Refresh</span>
+              <span className="inline">Refresh</span>
             </button>
 
-            {/* Quick Date Range Filter Dropdown */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsDateMenuOpen((prev) => !prev)}
-                className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-xl text-xs sm:text-sm font-bold text-slate-700 shadow-2xs cursor-pointer transition-all"
-              >
-                <Calendar className="size-4 text-blue-600" />
-                <span>{selectedDateRange}</span>
-                <ChevronDown className="size-3.5 text-slate-400" />
-              </button>
-
-              {isDateMenuOpen && (
-                <div className="absolute right-0 mt-2 w-40 bg-white border border-slate-200/90 rounded-2xl shadow-xl p-1.5 z-20 animate-in fade-in zoom-in-95 duration-150">
-                  {dateOptions.map((opt) => (
-                    <button
-                      key={opt}
-                      onClick={() => {
-                        setSelectedDateRange(opt)
-                        setIsDateMenuOpen(false)
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                        selectedDateRange === opt
-                          ? 'bg-blue-50 text-blue-600'
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Executive Dynamic Date Range Filter */}
+            <DateRangeFilter />
           </div>
         </div>
 
