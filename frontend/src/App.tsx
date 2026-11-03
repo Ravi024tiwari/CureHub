@@ -13,6 +13,8 @@ import {
   FindHospitalsPage,
   PatientAppointmentsPage,
   PatientMedicalRecordsPage,
+  PatientArticlesPage,
+  ArticleDetailPage,
 } from '@/pages/patient'
 import { DashboardPage } from '@/pages/dashboard'
 import {
@@ -46,6 +48,7 @@ import {
   DoctorProfilePage,
   DoctorHospitalsPage,
   DoctorHospitalDetailPage,
+  DoctorArticlesPage,
 } from '@/pages/doctor'
 import { ToastContainer } from '@/components/common'
 import { useSocketSubscriber } from '@/hooks/useSocketSubscriber'
@@ -80,6 +83,10 @@ function App() {
         <Route path="/patient/records" element={<PatientMedicalRecordsPage />} />
         <Route path="/records" element={<PatientMedicalRecordsPage />} />
         <Route path="/patient/medical-records" element={<PatientMedicalRecordsPage />} />
+        <Route path="/patient/articles" element={<PatientArticlesPage />} />
+        <Route path="/patient/articles/:slug" element={<ArticleDetailPage />} />
+        <Route path="/articles" element={<Navigate to="/patient/articles" replace />} />
+        <Route path="/articles/:slug" element={<ArticleDetailPage />} />
 
         {/* Logged in Dashboard */}
         <Route path="/dashboard" element={<DashboardPage />} />
@@ -98,6 +105,7 @@ function App() {
         <Route path="/doctor/onboarding" element={<Navigate to="/doctor/verification" replace />} />
         <Route path="/doctor/complete-profile" element={<Navigate to="/doctor/verification" replace />} />
         <Route path="/doctor/profile/complete" element={<Navigate to="/doctor/verification" replace />} />
+        <Route path="/doctor/articles" element={<DoctorArticlesPage />} />
 
         {/* Dedicated Hospital Admin Routes */}
         <Route path="/hospital-admin/verification" element={<HospitalAdminVerificationPage />} />

@@ -11,6 +11,7 @@ import {
   HeartPulse,
   ExternalLink,
   Building2,
+  BookOpen,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -35,6 +36,7 @@ export const DoctorSidebar: FC<DoctorSidebarProps> = ({ onCloseMobile }) => {
     { label: 'Hospitals', icon: Building2, path: '/doctor/hospitals' },
     { label: 'My Schedule', icon: Clock, path: '/doctor/schedule' },
     { label: 'Leave Management', icon: CalendarOff, path: '/doctor/leaves' },
+    { label: 'Health Articles', icon: BookOpen, path: '/doctor/articles' },
     { label: 'My Profile', icon: UserCheck, path: '/doctor/profile' },
     { label: 'Settings', icon: Settings, path: '/doctor/settings' },
   ]

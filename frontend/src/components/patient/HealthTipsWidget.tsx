@@ -1,16 +1,27 @@
 import { useState, type FC } from 'react'
+import { useNavigate } from 'react-router-dom'
 import hydrationImage from '@/assets/hydration-tip.jpg'
-import { Sparkles, Calendar, Plus, Minus, X, Droplets } from 'lucide-react'
+import { Sparkles, Calendar, Plus, Minus, X, Droplets, BookOpen, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const HealthTipsWidget: FC = () => {
+  const navigate = useNavigate()
   const [isOpenModal, setIsOpenModal] = useState(false)
   const [waterGlasses, setWaterGlasses] = useState(5)
 
   return (
     <>
       <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-3">
-        <h3 className="text-sm font-bold text-slate-900 tracking-tight">Health Tips</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-900 tracking-tight">Health Tips & Articles</h3>
+          <button
+            type="button"
+            onClick={() => navigate('/patient/articles')}
+            className="text-[11px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+          >
+            View Library
+          </button>
+        </div>
 
         <div
           onClick={() => setIsOpenModal(true)}
@@ -35,6 +46,19 @@ export const HealthTipsWidget: FC = () => {
             />
           </div>
         </div>
+
+        {/* Action Button: Explore Verified Articles */}
+        <button
+          type="button"
+          onClick={() => navigate('/patient/articles')}
+          className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-bold text-xs border border-slate-200/80 flex items-center justify-between transition-colors cursor-pointer"
+        >
+          <span className="flex items-center gap-1.5">
+            <BookOpen className="size-3.5 text-blue-600" />
+            <span>Explore Doctor Articles</span>
+          </span>
+          <ArrowRight className="size-3.5" />
+        </button>
       </div>
 
       {/* Health Tip Interactive Modal */}
@@ -48,7 +72,7 @@ export const HealthTipsWidget: FC = () => {
               </div>
               <button
                 onClick={() => setIsOpenModal(false)}
-                className="size-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                className="size-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X className="size-5" />
               </button>
@@ -87,7 +111,7 @@ export const HealthTipsWidget: FC = () => {
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setWaterGlasses(Math.max(0, waterGlasses - 1))}
-                  className="size-7 rounded-lg bg-white border border-blue-200 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors"
+                  className="size-7 rounded-lg bg-white border border-blue-200 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer"
                 >
                   <Minus className="size-3.5" />
                 </button>
@@ -96,19 +120,31 @@ export const HealthTipsWidget: FC = () => {
                 </span>
                 <button
                   onClick={() => setWaterGlasses(waterGlasses + 1)}
-                  className="size-7 rounded-lg bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors"
+                  className="size-7 rounded-lg bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors cursor-pointer"
                 >
                   <Plus className="size-3.5" />
                 </button>
               </div>
             </div>
 
-            <Button
-              onClick={() => setIsOpenModal(false)}
-              className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs"
-            >
-              Done Reading
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => {
+                  setIsOpenModal(false)
+                  navigate('/patient/articles')
+                }}
+                variant="outline"
+                className="flex-1 rounded-xl text-xs font-bold border-blue-200 text-blue-700 hover:bg-blue-50 cursor-pointer"
+              >
+                Read Full Articles
+              </Button>
+              <Button
+                onClick={() => setIsOpenModal(false)}
+                className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs cursor-pointer"
+              >
+                Done Reading
+              </Button>
+            </div>
           </div>
         </div>
       )}

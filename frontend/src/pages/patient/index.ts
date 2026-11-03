@@ -4,4 +4,5 @@ export * from './FindHospitalsPage'
 export * from './PatientAppointmentsPage'
 export * from './PatientMedicalRecordsPage'
 export * from './DoctorDetailPage'
-
+export * from './PatientArticlesPage'
+export * from './ArticleDetailPage'

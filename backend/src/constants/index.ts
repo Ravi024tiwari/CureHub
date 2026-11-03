@@ -84,3 +84,23 @@ export enum NotificationPriority {
   NORMAL = "NORMAL",
   LOW = "LOW",
 }
+
+export enum ArticleStatus {
+  DRAFT = "DRAFT",
+  PUBLISHED = "PUBLISHED",
+  ARCHIVED = "ARCHIVED",
+}
+
+export enum ArticleCategory {
+  GENERAL_HEALTH = "General Health",
+  CARDIOLOGY = "Cardiology",
+  DERMATOLOGY = "Dermatology",
+  NUTRITION_DIET = "Nutrition & Diet",
+  MENTAL_HEALTH = "Mental Health",
+  PEDIATRICS = "Pediatrics",
+  ORTHOPEDICS = "Orthopedics",
+  NEUROLOGY = "Neurology",
+  DIABETES_ENDOCRINOLOGY = "Diabetes & Endocrinology",
+  WOMENS_HEALTH = "Women's Health",
+  FITNESS_LIFESTYLE = "Fitness & Lifestyle",
+}

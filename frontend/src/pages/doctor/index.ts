@@ -6,4 +6,4 @@ export { DoctorAppointmentsPage } from './DoctorAppointmentsPage'
 export { DoctorProfilePage } from './DoctorProfilePage'
 export { DoctorHospitalsPage } from './DoctorHospitalsPage'
 export { DoctorHospitalDetailPage } from './DoctorHospitalDetailPage'
-
+export { DoctorArticlesPage } from './DoctorArticlesPage'

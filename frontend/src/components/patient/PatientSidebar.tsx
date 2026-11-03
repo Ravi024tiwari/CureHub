@@ -1,6 +1,5 @@
 import { type FC } from 'react'
 import {
-  Activity,
   Home,
   UserCheck,
   Building2,
@@ -51,7 +50,7 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
       path: '/patient/records',
       badge: totalReports > 0 ? String(totalReports) : undefined,
     },
-    { id: 'articles', label: 'Health Articles', icon: BookOpen },
+    { id: 'articles', label: 'Health Articles', icon: BookOpen, path: '/patient/articles' },
   ]
 
   const quickActionItems = [
@@ -88,30 +87,21 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
         isMobileDrawer ? 'w-72 p-5' : 'w-64 p-5'
       }`}
     >
-      {/* Brand Header */}
-      <div className="flex items-center justify-between pb-5 mb-2 border-b border-slate-100">
-        <div
-          className="flex items-center gap-2.5 cursor-pointer"
-          onClick={() => {
-            navigate('/patient/home')
-            if (onCloseDrawer) onCloseDrawer()
-          }}
-        >
-          <div className="size-9 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
-            <Activity className="size-5 stroke-[2.5]" />
-          </div>
-          <span className="text-xl font-extrabold tracking-tight text-slate-900">
-            Care<span className="text-blue-600">Plus</span>
-          </span>
-        </div>
+      {/* Sidebar Header with Close Tab */}
+      <div className="flex items-center justify-between pb-4 mb-2 border-b border-slate-100">
+        <span className="text-xs font-black uppercase tracking-wider text-slate-400">
+          Navigation
+        </span>
 
         {onCloseDrawer && (
           <button
+            type="button"
             onClick={onCloseDrawer}
-            className="size-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100/90 hover:bg-slate-200/90 transition-all cursor-pointer active:scale-95 border border-slate-200/60 shadow-2xs"
             title="Close sidebar"
           >
-            <X className="size-5" />
+            <X className="size-4 text-slate-500" />
+            <span>Close</span>
           </button>
         )}
       </div>
