@@ -5,7 +5,7 @@ import {
   DoctorRegisterPage,
   HospitalAdminRegisterPage,
 } from '@/pages/auth'
-
+import { LandingPage } from '@/pages/landing'
 import {
   PatientHomePage,
   FindDoctorsPage,
@@ -56,8 +56,10 @@ function App() {
     <BrowserRouter>
       <ToastContainer />
       <Routes>
-        {/* Default route redirects to Login */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* Public Modern Landing Page */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/landing" element={<LandingPage />} />
+
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signin" element={<Navigate to="/login" replace />} />
 
@@ -132,7 +134,7 @@ function App() {
         <Route path="/super-admin" element={<Navigate to="/super-admin/dashboard" replace />} />
 
         {/* Catch-all fallback */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )
