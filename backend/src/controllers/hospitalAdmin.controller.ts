@@ -14,6 +14,7 @@ import { Review } from "../models/Review.model.js";
 import { TimeSlot } from "../models/TimeSlot.model.js";
 import { PatientProfile } from "../models/PatientProfile.model.js";
 import { DoctorLeave } from "../models/DoctorLeave.model.js";
+import { Notification } from "../models/Notification.model.js";
 import {
   processAppointmentsForApprovedLeave,
   reopenSlotsForLeaveWindow,
@@ -31,6 +32,8 @@ import {
   ConsultationType,
   DoctorLeaveStatus,
   DoctorLeaveType,
+  NotificationType,
+  NotificationPriority,
 } from "../constants/index.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
@@ -2737,8 +2740,29 @@ export const updateAdminDoctorLeaveStatus = asyncHandler(async (req: Request, re
       leave.endDateTime
     );
 
-    // Real-time Socket Event: Notify doctor of rejection
+    // Real-time Socket Event & Persistent Notification: Notify doctor of rejection
     if (docProfile && docProfile.userId) {
+      try {
+        const doctorNotification = await Notification.create({
+          userId: docProfile.userId,
+          title: "Leave Request Declined",
+          message: `Your leave request for ${leave.startDateTime.toISOString().split("T")[0]} to ${leave.endDateTime.toISOString().split("T")[0]} was rejected by ${hospital?.name || "hospital administration"}. Reason: ${leave.rejectionReason}`,
+          type: NotificationType.LEAVE_STATUS,
+          priority: NotificationPriority.HIGH,
+          data: {
+            leaveId: leave._id.toString(),
+            status: "REJECTED",
+            rejectionReason: leave.rejectionReason,
+            hospitalName: hospital?.name || "Hospital Administration",
+            startDateTime: leave.startDateTime,
+            endDateTime: leave.endDateTime,
+          },
+        });
+        emitToUser(docProfile.userId.toString(), "notification:new", doctorNotification);
+      } catch (notifErr) {
+        console.error("Failed to create doctor leave rejection notification:", notifErr);
+      }
+
       emitToUser(docProfile.userId.toString(), "doctor-leave:status-updated", {
         leaveId: leave._id.toString(),
         status: "REJECTED",
@@ -2784,8 +2808,29 @@ export const updateAdminDoctorLeaveStatus = asyncHandler(async (req: Request, re
     .populate("hospitalId", "name slug address")
     .populate("approvedBy", "name email");
 
-  // Real-time Socket Event: Notify doctor of approval
+  // Real-time Socket Event & Persistent Notification: Notify doctor of approval
   if (docProfile && docProfile.userId) {
+    try {
+      const doctorNotification = await Notification.create({
+        userId: docProfile.userId,
+        title: "Leave Request Approved",
+        message: `Your leave request from ${leave.startDateTime.toISOString().split("T")[0]} to ${leave.endDateTime.toISOString().split("T")[0]} has been approved by ${hospital?.name || "hospital administration"}. ${affectedCount} appointment(s) placed into priority rescheduling.`,
+        type: NotificationType.LEAVE_STATUS,
+        priority: NotificationPriority.NORMAL,
+        data: {
+          leaveId: leave._id.toString(),
+          status: "APPROVED",
+          affectedAppointmentsCount: affectedCount,
+          hospitalName: hospital?.name || "Hospital Administration",
+          startDateTime: leave.startDateTime,
+          endDateTime: leave.endDateTime,
+        },
+      });
+      emitToUser(docProfile.userId.toString(), "notification:new", doctorNotification);
+    } catch (notifErr) {
+      console.error("Failed to create doctor leave approval notification:", notifErr);
+    }
+
     emitToUser(docProfile.userId.toString(), "doctor-leave:status-updated", {
       leaveId: leave._id.toString(),
       status: "APPROVED",
@@ -2803,11 +2848,46 @@ export const updateAdminDoctorLeaveStatus = asyncHandler(async (req: Request, re
     affectedAppointmentsCount: affectedCount,
   });
 
-  // Real-time Socket Event: Notify each affected patient about priority reschedule window
+  // Real-time Socket Event & Persistent DB Notification: Notify each affected patient
   const doctorName = (populatedLeave?.doctorId as any)?.userId?.name || "Dr. Specialist";
   for (const appt of affectedAppointments) {
     const patientUserId = appt.patientId?._id || appt.patientId?.userId || appt.patientId;
     if (patientUserId) {
+      const formattedDeadline = appt.rescheduleDeadline
+        ? new Date(appt.rescheduleDeadline).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "7 days";
+
+      try {
+        // 1. Create persistent MongoDB notification record for offline/online inbox
+        const patientNotification = await Notification.create({
+          userId: new mongoose.Types.ObjectId(patientUserId.toString()),
+          title: "Priority Reschedule Required",
+          message: `Dr. ${doctorName} is on approved hospital leave for your appointment on ${appt.date} at ${appt.startTime}. Please reschedule before ${formattedDeadline} at no additional cost.`,
+          type: NotificationType.APPOINTMENT_RESCHEDULE,
+          priority: NotificationPriority.HIGH,
+          data: {
+            appointmentId: appt._id.toString(),
+            appointmentNumber: appt.appointmentNumber,
+            doctorName,
+            doctorLeaveReason: leave.reason || "Doctor on approved leave",
+            rescheduleDeadline: appt.rescheduleDeadline,
+            date: appt.date,
+            time: appt.startTime,
+            actionUrl: "/patient/appointments",
+          },
+        });
+
+        // 2. Emit real-time persistent notification for Bell badge & dropdown
+        emitToUser(patientUserId.toString(), "notification:new", patientNotification);
+      } catch (notifErr) {
+        console.error("Failed to create persistent patient notification:", notifErr);
+      }
+
+      // 3. Emit real-time appointment status update event for toast & live appointment card mutation
       emitToUser(patientUserId.toString(), "appointment:reschedule-required", {
         appointmentId: appt._id.toString(),
         appointmentNumber: appt.appointmentNumber,

@@ -72,3 +72,15 @@ export enum DoctorLeaveType {
   PARTIAL_DAY = "PARTIAL_DAY",
   MULTI_DAY = "MULTI_DAY",
 }
+
+export enum NotificationType {
+  APPOINTMENT_RESCHEDULE = "APPOINTMENT_RESCHEDULE",
+  LEAVE_STATUS = "LEAVE_STATUS",
+  SYSTEM = "SYSTEM",
+}
+
+export enum NotificationPriority {
+  HIGH = "HIGH",
+  NORMAL = "NORMAL",
+  LOW = "LOW",
+}

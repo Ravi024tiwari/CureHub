@@ -6,6 +6,7 @@ import { useHospitalAdminLeavesStore } from '@/store/hospitalAdminLeavesStore'
 import { useDoctorStore } from '@/store/doctorStore'
 import { useAppointmentStore } from '@/store/appointmentStore'
 import { useSuperAdminStore } from '@/store/superAdminStore'
+import { useNotificationStore } from '@/store/notificationStore'
 import { toast } from '@/store/toastStore'
 import { UserRole } from '@/types/auth'
 
@@ -27,6 +28,9 @@ export const useSocketSubscriber = () => {
 
     // 1. Establish Handshake Connection with JWT Access Token
     const socket = socketService.connect(effectiveToken)
+
+    // Synchronize initial persistent notifications on authentication
+    useNotificationStore.getState().fetchNotifications()
 
     // 2. Event: Doctor Join Request Created (Hospital Admin receives)
     const handleJoinRequestCreated = (data: any) => {
@@ -223,6 +227,11 @@ export const useSocketSubscriber = () => {
       }
     }
 
+    // 12. Event: Incoming Persistent Notification (All authenticated roles)
+    const handleNewNotification = (data: any) => {
+      useNotificationStore.getState().addNotificationLocally(data)
+    }
+
     // Bind listeners
     socket.on('join-request:created', handleJoinRequestCreated)
     socket.on('join-request:status-updated', handleJoinRequestStatusUpdated)
@@ -235,6 +244,7 @@ export const useSocketSubscriber = () => {
     socket.on('doctor-leave:cancelled', handleDoctorLeaveCancelled)
     socket.on('appointment:reschedule-required', handleAppointmentRescheduleRequired)
     socket.on('appointment:rescheduled', handleAppointmentRescheduled)
+    socket.on('notification:new', handleNewNotification)
 
     // Cleanup on unmount or user logout
     return () => {
@@ -249,6 +259,7 @@ export const useSocketSubscriber = () => {
       socket.off('doctor-leave:cancelled', handleDoctorLeaveCancelled)
       socket.off('appointment:reschedule-required', handleAppointmentRescheduleRequired)
       socket.off('appointment:rescheduled', handleAppointmentRescheduled)
+      socket.off('notification:new', handleNewNotification)
     }
   }, [user, token, isAuthenticated, updateUserApproval])
 }
