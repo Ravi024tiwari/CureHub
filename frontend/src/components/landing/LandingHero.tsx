@@ -44,11 +44,11 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
   ]
 
   return (
-    <section className="relative pt-28 sm:pt-36 lg:pt-40 pb-20 sm:pb-28 overflow-hidden bg-gradient-to-b from-blue-50/70 via-slate-50/50 to-white">
+    <section className="relative pt-28 sm:pt-36 lg:pt-40 pb-20 sm:pb-28 overflow-hidden bg-gradient-to-b from-[#eef3ff]/70 via-slate-50/50 to-white">
       {/* Background Subtle Multi-Color Glow Blobs */}
-      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[1100px] h-[550px] bg-gradient-to-tr from-blue-400/15 via-indigo-400/10 to-sky-300/15 rounded-full blur-3xl -z-10 pointer-events-none" />
-      <div className="absolute top-48 -left-24 size-96 bg-blue-500/10 rounded-full blur-3xl -z-10 pointer-events-none" />
-      <div className="absolute top-64 -right-24 size-96 bg-sky-400/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[1100px] h-[550px] bg-gradient-to-tr from-[#637ff5]/15 via-[#7a94fd]/10 to-[#8ea5fe]/15 rounded-full blur-3xl -z-10 pointer-events-none" />
+      <div className="absolute top-48 -left-24 size-96 bg-[#637ff5]/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+      <div className="absolute top-64 -right-24 size-96 bg-[#7a94fd]/10 rounded-full blur-3xl -z-10 pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-10 items-center">
@@ -58,12 +58,12 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
               ───────────────────────────────────────────────────────────── */}
           <div className="lg:col-span-7 space-y-6 sm:space-y-8 text-center lg:text-left">
             {/* Live Pulsing Clinical Badge */}
-            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/95 border border-blue-200/90 text-blue-700 shadow-xs text-xs sm:text-sm font-extrabold">
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/95 border border-[#c8d7fd] text-[#5170f4] shadow-xs text-xs sm:text-sm font-extrabold">
               <span className="relative flex size-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                <span className="relative inline-flex rounded-full size-2.5 bg-blue-600" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7a94fd] opacity-75" />
+                <span className="relative inline-flex rounded-full size-2.5 bg-[#637ff5]" />
               </span>
-              <Sparkles className="size-4 text-blue-600" />
+              <Sparkles className="size-4 text-[#637ff5]" />
               <span>NHA & ABHA Verified Smart Healthcare Platform</span>
             </div>
 
@@ -71,7 +71,7 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
             <div className="space-y-3 sm:space-y-4">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-slate-900 tracking-tight leading-[1.08]">
                 Exceptional Medical Care,{' '}
-                <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-[#5170f4] via-[#637ff5] to-[#7a94fd] bg-clip-text text-transparent">
                   Instant Specialist Access.
                 </span>
               </h1>
@@ -83,7 +83,7 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
             {/* Industrial-Grade Interactive Search & Filter Card */}
             <form
               onSubmit={handleSearchSubmit}
-              className="p-3 sm:p-3.5 bg-white rounded-3xl border border-slate-200 shadow-xl shadow-blue-900/5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-2xl mx-auto lg:mx-0 transition-all hover:border-blue-300 hover:shadow-2xl hover:shadow-blue-600/10"
+              className="p-3 sm:p-3.5 bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-900/5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-2xl mx-auto lg:mx-0 transition-all hover:border-[#7a94fd] hover:shadow-2xl hover:shadow-[#637ff5]/15"
             >
               {/* Doctor / Specialty Search Input */}
               <div className="relative flex-1 flex items-center">
@@ -99,7 +99,7 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
 
               {/* City Selector */}
               <div className="relative shrink-0 flex items-center border-t sm:border-t-0 sm:border-l border-slate-200 pl-0 sm:pl-3.5 pt-2 sm:pt-0">
-                <MapPin className="size-4 text-blue-600 mr-2 shrink-0" />
+                <MapPin className="size-4 text-[#637ff5] mr-2 shrink-0" />
                 <select
                   value={selectedCity}
                   onChange={(e) => setSelectedCity(e.target.value)}
@@ -117,7 +117,7 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
               {/* Submit Search Button */}
               <button
                 type="submit"
-                className="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-sm shadow-lg shadow-blue-500/25 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 shrink-0"
+                className="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-[#5170f4] via-[#637ff5] to-[#7a94fd] hover:from-[#4361ee] hover:to-[#637ff5] text-white font-black text-sm shadow-lg shadow-[#637ff5]/25 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 shrink-0"
               >
                 <span>Find Care</span>
                 <ArrowRight className="size-4" />
@@ -134,9 +134,9 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
                     key={spec.name}
                     type="button"
                     onClick={() => navigate(`/patient/doctors?specialty=${spec.query}`)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 text-slate-700 border border-slate-200/90 font-bold transition-all cursor-pointer text-xs shadow-2xs group"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#eef3ff] hover:text-[#5170f4] hover:border-[#c8d7fd] text-slate-700 border border-slate-200/90 font-bold transition-all cursor-pointer text-xs shadow-2xs group"
                   >
-                    <Icon className="size-3.5 text-blue-500 group-hover:scale-110 transition-transform" />
+                    <Icon className="size-3.5 text-[#637ff5] group-hover:scale-110 transition-transform" />
                     <span>{spec.name}</span>
                   </button>
                 )
@@ -165,7 +165,7 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
           <div className="lg:col-span-5 relative flex flex-col items-center justify-center pb-8 sm:pb-10 lg:pb-8">
             
             {/* Main Consultation Photo Card */}
-            <div className="relative w-full max-w-md sm:max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl shadow-blue-900/15 border-4 border-white bg-gradient-to-tr from-blue-100 to-indigo-50">
+            <div className="relative w-full max-w-md sm:max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl shadow-[#637ff5]/15 border-4 border-white bg-gradient-to-tr from-[#eef3ff] to-indigo-50">
               <img
                 src={consultationImg}
                 alt="Doctor-Patient Clinical Consultation"
@@ -177,7 +177,7 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
             </div>
 
             {/* 1. Top-Right Floating Widget: Live OPD Queue Status (Clean, Isolated, Non-Overlapping) */}
-            <div className="absolute -top-4 -right-2 sm:-right-6 p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-blue-900/10 space-y-2 animate-float-slow z-20">
+            <div className="absolute -top-4 -right-2 sm:-right-6 p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-[#637ff5]/10 space-y-2 animate-float-slow z-20">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="relative flex size-2.5">
@@ -195,14 +195,14 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
                 <span className="text-xs text-slate-500 font-medium">• Current Turn</span>
               </div>
               <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-100 text-[11px] font-semibold text-slate-500">
-                <Clock className="size-3.5 text-blue-600 shrink-0" />
+                <Clock className="size-3.5 text-[#637ff5] shrink-0" />
                 <span>Est. Wait Time: &lt; 12 mins</span>
               </div>
             </div>
 
             {/* 2. Mid-Left Floating Widget: 500+ Verified Specialists Badge */}
-            <div className="hidden sm:flex absolute top-20 -left-6 lg:-left-8 p-3.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-blue-900/10 items-center gap-3 animate-float-reverse z-20">
-              <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner shrink-0">
+            <div className="hidden sm:flex absolute top-20 -left-6 lg:-left-8 p-3.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-[#637ff5]/10 items-center gap-3 animate-float-reverse z-20">
+              <div className="size-10 rounded-xl bg-[#eef3ff] text-[#5170f4] flex items-center justify-center shadow-inner shrink-0">
                 <ShieldCheck className="size-5 stroke-[2.2]" />
               </div>
               <div className="text-left">
@@ -212,9 +212,9 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
             </div>
 
             {/* 3. Bottom Anchored Doctor Booking Card */}
-            <div className="absolute -bottom-4 sm:-bottom-5 inset-x-3 sm:inset-x-6 p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-2xl shadow-blue-950/15 flex items-center justify-between gap-3 sm:gap-4 z-20">
+            <div className="absolute -bottom-4 sm:-bottom-5 inset-x-3 sm:inset-x-6 p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-2xl shadow-slate-950/15 flex items-center justify-between gap-3 sm:gap-4 z-20">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="relative size-11 sm:size-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black shadow-md shrink-0">
+                <div className="relative size-11 sm:size-12 rounded-2xl bg-[#637ff5] text-white flex items-center justify-center font-black shadow-md shrink-0">
                   <Stethoscope className="size-5 sm:size-6" />
                   <div className="absolute -top-1 -right-1 p-0.5 rounded-full bg-emerald-500 text-white">
                     <CheckCircle2 className="size-3" />
@@ -223,7 +223,7 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <h4 className="text-xs sm:text-sm font-black text-slate-900 truncate">Dr. Priya Sharma</h4>
-                    <ShieldCheck className="size-4 text-blue-600 fill-blue-100 shrink-0" />
+                    <ShieldCheck className="size-4 text-[#637ff5] fill-[#eef3ff] shrink-0" />
                   </div>
                   <p className="text-[11px] sm:text-xs font-semibold text-slate-500 truncate">
                     Chief Cardiologist • Apollo Hospital
@@ -238,7 +238,7 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
               <button
                 type="button"
                 onClick={onBookClick}
-                className="shrink-0 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-blue-600/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                className="shrink-0 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-[#5170f4] to-[#637ff5] hover:from-[#4361ee] hover:to-[#5170f4] text-white font-extrabold text-xs sm:text-sm shadow-md shadow-[#637ff5]/25 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
               >
                 <span>Book (₹800)</span>
                 <ArrowRight className="size-4" />

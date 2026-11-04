@@ -112,7 +112,8 @@ body {
   will-change: transform;
 }
 
-.animate-marquee:hover {
+.animate-marquee:hover,
+.animate-marquee:active {
   animation-play-state: paused;
 }
 
@@ -123,8 +124,18 @@ body {
   will-change: transform;
 }
 
-.animate-marquee-reverse:hover {
+.animate-marquee-reverse:hover,
+.animate-marquee-reverse:active {
   animation-play-state: paused;
+}
+
+@media (max-width: 640px) {
+  .animate-marquee {
+    animation-duration: 32s;
+  }
+  .animate-marquee-reverse {
+    animation-duration: 32s;
+  }
 }
 
 .animate-float-pill {

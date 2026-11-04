@@ -78,8 +78,8 @@ export const LandingHospitalSpotlight: FC<LandingHospitalSpotlightProps> = ({
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 border-b border-slate-100 pb-8">
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-blue-700 text-xs font-black">
-              <Building2 className="size-3.5 text-blue-600" />
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#eef3ff] border border-[#c8d7fd] text-[#5170f4] text-xs font-black">
+              <Building2 className="size-3.5 text-[#637ff5]" />
               <span>Accredited Hospital Network</span>
             </div>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
@@ -106,7 +106,7 @@ export const LandingHospitalSpotlight: FC<LandingHospitalSpotlightProps> = ({
             <div
               key={hosp.id}
               onClick={() => navigate('/patient/hospitals')}
-              className="bg-white rounded-3xl border border-slate-200/90 shadow-md shadow-blue-900/5 hover:border-blue-400 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between group cursor-pointer"
+              className="bg-white rounded-3xl border border-slate-200/90 shadow-md shadow-[#5170f4]/5 hover:border-[#c8d7fd] hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between group cursor-pointer"
             >
               <div>
                 {/* Hospital Photo with Badges */}
@@ -116,8 +116,8 @@ export const LandingHospitalSpotlight: FC<LandingHospitalSpotlightProps> = ({
                     alt={hosp.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-[10px] font-black text-blue-700 border border-white/80 shadow-xs flex items-center gap-1">
-                    <ShieldCheck className="size-3 text-blue-600" />
+                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-[10px] font-black text-[#5170f4] border border-white/80 shadow-xs flex items-center gap-1">
+                    <ShieldCheck className="size-3 text-[#637ff5]" />
                     <span>{hosp.accreditation}</span>
                   </div>
 
@@ -132,11 +132,11 @@ export const LandingHospitalSpotlight: FC<LandingHospitalSpotlightProps> = ({
                 {/* Details Body */}
                 <div className="p-5 space-y-3">
                   <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-                    <MapPin className="size-3.5 text-blue-600 shrink-0" />
+                    <MapPin className="size-3.5 text-[#637ff5] shrink-0" />
                     <span className="truncate">{hosp.city}</span>
                   </div>
 
-                  <h3 className="text-base font-black text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1">
+                  <h3 className="text-base font-black text-slate-900 group-hover:text-[#637ff5] transition-colors line-clamp-1">
                     {hosp.name}
                   </h3>
 
@@ -155,7 +155,7 @@ export const LandingHospitalSpotlight: FC<LandingHospitalSpotlightProps> = ({
               </div>
 
               {/* Card Footer */}
-              <div className="p-3 px-5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600 group-hover:text-blue-700">
+              <div className="p-3 px-5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#637ff5] group-hover:text-[#5170f4]">
                 <span>View Doctors & Schedule</span>
                 <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
               </div>

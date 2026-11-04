@@ -52,11 +52,10 @@ export const LandingPage: FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fbff] text-slate-900 selection:bg-blue-600 selection:text-white flex flex-col antialiased">
+    <div className="min-h-screen bg-[#f8fbff] text-slate-900 selection:bg-[#637ff5] selection:text-white flex flex-col antialiased">
       {/* 1. Sticky Glassmorphism Header */}
       <LandingNavbar
         onOpenEmergencyModal={() => setIsEmergencyModalOpen(true)}
-        onBookConsultationClick={() => handleOpenBooking(defaultDoctor)}
       />
 
       {/* Main Landing Page Content */}

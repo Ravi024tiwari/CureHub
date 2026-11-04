@@ -47,8 +47,8 @@ export const LandingTestimonials: FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-14">
         {/* Header */}
         <div className="text-center space-y-3 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-black">
-            <Sparkles className="size-3.5 text-blue-600" />
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#eef3ff] border border-[#c8d7fd] text-[#5170f4] text-xs font-black">
+            <Sparkles className="size-3.5 text-[#637ff5]" />
             <span>Trusted By 100,000+ Families</span>
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
@@ -64,7 +64,7 @@ export const LandingTestimonials: FC = () => {
           {testimonials.map((item, idx) => (
             <div
               key={idx}
-              className="bg-slate-50/70 hover:bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 hover:border-blue-300 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
+              className="bg-slate-50/70 hover:bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 hover:border-[#c8d7fd] shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
             >
               <div className="space-y-4">
                 {/* Rating & Quote */}
@@ -74,7 +74,7 @@ export const LandingTestimonials: FC = () => {
                       <Star key={i} className="size-4 fill-amber-400 text-amber-400" />
                     ))}
                   </div>
-                  <Quote className="size-6 text-blue-200 group-hover:text-blue-400 transition-colors" />
+                  <Quote className="size-6 text-[#c8d7fd] group-hover:text-[#637ff5] transition-colors" />
                 </div>
 
                 <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed italic">
@@ -84,13 +84,13 @@ export const LandingTestimonials: FC = () => {
 
               {/* Patient Attribution */}
               <div className="pt-5 mt-4 border-t border-slate-200/60 flex items-center gap-3">
-                <div className="size-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
+                <div className="size-10 rounded-full bg-gradient-to-tr from-[#5170f4] to-[#637ff5] text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
                   {item.name.charAt(0)}
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <h4 className="text-xs font-black text-slate-900 truncate">{item.name}</h4>
-                    <ShieldCheck className="size-3.5 text-blue-600 shrink-0" />
+                    <ShieldCheck className="size-3.5 text-[#637ff5] shrink-0" />
                   </div>
                   <p className="text-[11px] font-semibold text-slate-400 truncate">
                     {item.specialty} • {item.city}
@@ -102,10 +102,10 @@ export const LandingTestimonials: FC = () => {
         </div>
 
         {/* Security & Trust Assurance Strip */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-blue-50/60 border border-blue-100 flex flex-wrap items-center justify-around gap-4 text-xs font-bold text-slate-700">
+        <div className="p-4 sm:p-5 rounded-2xl bg-[#eef3ff]/70 border border-[#c8d7fd]/80 flex flex-wrap items-center justify-around gap-4 text-xs font-bold text-slate-700">
           {trustBadges.map((badge, idx) => (
             <div key={idx} className="flex items-center gap-2">
-              <CheckCircle2 className="size-4 text-blue-600 shrink-0" />
+              <CheckCircle2 className="size-4 text-[#637ff5] shrink-0" />
               <span>{badge}</span>
             </div>
           ))}

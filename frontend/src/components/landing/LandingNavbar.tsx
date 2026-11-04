@@ -6,7 +6,6 @@ import {
   Menu,
   X,
   ArrowRight,
-  Sparkles,
   ChevronRight,
   Stethoscope,
   Users,
@@ -20,13 +19,9 @@ import { Button } from '@/components/ui/button'
 
 interface LandingNavbarProps {
   onOpenEmergencyModal: () => void
-  onBookConsultationClick: () => void
 }
 
-export const LandingNavbar: FC<LandingNavbarProps> = ({
-  onOpenEmergencyModal,
-  onBookConsultationClick,
-}) => {
+export const LandingNavbar: FC<LandingNavbarProps> = ({ onOpenEmergencyModal }) => {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuthStore()
   const [isScrolled, setIsScrolled] = useState(false)
@@ -131,12 +126,12 @@ export const LandingNavbar: FC<LandingNavbarProps> = ({
       <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-8 lg:px-10 xl:px-14 flex items-center justify-between gap-6">
         {/* Brand Logo with Smooth Scroll-to-Top */}
         <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2.5 group shrink-0">
-          <div className="size-10.5 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform duration-300">
+          <div className="size-10.5 rounded-2xl bg-gradient-to-tr from-[#5170f4] via-[#637ff5] to-[#8ea5fe] flex items-center justify-center text-white shadow-lg shadow-[#637ff5]/25 group-hover:scale-105 transition-transform duration-300">
             <HeartPulse className="size-6 stroke-[2.4]" />
           </div>
           <div className="flex flex-col">
             <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center">
-              Care<span className="text-blue-600">Plus</span>
+              Care<span className="text-[#637ff5]">Plus</span>
             </span>
             <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase -mt-1 hidden sm:inline">
               Smart Healthcare
@@ -158,8 +153,8 @@ export const LandingNavbar: FC<LandingNavbarProps> = ({
                 onClick={() => handleNavClick(link)}
                 className={`relative px-4.5 py-2 rounded-full text-xs xl:text-sm font-bold transition-all duration-200 cursor-pointer flex items-center gap-2 ${
                   isActive
-                    ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-600/30 scale-[1.03]'
-                    : 'text-slate-600 hover:text-blue-600 hover:bg-white/90'
+                    ? 'bg-[#637ff5] text-white font-black shadow-md shadow-[#637ff5]/30 scale-[1.03]'
+                    : 'text-slate-600 hover:text-[#637ff5] hover:bg-white/90'
                 }`}
               >
                 {isActive && (
@@ -199,24 +194,14 @@ export const LandingNavbar: FC<LandingNavbarProps> = ({
               <ArrowRight className="size-4" />
             </button>
           ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
-                className="px-4 py-2.5 rounded-2xl text-sm font-bold text-slate-700 hover:text-blue-600 hover:bg-blue-50/80 transition-colors cursor-pointer"
-              >
-                Sign In
-              </button>
-
-              <button
-                type="button"
-                onClick={onBookConsultationClick}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-extrabold shadow-lg shadow-blue-500/25 transition-all cursor-pointer active:scale-95"
-              >
-                <Sparkles className="size-4 text-amber-300" />
-                <span>Book Consultation</span>
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => navigate('/login')}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-[#5170f4] via-[#637ff5] to-[#7a94fd] hover:from-[#4361ee] hover:to-[#637ff5] text-white text-sm font-extrabold shadow-lg shadow-[#637ff5]/25 transition-all cursor-pointer active:scale-95"
+            >
+              <span>Sign In</span>
+              <ArrowRight className="size-4" />
+            </button>
           )}
         </div>
 
@@ -247,12 +232,12 @@ export const LandingNavbar: FC<LandingNavbarProps> = ({
                   onClick={() => handleNavClick(link)}
                   className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-bold transition-all flex items-center justify-between ${
                     isActive
-                      ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-600/25'
+                      ? 'bg-[#637ff5] text-white font-black shadow-md shadow-[#637ff5]/25'
                       : 'text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className={`size-4.5 ${isActive ? 'text-white' : 'text-blue-600'}`} />
+                    <Icon className={`size-4.5 ${isActive ? 'text-white' : 'text-[#637ff5]'}`} />
                     <span>{link.label}</span>
                   </div>
                   <ChevronRight
@@ -289,27 +274,16 @@ export const LandingNavbar: FC<LandingNavbarProps> = ({
                 Go to Dashboard
               </Button>
             ) : (
-              <div className="grid grid-cols-2 gap-2.5">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsMobileMenuOpen(false)
-                    navigate('/login')
-                  }}
-                  className="w-full h-11 rounded-xl text-sm font-bold border-slate-200"
-                >
-                  Sign In
-                </Button>
-                <Button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false)
-                    onBookConsultationClick()
-                  }}
-                  className="w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm shadow-md"
-                >
-                  Book Slot
-                </Button>
-              </div>
+              <Button
+                onClick={() => {
+                  setIsMobileMenuOpen(false)
+                  navigate('/login')
+                }}
+                className="w-full h-11 rounded-2xl bg-gradient-to-r from-[#5170f4] via-[#637ff5] to-[#7a94fd] hover:from-[#4361ee] hover:to-[#637ff5] text-white font-black text-sm shadow-md shadow-[#637ff5]/25"
+              >
+                <span>Sign In to Portal</span>
+                <ArrowRight className="size-4 ml-1" />
+              </Button>
             )}
           </div>
         </div>

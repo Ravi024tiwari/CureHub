@@ -38,7 +38,7 @@ export const LandingStatsTicker: FC = () => {
       targetValue: 500,
       suffix: '+',
       icon: Stethoscope,
-      color: 'text-blue-600 bg-blue-50',
+      color: 'text-[#637ff5] bg-[#eef3ff]',
     },
     {
       id: 'patients',
@@ -47,7 +47,7 @@ export const LandingStatsTicker: FC = () => {
       targetValue: 120,
       suffix: 'k+',
       icon: Users,
-      color: 'text-indigo-600 bg-indigo-50',
+      color: 'text-[#5170f4] bg-[#eef3ff]',
     },
     {
       id: 'hospitals',
@@ -56,7 +56,7 @@ export const LandingStatsTicker: FC = () => {
       targetValue: 18,
       suffix: '+',
       icon: Building2,
-      color: 'text-sky-600 bg-sky-50',
+      color: 'text-[#7a94fd] bg-[#eef3ff]',
     },
     {
       id: 'satisfaction',
@@ -138,7 +138,7 @@ export const LandingStatsTicker: FC = () => {
             return (
               <div
                 key={stat.id}
-                className="flex flex-col items-center text-center p-3 sm:p-4 rounded-2xl hover:bg-slate-50/80 transition-colors group"
+                className="flex flex-col items-center text-center p-3 sm:p-4 rounded-2xl hover:bg-[#f8faff] transition-colors group"
               >
                 <div
                   className={`size-13 sm:size-14 rounded-2xl ${stat.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-xs`}
@@ -150,7 +150,7 @@ export const LandingStatsTicker: FC = () => {
                   <div className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight font-mono">
                     <span>{stat.prefix}</span>
                     <span>{displayValue}</span>
-                    <span className="text-blue-600">{stat.suffix}</span>
+                    <span className="text-[#637ff5]">{stat.suffix}</span>
                   </div>
                   <h4 className="text-sm sm:text-base font-black text-slate-900">
                     {stat.label}

@@ -113,8 +113,8 @@ export const LandingArticlesSection: FC = () => {
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 border-b border-slate-200/80 pb-8">
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-blue-700 text-xs font-black">
-              <BookOpen className="size-3.5 text-blue-600" />
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#eef3ff] border border-[#c8d7fd] text-[#5170f4] text-xs font-black">
+              <BookOpen className="size-3.5 text-[#637ff5]" />
               <span>Doctor-Verified Health Intelligence</span>
             </div>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
@@ -128,7 +128,7 @@ export const LandingArticlesSection: FC = () => {
           <button
             type="button"
             onClick={() => navigate('/patient/articles')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md shadow-blue-500/20 transition-all cursor-pointer shrink-0"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#5170f4] via-[#637ff5] to-[#7a94fd] hover:from-[#4361ee] hover:to-[#637ff5] text-white font-extrabold text-xs shadow-md shadow-[#637ff5]/25 transition-all cursor-pointer shrink-0"
           >
             <span>Explore All Health Articles</span>
             <ArrowRight className="size-3.5" />
@@ -155,7 +155,7 @@ export const LandingArticlesSection: FC = () => {
               <div
                 key={article._id}
                 onClick={() => navigate(`/patient/articles/${article.slug || article._id}`)}
-                className="bg-white rounded-3xl border border-slate-200/90 shadow-md shadow-blue-900/5 hover:border-blue-400 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between group cursor-pointer"
+                className="bg-white rounded-3xl border border-slate-200/90 shadow-md shadow-[#5170f4]/5 hover:border-[#c8d7fd] hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between group cursor-pointer"
               >
                 <div>
                   {/* Cover Image */}
@@ -165,7 +165,7 @@ export const LandingArticlesSection: FC = () => {
                       alt={article.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                    <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-[10px] font-black text-blue-700 shadow-xs border border-white/80">
+                    <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-[10px] font-black text-[#5170f4] shadow-xs border border-white/80">
                       {article.category}
                     </div>
                   </div>
@@ -180,7 +180,7 @@ export const LandingArticlesSection: FC = () => {
                       <span>{formattedDate}</span>
                     </div>
 
-                    <h3 className="text-base sm:text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug">
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 group-hover:text-[#637ff5] transition-colors line-clamp-2 leading-snug">
                       {article.title}
                     </h3>
 
@@ -193,7 +193,7 @@ export const LandingArticlesSection: FC = () => {
                 {/* Footer with Doctor Attribution & Metrics */}
                 <div className="p-4 px-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="size-7 rounded-full bg-blue-600 text-white font-black text-[11px] flex items-center justify-center">
+                    <div className="size-7 rounded-full bg-[#637ff5] text-white font-black text-[11px] flex items-center justify-center">
                       {doctorName.charAt(0).toUpperCase()}
                     </div>
                     <span className="text-xs font-bold text-slate-800 truncate max-w-[140px]">

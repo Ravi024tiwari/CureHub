@@ -68,9 +68,9 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
       {/* ─────────────────────────────────────────────────────────────
           2. Multi-Color Iridescent Ambient Glowing Orbs
           ───────────────────────────────────────────────────────────── */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] sm:w-[700px] h-[300px] sm:h-[400px] bg-gradient-to-tr from-blue-500/15 via-purple-500/15 to-sky-400/15 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse-glow" />
-      <div className="absolute top-1/4 left-1/5 size-60 sm:size-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/5 size-60 sm:size-80 bg-sky-400/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] sm:w-[700px] h-[300px] sm:h-[400px] bg-gradient-to-tr from-[#637ff5]/20 via-[#8ea5fe]/20 to-[#a2b4ff]/20 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse-glow" />
+      <div className="absolute top-1/4 left-1/5 size-60 sm:size-80 bg-[#5170f4]/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/5 size-60 sm:size-80 bg-[#7a94fd]/15 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main Responsive Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-6 sm:space-y-8 lg:space-y-10">
@@ -98,7 +98,7 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
             <div className="block lg:hidden space-y-2 pt-1">
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">
                 Streamline Your <br />
-                <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-[#5170f4] via-[#637ff5] to-[#7a94fd] bg-clip-text text-transparent">
                   Health Care Journey
                 </span>
               </h2>
@@ -110,7 +110,7 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
 
           {/* Top-Right: Clinical Narrative Block (Desktop / Tablet) */}
           <div className="hidden lg:block lg:col-span-6 space-y-2.5 text-left text-slate-600">
-            <p className="text-xs sm:text-sm font-extrabold text-blue-600 uppercase tracking-widest">
+            <p className="text-xs sm:text-sm font-extrabold text-[#637ff5] uppercase tracking-widest">
               Welcome to CarePlus Health
             </p>
             <h3 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight leading-snug">
@@ -145,7 +145,7 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
             />
 
             {/* Glowing Iridescent Radial Rim */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-purple-600/30 via-blue-500/25 to-sky-400/30 rounded-full blur-2xl -z-10 scale-105" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#5170f4]/30 via-[#637ff5]/25 to-[#8ea5fe]/30 rounded-full blur-2xl -z-10 scale-105" />
 
             {/* The 3D Iridescent Capsule */}
             <div className="animate-float-pill flex justify-center">
@@ -158,12 +158,12 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
 
             {/* Satellite Floating Micro-Card 1: Top Left */}
             <div
-              className="absolute -top-2 sm:-top-5 left-0 sm:-left-10 px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-blue-900/10 flex items-center gap-2.5 animate-float-slow transition-transform duration-500 z-20"
+              className="absolute -top-2 sm:-top-5 left-0 sm:-left-10 px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-[#5170f4]/10 flex items-center gap-2.5 animate-float-slow transition-transform duration-500 z-20"
               style={{
                 transform: `translate3d(${tilt.posX * 0.7}px, ${tilt.posY * 0.7}px, 20px)`,
               }}
             >
-              <div className="size-8 sm:size-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner shrink-0">
+              <div className="size-8 sm:size-9 rounded-xl bg-[#eef3ff] text-[#637ff5] flex items-center justify-center shadow-inner shrink-0">
                 <Sparkles className="size-4 sm:size-4.5" />
               </div>
               <div className="text-left">
@@ -174,7 +174,7 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
 
             {/* Satellite Floating Micro-Card 2: Bottom Right */}
             <div
-              className="absolute -bottom-2 sm:-bottom-5 right-0 sm:-right-10 px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-blue-900/10 flex items-center gap-2.5 animate-float-reverse transition-transform duration-500 z-20"
+              className="absolute -bottom-2 sm:-bottom-5 right-0 sm:-right-10 px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-[#5170f4]/10 flex items-center gap-2.5 animate-float-reverse transition-transform duration-500 z-20"
               style={{
                 transform: `translate3d(${tilt.posX * -0.7}px, ${tilt.posY * -0.7}px, 25px)`,
               }}
@@ -198,7 +198,7 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
                 transform: `translate3d(${tilt.posX * 1.1}px, ${tilt.posY * 1.1}px, 30px)`,
               }}
             >
-              <ShieldCheck className="size-4.5 text-blue-600" />
+              <ShieldCheck className="size-4.5 text-[#637ff5]" />
               <span className="text-xs font-extrabold text-slate-800">NHA & ABHA Verified</span>
             </div>
           </div>
@@ -216,7 +216,7 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
             <div className="hidden lg:block space-y-3">
               <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.1]">
                 Streamline Your <br />
-                <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-[#5170f4] via-[#637ff5] to-[#7a94fd] bg-clip-text text-transparent">
                   Health Care Journey
                 </span>
               </h2>
@@ -230,7 +230,7 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
               <button
                 type="button"
                 onClick={onBookClick}
-                className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-sm sm:text-base shadow-xl shadow-blue-600/25 transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-95"
+                className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-[#5170f4] via-[#637ff5] to-[#7a94fd] hover:from-[#4361ee] hover:to-[#637ff5] text-white font-black text-sm sm:text-base shadow-xl shadow-[#637ff5]/25 transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-95"
               >
                 <span>Consult Top Specialists</span>
                 <ArrowRight className="size-5" />
@@ -247,8 +247,8 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
 
             {/* Mobile Reassurance Notice */}
             <div className="block lg:hidden pt-2">
-              <div className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200/60 flex items-center gap-3 text-left">
-                <div className="size-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
+              <div className="p-3.5 rounded-2xl bg-[#eef3ff]/80 border border-[#c8d7fd]/70 flex items-center gap-3 text-left">
+                <div className="size-9 rounded-xl bg-[#637ff5] text-white flex items-center justify-center shrink-0">
                   <Stethoscope className="size-4.5" />
                 </div>
                 <div>
@@ -264,9 +264,9 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
           </div>
 
           {/* Bottom-Right: 4 Key Clinical Features with Enhanced Fonts */}
-          <div className="lg:col-span-5 grid grid-cols-2 gap-3 sm:gap-4 text-left">
+          <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-left">
             <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1.5 hover:bg-white hover:shadow-md transition-all group">
-              <div className="flex items-center gap-2 text-blue-600 font-black text-sm sm:text-base">
+              <div className="flex items-center gap-2 text-[#637ff5] font-black text-sm sm:text-base">
                 <Clock className="size-5 shrink-0 group-hover:scale-110 transition-transform" />
                 <span>Zero Desk Waiting</span>
               </div>
@@ -276,7 +276,7 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
             </div>
 
             <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1.5 hover:bg-white hover:shadow-md transition-all group">
-              <div className="flex items-center gap-2 text-indigo-600 font-black text-sm sm:text-base">
+              <div className="flex items-center gap-2 text-[#5170f4] font-black text-sm sm:text-base">
                 <Activity className="size-5 shrink-0 group-hover:scale-110 transition-transform" />
                 <span>Socket.IO Sync</span>
               </div>
@@ -286,7 +286,7 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
             </div>
 
             <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1.5 hover:bg-white hover:shadow-md transition-all group">
-              <div className="flex items-center gap-2 text-sky-600 font-black text-sm sm:text-base">
+              <div className="flex items-center gap-2 text-[#7a94fd] font-black text-sm sm:text-base">
                 <ShieldCheck className="size-5 shrink-0 group-hover:scale-110 transition-transform" />
                 <span>NABH Accredited</span>
               </div>

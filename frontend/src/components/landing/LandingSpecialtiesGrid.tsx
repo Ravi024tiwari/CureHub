@@ -82,9 +82,9 @@ export const LandingSpecialtiesGrid: FC = () => {
       icon: Bone,
       doctorCount: 40,
       conditions: ['Joint Pain', 'Arthritis', 'Sports Injuries', 'Spine Disorders'],
-      gradient: 'from-blue-500/10 via-blue-50 to-white',
-      textColor: 'text-blue-600',
-      borderColor: 'border-blue-200/80',
+      gradient: 'from-[#637ff5]/10 via-[#eef3ff] to-white',
+      textColor: 'text-[#637ff5]',
+      borderColor: 'border-[#c8d7fd]',
     },
     {
       id: 'endocrinology',
@@ -130,8 +130,8 @@ export const LandingSpecialtiesGrid: FC = () => {
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 border-b border-slate-100 pb-8">
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs sm:text-sm font-extrabold">
-              <Stethoscope className="size-4 text-blue-600" />
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#eef3ff] border border-[#c8d7fd] text-[#5170f4] text-xs sm:text-sm font-extrabold">
+              <Stethoscope className="size-4 text-[#637ff5]" />
               <span>Comprehensive Clinical Specialties</span>
             </div>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
@@ -164,15 +164,15 @@ export const LandingSpecialtiesGrid: FC = () => {
                 onClick={() => setSelectedSpecialtyId(spec.id)}
                 className={`p-5 rounded-3xl border transition-all duration-300 cursor-pointer flex flex-col justify-between group ${
                   isSelected
-                    ? `bg-gradient-to-br ${spec.gradient} ${spec.borderColor} shadow-lg shadow-blue-500/10 scale-[1.02]`
-                    : 'bg-white border-slate-200/80 hover:border-blue-300 hover:shadow-md'
+                    ? `bg-gradient-to-br ${spec.gradient} ${spec.borderColor} shadow-lg shadow-[#637ff5]/15 scale-[1.02]`
+                    : 'bg-white border-slate-200/80 hover:border-[#c8d7fd] hover:shadow-md'
                 }`}
               >
                 <div className="space-y-3.5">
                   <div className="flex items-center justify-between">
                     <div
                       className={`size-13 rounded-2xl flex items-center justify-center ${spec.textColor} ${
-                        isSelected ? 'bg-white shadow-sm' : 'bg-slate-50 group-hover:bg-blue-50'
+                        isSelected ? 'bg-white shadow-sm' : 'bg-slate-50 group-hover:bg-[#eef3ff]'
                       } transition-colors`}
                     >
                       <Icon className="size-6 stroke-[2.2]" />
@@ -184,7 +184,7 @@ export const LandingSpecialtiesGrid: FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors">
+                    <h3 className="text-lg font-black text-slate-900 group-hover:text-[#637ff5] transition-colors">
                       {spec.name}
                     </h3>
                     <p className="text-xs sm:text-sm text-slate-600 font-medium line-clamp-2 mt-1.5 leading-relaxed">
@@ -205,7 +205,7 @@ export const LandingSpecialtiesGrid: FC = () => {
                   </div>
                 </div>
 
-                <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between text-xs sm:text-sm font-extrabold text-blue-600 group-hover:text-blue-700">
+                <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between text-xs sm:text-sm font-extrabold text-[#637ff5] group-hover:text-[#5170f4]">
                   <span>Browse Specialists</span>
                   <ChevronRight className="size-4 group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -215,16 +215,16 @@ export const LandingSpecialtiesGrid: FC = () => {
         </div>
 
         {/* Selected Specialty Banner Callout */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-600 text-white shadow-xl shadow-blue-900/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-[#5170f4] via-[#637ff5] to-[#7a94fd] text-white shadow-xl shadow-[#637ff5]/25 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2.5">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/15 backdrop-blur-md text-blue-100 text-xs sm:text-sm font-bold">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/15 backdrop-blur-md text-white/95 text-xs sm:text-sm font-bold">
               <ShieldCheck className="size-4 text-emerald-300" />
               <span>Certified {activeSpecialty.name} Department</span>
             </div>
             <h3 className="text-2xl sm:text-3xl font-black tracking-tight">
               Consult with Senior {activeSpecialty.name} Physicians Today
             </h3>
-            <p className="text-sm sm:text-base text-blue-100/90 font-medium max-w-xl">
+            <p className="text-sm sm:text-base text-white/90 font-medium max-w-xl">
               Average appointment wait time is under 15 minutes. In-person hospital slots and live OPD queue tracking available.
             </p>
           </div>
@@ -232,7 +232,7 @@ export const LandingSpecialtiesGrid: FC = () => {
           <button
             type="button"
             onClick={() => navigate(`/patient/doctors?specialty=${activeSpecialty.name}`)}
-            className="px-7 py-4 rounded-2xl bg-white hover:bg-slate-50 text-blue-700 font-black text-sm sm:text-base shadow-lg transition-all cursor-pointer shrink-0 active:scale-95 flex items-center justify-center gap-2"
+            className="px-7 py-4 rounded-2xl bg-white hover:bg-slate-50 text-[#5170f4] hover:text-[#4361ee] font-black text-sm sm:text-base shadow-lg transition-all cursor-pointer shrink-0 active:scale-95 flex items-center justify-center gap-2"
           >
             <span>Book {activeSpecialty.name} Slot</span>
             <ArrowRight className="size-4" />
