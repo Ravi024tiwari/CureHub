@@ -49,11 +49,7 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
       onMouseLeave={handleMouseLeave}
       className="relative py-12 sm:py-16 lg:py-20 overflow-hidden bg-white border-b border-slate-200/80 select-none"
     >
-      {/* ─────────────────────────────────────────────────────────────
-          1. Giant Background Watermark Typography (PureMed style)
-          Desktop & Tablet: Large continuous parallax watermark
-          Mobile: Cleanly bounded behind the capsule without wrapping
-          ───────────────────────────────────────────────────────────── */}
+      
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden z-0">
         <span
           className="text-5xl sm:text-8xl md:text-[11rem] lg:text-[14rem] font-black tracking-widest text-slate-100/90 uppercase transition-transform duration-700 ease-out whitespace-nowrap select-none"
@@ -75,12 +71,6 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
       {/* Main Responsive Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-6 sm:space-y-8 lg:space-y-10">
 
-        {/* ─────────────────────────────────────────────────────────────
-            TOP ROW:
-            - Left: Coral Pulsing Bullet Badge
-            - Right (Desktop/Tablet): Clinical Narrative Block
-            - Mobile: Concise headline intro
-            ───────────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           {/* Top-Left: Red Coral Bullet Badge */}
           <div className="lg:col-span-6 space-y-3 text-center sm:text-left">
@@ -122,11 +112,7 @@ export const LandingCapsuleShowcase: FC<LandingCapsuleShowcaseProps> = ({ onBook
           </div>
         </div>
 
-        {/* ─────────────────────────────────────────────────────────────
-            CENTERPIECE: 3D Holographic Medical Capsule
-            - On Desktop: Floating with Parallax Tilt & Satellite Cards
-            - On Mobile: Safely framed within responsive stage with cards positioned cleanly inside
-            ───────────────────────────────────────────────────────────── */}
+      
         <div className="relative py-4 sm:py-6 lg:py-8 flex flex-col items-center justify-center">
           {/* 3D Tilt Wrapper */}
           <div
