@@ -507,6 +507,9 @@ export async function initiateAppointmentBookingApi(payload: {
   date: string
   startTime: string
   symptoms: string
+  consultationFee?: number
+  hospitalId?: string
+  paymentMethod?: 'razorpay' | 'card' | 'netbanking' | 'counter' | 'CASH_AT_CLINIC'
   patientDetails?: {
     fullName: string
     age?: number
