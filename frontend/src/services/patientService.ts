@@ -467,9 +467,7 @@ export async function fetchPatientProfileApi() {
 // Update Full Patient Profile (Supports FormData with avatar or JSON payload)
 export async function updatePatientProfileApi(payload: FormData | Record<string, any>) {
   if (payload instanceof FormData) {
-    const res: any = await apiClient.patch('/profile/patient', payload, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const res: any = await apiClient.patch('/profile/patient', payload)
     return res?.data?.data || res?.data || res
   } else {
     const res: any = await apiClient.patch('/profile/patient', payload)

@@ -25,9 +25,16 @@ export const DoctorHeader: FC<DoctorHeaderProps> = ({
   avatar,
 }) => {
   const navigate = useNavigate()
-  const { logout } = useAuthStore()
+  const { user, logout } = useAuthStore()
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const resolvedAvatar = avatar || user?.avatar || ''
+
+  useEffect(() => {
+    setAvatarError(false)
+  }, [resolvedAvatar])
 
   useEffect(() => {
     const handleOutside = (e: MouseEvent) => {
@@ -92,8 +99,13 @@ export const DoctorHeader: FC<DoctorHeaderProps> = ({
             className="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-1.5 rounded-2xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all cursor-pointer"
           >
             <div className="size-9 rounded-xl overflow-hidden bg-gradient-to-tr from-blue-100 to-indigo-100 flex items-center justify-center text-blue-700 font-black text-sm border border-slate-200/80 shrink-0 shadow-2xs">
-              {avatar ? (
-                <img src={avatar} alt={doctorName} className="size-full object-cover" />
+              {resolvedAvatar && !avatarError ? (
+                <img
+                  src={resolvedAvatar}
+                  alt={doctorName}
+                  className="size-full object-cover"
+                  onError={() => setAvatarError(true)}
+                />
               ) : (
                 <span>{doctorName.replace('Dr. ', '').charAt(0) || 'D'}</span>
               )}
@@ -115,9 +127,23 @@ export const DoctorHeader: FC<DoctorHeaderProps> = ({
           {/* Profile Dropdown Menu */}
           {isProfileMenuOpen && (
             <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-150">
-              <div className="p-2.5 border-b border-slate-100 mb-1">
-                <p className="text-xs font-black text-slate-900 truncate">{doctorName}</p>
-                <p className="text-[10px] text-slate-400 font-medium truncate">{department}</p>
+              <div className="p-2.5 border-b border-slate-100 mb-1 flex items-center gap-2.5">
+                <div className="size-8.5 rounded-lg overflow-hidden bg-gradient-to-tr from-blue-100 to-indigo-100 flex items-center justify-center text-blue-700 font-bold text-xs shrink-0 border border-slate-200/60">
+                  {resolvedAvatar && !avatarError ? (
+                    <img
+                      src={resolvedAvatar}
+                      alt={doctorName}
+                      className="size-full object-cover"
+                      onError={() => setAvatarError(true)}
+                    />
+                  ) : (
+                    <span>{doctorName.replace('Dr. ', '').charAt(0) || 'D'}</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-black text-slate-900 truncate">{doctorName}</p>
+                  <p className="text-[10px] text-slate-400 font-medium truncate">{department}</p>
+                </div>
               </div>
 
               <button

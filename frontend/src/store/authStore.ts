@@ -58,6 +58,9 @@ export const useAuthStore = create<AuthState>()(
       // Setters
       setUser: (user) => {
         const normalized = normalizeUser(user)
+        if (normalized) {
+          localStorage.setItem('careplus_user', JSON.stringify(normalized))
+        }
         set({ user: normalized, isAuthenticated: !!normalized })
       },
       setProfile: (profile) => set({ profile }),

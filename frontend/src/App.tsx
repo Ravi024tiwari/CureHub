@@ -15,6 +15,7 @@ import {
   PatientMedicalRecordsPage,
   PatientArticlesPage,
   ArticleDetailPage,
+  PatientProfilePage,
 } from '@/pages/patient'
 import { DashboardPage } from '@/pages/dashboard'
 import {
@@ -85,6 +86,8 @@ function App() {
         <Route path="/patient/records" element={<PatientMedicalRecordsPage />} />
         <Route path="/records" element={<PatientMedicalRecordsPage />} />
         <Route path="/patient/medical-records" element={<PatientMedicalRecordsPage />} />
+        <Route path="/patient/profile" element={<PatientProfilePage />} />
+        <Route path="/profile" element={<PatientProfilePage />} />
         <Route path="/patient/articles" element={<PatientArticlesPage />} />
         <Route path="/patient/articles/:slug" element={<ArticleDetailPage />} />
         <Route path="/articles" element={<Navigate to="/patient/articles" replace />} />

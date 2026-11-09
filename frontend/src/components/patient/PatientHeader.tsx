@@ -20,6 +20,7 @@ import { useNotificationStore } from '@/store/notificationStore'
 import { useAppointmentStore } from '@/store/appointmentStore'
 import type { NotificationItem } from '@/types/notification'
 import { useAuthStore } from '@/store/authStore'
+import { usePatientStore } from '@/store/patientStore'
 import { UserRole } from '@/types/auth'
 import { useNavigate } from 'react-router-dom'
 
@@ -41,11 +42,13 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
 }) => {
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
+  const { profile } = usePatientStore()
 
   const [isCityOpen, setIsCityOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
 
   const cityRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
@@ -116,7 +119,12 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
     navigate('/login')
   }
 
-  const patientName = user?.name || 'Ravi Tiwari'
+  const patientName = user?.name || profile?.name || 'Ravi Tiwari'
+  const userAvatar = user?.avatar || profile?.avatar || ''
+
+  useEffect(() => {
+    setAvatarError(false)
+  }, [userAvatar])
   const roleLabel =
     user?.role === UserRole.HOSPITAL_ADMIN
       ? 'Hospital Admin'
@@ -355,8 +363,17 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
             >
               {/* Vibrant Gradient Avatar with Ring & Status Indicator */}
               <div className="relative shrink-0">
-                <div className="size-8 sm:size-9 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-sm shadow-blue-500/25 ring-2 ring-white group-hover:ring-blue-400 group-hover:shadow-blue-500/30 transition-all select-none">
-                  {patientName.charAt(0).toUpperCase()}
+                <div className="size-8 sm:size-9 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-sm shadow-blue-500/25 ring-2 ring-white group-hover:ring-blue-400 group-hover:shadow-blue-500/30 transition-all select-none overflow-hidden">
+                  {userAvatar && !avatarError ? (
+                    <img
+                      src={userAvatar}
+                      alt={patientName}
+                      className="size-full object-cover"
+                      onError={() => setAvatarError(true)}
+                    />
+                  ) : (
+                    <span>{patientName.charAt(0).toUpperCase()}</span>
+                  )}
                 </div>
                 {/* Active Status Badge */}
                 <span className="absolute -bottom-0.5 -right-0.5 size-2.5 bg-emerald-500 ring-2 ring-white rounded-full" />
@@ -384,12 +401,21 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
             {isProfileOpen && (
               <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-24px)] bg-white rounded-2xl shadow-xl border border-slate-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-3.5 py-3 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50 rounded-t-2xl">
-                  <div className="size-10 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 text-white font-extrabold text-sm flex items-center justify-center shadow-xs shrink-0">
-                    {patientName.charAt(0).toUpperCase()}
+                  <div className="size-10 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 text-white font-extrabold text-sm flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
+                    {userAvatar && !avatarError ? (
+                      <img
+                        src={userAvatar}
+                        alt={patientName}
+                        className="size-full object-cover"
+                        onError={() => setAvatarError(true)}
+                      />
+                    ) : (
+                      <span>{patientName.charAt(0).toUpperCase()}</span>
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-slate-900 truncate">{patientName}</p>
-                    <p className="text-[11px] text-slate-400 truncate">{user?.email || 'patient@curehealth.org'}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{user?.email || profile?.email || 'patient@curehealth.org'}</p>
                     <span className="inline-block mt-0.5 text-[9px] font-bold text-blue-700 bg-blue-100/80 px-1.5 py-0.5 rounded-full">
                       {verifiedBadgeText}
                     </span>
@@ -412,7 +438,7 @@ export const PatientHeader: FC<PatientHeaderProps> = ({
                   <button
                     onClick={() => {
                       setIsProfileOpen(false)
-                      alert(`Profile: ${patientName} | Status: Active | Role: ${roleLabel}`)
+                      navigate('/patient/profile')
                     }}
                     className="w-full px-3.5 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 font-medium transition-colors cursor-pointer"
                   >

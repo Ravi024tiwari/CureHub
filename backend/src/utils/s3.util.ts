@@ -45,12 +45,20 @@ export const uploadFileToS3 = async (
   }
 
   // Generate clean filename
-  const extension = path.extname(file.originalname).toLowerCase();
+  const rawExt = path.extname(file.originalname || "").toLowerCase();
+  const extension =
+    rawExt ||
+    (file.mimetype?.includes("png")
+      ? ".png"
+      : file.mimetype?.includes("webp")
+      ? ".webp"
+      : ".jpg");
+
   const baseName = customFileName
     ? customFileName.replace(/[^a-zA-Z0-9_-]/g, "")
     : path
-        .basename(file.originalname, extension)
-        .replace(/[^a-zA-Z0-9_-]/g, "");
+        .basename(file.originalname || "avatar", rawExt)
+        .replace(/[^a-zA-Z0-9_-]/g, "") || "upload";
 
   const timestamp = Date.now();
   const randomSuffix = Math.random().toString(36).substring(2, 8);

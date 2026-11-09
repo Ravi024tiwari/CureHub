@@ -188,10 +188,20 @@ export const LandingNavbar: FC<LandingNavbarProps> = ({ onOpenEmergencyModal }) 
             <button
               type="button"
               onClick={() => navigate(getDashboardPath())}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-extrabold shadow-md shadow-slate-900/15 transition-all cursor-pointer active:scale-95"
+              className="inline-flex items-center gap-2.5 pl-2 pr-4.5 py-1.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-extrabold shadow-md shadow-slate-900/15 transition-all cursor-pointer active:scale-95 group"
             >
-              <span>Go to Dashboard</span>
-              <ArrowRight className="size-4" />
+              <div className="size-7 rounded-full overflow-hidden bg-gradient-to-tr from-[#5170f4] to-[#7a94fd] flex items-center justify-center text-white text-xs font-bold ring-2 ring-white/20 shrink-0 shadow-2xs">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={user?.name || 'User'} className="size-full object-cover" />
+                ) : (
+                  <span>{(user?.name || 'U').charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="leading-tight text-white font-bold max-w-[120px] truncate">{user?.name || 'Dashboard'}</span>
+                <span className="text-[10px] text-slate-300 font-medium leading-none">Dashboard</span>
+              </div>
+              <ArrowRight className="size-3.5 text-slate-300 group-hover:translate-x-0.5 group-hover:text-white transition-all ml-1" />
             </button>
           ) : (
             <button
@@ -269,9 +279,17 @@ export const LandingNavbar: FC<LandingNavbarProps> = ({ onOpenEmergencyModal }) 
                   setIsMobileMenuOpen(false)
                   navigate(getDashboardPath())
                 }}
-                className="w-full h-11 rounded-xl bg-slate-900 text-white font-black text-sm"
+                className="w-full h-11 rounded-xl bg-slate-900 text-white font-black text-sm flex items-center justify-center gap-2.5"
               >
-                Go to Dashboard
+                <div className="size-6 rounded-full overflow-hidden bg-gradient-to-tr from-[#5170f4] to-[#7a94fd] flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt={user?.name || 'User'} className="size-full object-cover" />
+                  ) : (
+                    <span>{(user?.name || 'U').charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <span>Go to Dashboard ({user?.name || 'Account'})</span>
+                <ArrowRight className="size-4" />
               </Button>
             ) : (
               <Button

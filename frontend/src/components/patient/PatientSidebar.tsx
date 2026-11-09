@@ -10,6 +10,7 @@ import {
   Search,
   UploadCloud,
   Headphones,
+  User,
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -36,8 +37,7 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
   const navigate = useNavigate()
   const totalReports = usePatientStore((s) => s.records.length)
 
-  // Primary navigation links - clean production grade (prescriptions, lab tests, and health services
-  // are consolidated inside Medical Reports to eliminate UI redundancy)
+  // Primary navigation links - clean production grade
   const mainNavItems = [
     { id: 'home', label: 'Home', icon: Home, path: '/patient/home' },
     { id: 'appointments', label: 'Appointments', icon: Calendar, path: '/patient/appointments' },
@@ -51,6 +51,7 @@ export const PatientSidebar: FC<PatientSidebarProps> = ({
       badge: totalReports > 0 ? String(totalReports) : undefined,
     },
     { id: 'articles', label: 'Health Articles', icon: BookOpen, path: '/patient/articles' },
+    { id: 'profile', label: 'My Profile', icon: User, path: '/patient/profile' },
   ]
 
   const quickActionItems = [

@@ -36,10 +36,15 @@ export const HospitalAdminHeader: FC<HospitalAdminHeaderProps> = ({ onToggleSide
   const [isHospitalMenuOpen, setIsHospitalMenuOpen] = useState(false)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [isNotifOpen, setIsNotifOpen] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
 
   const hospitalRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setAvatarError(false)
+  }, [user?.avatar])
 
   // Click outside listener
   useEffect(() => {
@@ -226,8 +231,13 @@ export const HospitalAdminHeader: FC<HospitalAdminHeaderProps> = ({ onToggleSide
               className="flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 bg-slate-50/80 hover:bg-slate-100 border border-slate-200/80 rounded-full transition-all cursor-pointer shadow-2xs group"
             >
               <div className="size-7.5 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-xs overflow-hidden">
-                {user?.avatar ? (
-                  <img src={user.avatar} alt="Admin" className="size-full object-cover" />
+                {user?.avatar && !avatarError ? (
+                  <img
+                    src={user.avatar}
+                    alt="Admin"
+                    className="size-full object-cover"
+                    onError={() => setAvatarError(true)}
+                  />
                 ) : (
                   <span>{user?.name?.charAt(0) || 'R'}</span>
                 )}
@@ -250,14 +260,28 @@ export const HospitalAdminHeader: FC<HospitalAdminHeaderProps> = ({ onToggleSide
             </button>
 
             {isProfileMenuOpen && (
-              <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200/90 rounded-2xl shadow-xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-3 py-2 border-b border-slate-100">
-                  <p className="text-xs font-bold text-slate-900 truncate">
-                    {user?.name || 'Dr. Ramesh Kumar'}
-                  </p>
-                  <p className="text-[10px] text-slate-400 truncate">
-                    {user?.email || 'admin@curehealth.org'}
-                  </p>
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200/90 rounded-2xl shadow-xl p-1.5 z-40 animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-3 py-2 border-b border-slate-100 flex items-center gap-2.5">
+                  <div className="size-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden shadow-2xs">
+                    {user?.avatar && !avatarError ? (
+                      <img
+                        src={user.avatar}
+                        alt="Admin"
+                        className="size-full object-cover"
+                        onError={() => setAvatarError(true)}
+                      />
+                    ) : (
+                      <span>{user?.name?.charAt(0) || 'R'}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-900 truncate">
+                      {user?.name || 'Dr. Ramesh Kumar'}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate">
+                      {user?.email || 'admin@curehealth.org'}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-0.5 mt-1">

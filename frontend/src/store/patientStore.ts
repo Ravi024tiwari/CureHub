@@ -339,7 +339,7 @@ export const usePatientStore = create<PatientStoreState>()(
               return true
             }
             set({ isSavingProfile: false })
-            return true
+            return false
           } catch (err: any) {
             console.error('Failed to update patient profile:', err)
             set({ isSavingProfile: false, error: err?.message || 'Failed to update profile' })
