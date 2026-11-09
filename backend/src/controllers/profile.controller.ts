@@ -4,7 +4,7 @@ import { User } from "../models/User.model.js";
 import { PatientProfile } from "../models/PatientProfile.model.js";
 import { DoctorProfile } from "../models/DoctorProfile.model.js";
 import { HospitalAdminProfile } from "../models/HospitalAdminProfile.model.js";
-import { UserRole, VerificationStatus } from "../constants/index.js";
+import { UserRole, VerificationStatus, Gender, BloodGroup } from "../constants/index.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -25,12 +25,32 @@ const safeParse = (data: any, fallback: any = undefined) => {
 };
 
 /**
+ * Helper to safely parse string array fields from JSON array, stringified JSON, or comma-separated string
+ */
+const parseStringArray = (data: any): string[] | undefined => {
+  if (data === undefined) return undefined;
+  if (data === null || data === "") return [];
+  const parsed = safeParse(data);
+  if (Array.isArray(parsed)) {
+    return parsed.map((item) => String(item).trim()).filter(Boolean);
+  }
+  if (typeof parsed === "string") {
+    return parsed.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+  return undefined;
+};
+
+/**
  * PATIENT: Get Logged-in Patient Profile (User identity + PatientProfile clinical details)
  */
 export const getPatientProfile = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.userId;
   if (!userId) {
-    throw new ApiError(401, "Unauthorized");
+    throw new ApiError(401, "Unauthorized: Authentication required");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApiError(400, "Invalid user ID format");
   }
 
   const user = await User.findById(userId).select("-password");
@@ -57,6 +77,13 @@ export const getPatientProfile = asyncHandler(async (req: Request, res: Response
  */
 export const updatePatientProfile = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.userId;
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized: Authentication required");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApiError(400, "Invalid user ID format");
+  }
 
   const user = await User.findById(userId);
   if (!user) {
@@ -70,7 +97,9 @@ export const updatePatientProfile = asyncHandler(async (req: Request, res: Respo
 
   const {
     name,
+    email,
     phoneNumber,
+    avatar,
     dateOfBirth,
     gender,
     bloodGroup,
@@ -82,66 +111,240 @@ export const updatePatientProfile = asyncHandler(async (req: Request, res: Respo
     emergencyContact,
   } = req.body;
 
-  // 1. Handle Avatar upload to S3
-  if (req.file) {
-    const s3Result = await uploadFileToS3(req.file, "avatars/patients", `patient-${userId}`);
-    // Clean up old avatar from S3 if exists
-    if (user.avatar && user.avatar.includes("amazonaws.com")) {
-      await deleteFileFromS3(user.avatar);
+
+  if (name !== undefined) {
+    const trimmedName = String(name).trim();
+    if (!trimmedName) {
+      throw new ApiError(400, "Name cannot be empty");
     }
-    user.avatar = s3Result.url;
+    if (trimmedName.length > 100) {
+      throw new ApiError(400, "Name cannot exceed 100 characters");
+    }
+    user.name = trimmedName;
   }
 
-  // 2. Update base User fields
-  if (name && name.trim()) user.name = name.trim();
-  if (phoneNumber && phoneNumber.trim()) user.phoneNumber = phoneNumber.trim();
-  await user.save();
+  if (email !== undefined) {
+    const trimmedEmail = String(email).trim().toLowerCase();
+    if (!trimmedEmail) {
+      throw new ApiError(400, "Email cannot be empty");
+    }
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      throw new ApiError(400, "Please provide a valid email address");
+    }
+    if (trimmedEmail !== user.email) {
+      const emailInUse = await User.findOne({
+        email: trimmedEmail,
+        _id: { $ne: userId },
+      });
+      if (emailInUse) {
+        throw new ApiError(409, "Email address is already registered by another account");
+      }
+      user.email = trimmedEmail;
+      user.isEmailVerified = false;
+    }
+  }
 
-  // 3. Update PatientProfile fields
-  if (dateOfBirth) profile.dateOfBirth = new Date(dateOfBirth);
-  if (gender) profile.gender = gender;
-  if (bloodGroup) profile.bloodGroup = bloodGroup;
+  // Phone Number update (with duplicate check & standard format check)
+  if (phoneNumber !== undefined) {
+    const trimmedPhone = String(phoneNumber).trim();
+    if (!trimmedPhone) {
+      throw new ApiError(400, "Phone number cannot be empty");
+    }
+    const phoneDigits = trimmedPhone.replace(/[\s-]/g, "");
+    const phoneRegex = /^\+?[0-9]{10,15}$/;
+    if (!phoneRegex.test(phoneDigits)) {
+      throw new ApiError(400, "Please provide a valid 10-15 digit phone number");
+    }
+    if (trimmedPhone !== user.phoneNumber) {
+      const phoneInUse = await User.findOne({
+        phoneNumber: trimmedPhone,
+        _id: { $ne: userId },
+      });
+      if (phoneInUse) {
+        throw new ApiError(409, "Phone number is already registered by another account");
+      }
+      user.phoneNumber = trimmedPhone;
+    }
+  }
 
-  const parsedAddress = safeParse(address);
-  if (parsedAddress) {
+  // Avatar upload via multipart file OR avatar URL string in body
+  if (req.file) {
+    try {
+      const s3Result = await uploadFileToS3(req.file, "avatars/patients", `patient-${userId}`);
+      if (user.avatar && user.avatar.includes("amazonaws.com")) {
+        await deleteFileFromS3(user.avatar).catch((delErr) =>
+          console.warn("Could not delete old avatar from S3:", delErr)
+        );
+      }
+      user.avatar = s3Result.url;
+    } catch (s3Err) {
+      console.warn("Failed uploading avatar to AWS S3, falling back to data URL:", s3Err);
+      user.avatar = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+    }
+  } else if (avatar !== undefined) {
+    user.avatar = typeof avatar === "string" ? avatar.trim() : "";
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // VALIDATE & UPDATE PATIENT PROFILE CLINICAL FIELDS
+  // ─────────────────────────────────────────────────────────────────
+
+  // Date of Birth
+  if (dateOfBirth !== undefined) {
+    if (!dateOfBirth || dateOfBirth === "null" || dateOfBirth === "undefined") {
+      profile.dateOfBirth = null as any;
+    } else {
+      const parsedDate = new Date(dateOfBirth);
+      if (isNaN(parsedDate.getTime())) {
+        throw new ApiError(400, "Invalid date of birth format. Please use YYYY-MM-DD");
+      }
+      if (parsedDate > new Date()) {
+        throw new ApiError(400, "Date of birth cannot be in the future");
+      }
+      if (parsedDate.getFullYear() < 1900) {
+        throw new ApiError(400, "Please provide a valid date of birth after 1900");
+      }
+      profile.dateOfBirth = parsedDate;
+    }
+  }
+
+  // Gender
+  if (gender !== undefined) {
+    if (!gender || gender === "null" || gender === "undefined") {
+      profile.gender = null as any;
+    } else {
+      const normalizedGender = String(gender).trim().toUpperCase();
+      if (!Object.values(Gender).includes(normalizedGender as Gender)) {
+        throw new ApiError(
+          400,
+          `Invalid gender. Allowed values: ${Object.values(Gender).join(", ")}`
+        );
+      }
+      profile.gender = normalizedGender as Gender;
+    }
+  }
+
+  // Blood Group
+  if (bloodGroup !== undefined) {
+    if (!bloodGroup || bloodGroup === "null" || bloodGroup === "undefined") {
+      profile.bloodGroup = null as any;
+    } else {
+      const normalizedBlood = String(bloodGroup).trim().toUpperCase();
+      if (!Object.values(BloodGroup).includes(normalizedBlood as BloodGroup)) {
+        throw new ApiError(
+          400,
+          `Invalid blood group. Allowed values: ${Object.values(BloodGroup).join(", ")}`
+        );
+      }
+      profile.bloodGroup = normalizedBlood as BloodGroup;
+    }
+  }
+
+  // Address (handles nested object, stringified JSON, or flat street/city/state/zipCode/country fields)
+  let rawAddress = safeParse(address);
+  if (!rawAddress || typeof rawAddress !== "object") {
+    if (
+      req.body.street !== undefined ||
+      req.body.city !== undefined ||
+      req.body.state !== undefined ||
+      req.body.zipCode !== undefined ||
+      req.body.country !== undefined
+    ) {
+      rawAddress = {
+        street: req.body.street,
+        city: req.body.city,
+        state: req.body.state,
+        zipCode: req.body.zipCode,
+        country: req.body.country,
+      };
+    }
+  }
+
+  if (rawAddress && typeof rawAddress === "object") {
     profile.address = {
-      street: parsedAddress.street ?? profile.address?.street ?? "",
-      city: parsedAddress.city ?? profile.address?.city ?? "",
-      state: parsedAddress.state ?? profile.address?.state ?? "",
-      zipCode: parsedAddress.zipCode ?? profile.address?.zipCode ?? "",
-      country: parsedAddress.country ?? profile.address?.country ?? "India",
+      street:
+        rawAddress.street !== undefined
+          ? String(rawAddress.street).trim()
+          : (profile.address?.street || ""),
+      city:
+        rawAddress.city !== undefined
+          ? String(rawAddress.city).trim()
+          : (profile.address?.city || ""),
+      state:
+        rawAddress.state !== undefined
+          ? String(rawAddress.state).trim()
+          : (profile.address?.state || ""),
+      zipCode:
+        rawAddress.zipCode !== undefined
+          ? String(rawAddress.zipCode).trim()
+          : (profile.address?.zipCode || ""),
+      country:
+        rawAddress.country !== undefined
+          ? String(rawAddress.country).trim()
+          : (profile.address?.country || "India"),
     };
   }
 
-  const parsedAllergies = safeParse(allergies);
-  if (Array.isArray(parsedAllergies)) profile.allergies = parsedAllergies;
+  // Clinical Arrays (handles Array, stringified JSON, or comma-separated string)
+  const parsedAllergies = parseStringArray(allergies);
+  if (parsedAllergies !== undefined) profile.allergies = parsedAllergies;
 
-  const parsedChronic = safeParse(chronicDiseases);
-  if (Array.isArray(parsedChronic)) profile.chronicDiseases = parsedChronic;
+  const parsedChronic = parseStringArray(chronicDiseases);
+  if (parsedChronic !== undefined) profile.chronicDiseases = parsedChronic;
 
-  const parsedSurgeries = safeParse(pastSurgeries);
-  if (Array.isArray(parsedSurgeries)) profile.pastSurgeries = parsedSurgeries;
+  const parsedSurgeries = parseStringArray(pastSurgeries);
+  if (parsedSurgeries !== undefined) profile.pastSurgeries = parsedSurgeries;
 
-  const parsedMeds = safeParse(currentMedications);
-  if (Array.isArray(parsedMeds)) profile.currentMedications = parsedMeds;
+  const parsedMeds = parseStringArray(currentMedications);
+  if (parsedMeds !== undefined) profile.currentMedications = parsedMeds;
 
-  const parsedEmergency = safeParse(emergencyContact);
-  if (parsedEmergency) {
+  // Emergency Contact (handles nested object, stringified JSON, or flat emergencyContactName/Phone fields)
+  let rawEmergency = safeParse(emergencyContact);
+  if (!rawEmergency || typeof rawEmergency !== "object") {
+    if (
+      req.body.emergencyContactName !== undefined ||
+      req.body.emergencyContactRelationship !== undefined ||
+      req.body.emergencyContactPhone !== undefined
+    ) {
+      rawEmergency = {
+        name: req.body.emergencyContactName,
+        relationship: req.body.emergencyContactRelationship,
+        phoneNumber: req.body.emergencyContactPhone,
+      };
+    }
+  }
+
+  if (rawEmergency && typeof rawEmergency === "object") {
     profile.emergencyContact = {
-      name: parsedEmergency.name ?? profile.emergencyContact?.name ?? "",
+      name:
+        rawEmergency.name !== undefined
+          ? String(rawEmergency.name).trim()
+          : (profile.emergencyContact?.name || ""),
       relationship:
-        parsedEmergency.relationship ?? profile.emergencyContact?.relationship ?? "",
+        rawEmergency.relationship !== undefined
+          ? String(rawEmergency.relationship).trim()
+          : (profile.emergencyContact?.relationship || ""),
       phoneNumber:
-        parsedEmergency.phoneNumber ?? profile.emergencyContact?.phoneNumber ?? "",
+        rawEmergency.phoneNumber !== undefined
+          ? String(rawEmergency.phoneNumber).trim()
+          : (profile.emergencyContact?.phoneNumber || ""),
     };
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  // 3. PERSIST BOTH USER & PATIENT PROFILE DOCUMENTS
+  // ─────────────────────────────────────────────────────────────────
+  await user.save();
   await profile.save();
+
+  // Return clean, sanitized response without password
+  const userObj = user.toJSON();
 
   return res.status(200).json(
     new ApiResponse(
       200,
-      { user, profile },
+      { user: userObj, profile },
       "Patient profile updated successfully"
     )
   );
