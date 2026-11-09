@@ -7,7 +7,6 @@ import {
   ArrowRight,
   ShieldCheck,
   Star,
-  Clock,
   Stethoscope,
   CheckCircle2,
   Heart,
@@ -160,75 +159,51 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
 
           {/* ─────────────────────────────────────────────────────────────
               RIGHT COLUMN: High-Fidelity Medical Consultation Showcase
-              Cleanly framed with NON-OVERLAPPING, professional floating cards
+              Clean, spacious, responsive layout without visual clutter
               ───────────────────────────────────────────────────────────── */}
           <div className="lg:col-span-5 relative flex flex-col items-center justify-center pb-8 sm:pb-10 lg:pb-8">
             
             {/* Main Consultation Photo Card */}
-            <div className="relative w-full max-w-md sm:max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl shadow-[#637ff5]/15 border-4 border-white bg-gradient-to-tr from-[#eef3ff] to-indigo-50">
+            <div className="relative w-full max-w-md sm:max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl shadow-[#637ff5]/15 border-4 border-white bg-gradient-to-tr from-[#eef3ff] to-indigo-50 group">
               <img
                 src={consultationImg}
                 alt="Doctor-Patient Clinical Consultation"
-                className="w-full h-[400px] sm:h-[460px] lg:h-[490px] object-cover object-center"
+                className="w-full h-[360px] sm:h-[460px] lg:h-[490px] object-cover object-center group-hover:scale-105 transition-transform duration-700"
               />
 
               {/* Soft Gradient Overlay at Bottom */}
               <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-900/60 via-slate-900/20 to-transparent pointer-events-none" />
             </div>
 
-            {/* 1. Top-Right Floating Widget: Live OPD Queue Status (Clean, Isolated, Non-Overlapping) */}
-            <div className="absolute -top-4 -right-2 sm:-right-6 p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-[#637ff5]/10 space-y-2 animate-float-slow z-20">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="relative flex size-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full size-2.5 bg-emerald-500" />
-                  </span>
-                  <span className="text-xs font-black text-slate-900">Live OPD Queue</span>
-                </div>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  On Time
-                </span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-slate-900 font-mono">Token #14</span>
-                <span className="text-xs text-slate-500 font-medium">• Current Turn</span>
-              </div>
-              <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-100 text-[11px] font-semibold text-slate-500">
-                <Clock className="size-3.5 text-[#637ff5] shrink-0" />
-                <span>Est. Wait Time: &lt; 12 mins</span>
-              </div>
-            </div>
-
-            {/* 2. Mid-Left Floating Widget: 500+ Verified Specialists Badge */}
-            <div className="hidden sm:flex absolute top-20 -left-6 lg:-left-8 p-3.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-[#637ff5]/10 items-center gap-3 animate-float-reverse z-20">
-              <div className="size-10 rounded-xl bg-[#eef3ff] text-[#5170f4] flex items-center justify-center shadow-inner shrink-0">
-                <ShieldCheck className="size-5 stroke-[2.2]" />
+            {/* Mid-Left Floating Widget: 500+ Verified Specialists Badge */}
+            <div className="absolute top-4 sm:top-10 -left-2 sm:-left-6 lg:-left-8 p-2.5 sm:p-3.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-[#637ff5]/12 flex items-center gap-2.5 sm:gap-3 animate-float-reverse z-20 hover:scale-105 transition-transform duration-300">
+              <div className="size-8.5 sm:size-10 rounded-xl bg-[#eef3ff] text-[#5170f4] flex items-center justify-center shadow-inner shrink-0">
+                <ShieldCheck className="size-4 sm:size-5 stroke-[2.2]" />
               </div>
               <div className="text-left">
-                <p className="text-xs font-black text-slate-900 leading-tight">500+ Verified Doctors</p>
-                <p className="text-[11px] font-semibold text-slate-500">Board-Certified Specialists</p>
+                <p className="text-[11px] sm:text-xs font-black text-slate-900 leading-tight">500+ Verified Doctors</p>
+                <p className="text-[9px] sm:text-[11px] font-semibold text-slate-500">Board-Certified Specialists</p>
               </div>
             </div>
 
-            {/* 3. Bottom Anchored Doctor Booking Card */}
-            <div className="absolute -bottom-4 sm:-bottom-5 inset-x-3 sm:inset-x-6 p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-2xl shadow-slate-950/15 flex items-center justify-between gap-3 sm:gap-4 z-20">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="relative size-11 sm:size-12 rounded-2xl bg-[#637ff5] text-white flex items-center justify-center font-black shadow-md shrink-0">
+            {/* Bottom Anchored Doctor Booking Card */}
+            <div className="absolute -bottom-4 sm:-bottom-5 inset-x-2 sm:inset-x-6 p-3 sm:p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-2xl shadow-slate-950/15 flex items-center justify-between gap-2.5 sm:gap-4 z-20">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="relative size-10 sm:size-12 rounded-2xl bg-[#637ff5] text-white flex items-center justify-center font-black shadow-md shrink-0">
                   <Stethoscope className="size-5 sm:size-6" />
                   <div className="absolute -top-1 -right-1 p-0.5 rounded-full bg-emerald-500 text-white">
-                    <CheckCircle2 className="size-3" />
+                    <CheckCircle2 className="size-2.5 sm:size-3" />
                   </div>
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1 sm:gap-1.5">
                     <h4 className="text-xs sm:text-sm font-black text-slate-900 truncate">Dr. Priya Sharma</h4>
-                    <ShieldCheck className="size-4 text-[#637ff5] fill-[#eef3ff] shrink-0" />
+                    <ShieldCheck className="size-3.5 sm:size-4 text-[#637ff5] fill-[#eef3ff] shrink-0" />
                   </div>
-                  <p className="text-[11px] sm:text-xs font-semibold text-slate-500 truncate">
+                  <p className="text-[10px] sm:text-xs font-semibold text-slate-500 truncate">
                     Chief Cardiologist • Apollo Hospital
                   </p>
-                  <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-emerald-600 mt-0.5">
+                  <div className="flex items-center gap-1.5 text-[9px] sm:text-[11px] font-bold text-emerald-600 mt-0.5">
                     <span className="size-1.5 rounded-full bg-emerald-500 animate-ping" />
                     <span>Next Slot: Today 4:15 PM</span>
                   </div>
@@ -238,10 +213,10 @@ export const LandingHero: FC<LandingHeroProps> = ({ onBookClick }) => {
               <button
                 type="button"
                 onClick={onBookClick}
-                className="shrink-0 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-[#5170f4] to-[#637ff5] hover:from-[#4361ee] hover:to-[#5170f4] text-white font-extrabold text-xs sm:text-sm shadow-md shadow-[#637ff5]/25 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                className="shrink-0 px-3 sm:px-5 py-2 sm:py-3 rounded-xl bg-gradient-to-r from-[#5170f4] to-[#637ff5] hover:from-[#4361ee] hover:to-[#5170f4] text-white font-extrabold text-[11px] sm:text-sm shadow-md shadow-[#637ff5]/25 transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 active:scale-95"
               >
                 <span>Book (₹800)</span>
-                <ArrowRight className="size-4" />
+                <ArrowRight className="size-3.5 sm:size-4" />
               </button>
             </div>
           </div>
