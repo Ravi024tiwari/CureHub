@@ -63,10 +63,8 @@ export const LandingPage: FC = () => {
         {/* 2. Hero Section + PureMed Animated 3D Capsule */}
         <LandingHero onBookClick={() => handleOpenBooking(defaultDoctor)} />
 
-        {/* 3. Sentracare Animated Rolling Stats Ticker */}
         <LandingStatsTicker />
 
-        {/* 3.5 PureMed 3D Holographic Medical Capsule Showcase */}
         <LandingCapsuleShowcase onBookClick={() => handleOpenBooking(defaultDoctor)} />
 
         {/* 4. Interactive Specialties & Clinical Departments Explorer */}
