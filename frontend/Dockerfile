@@ -43,5 +43,5 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD wget --quiet --tries=1 --spider http://localhost/nginx-health || exit 1
 
-# Start Nginx with dynamic BACKEND_URL replacement (defaults to http://backend:5000 for local docker compose)
-CMD ["/bin/sh", "-c", "sed -i \"s|__BACKEND_URL__|${BACKEND_URL:-http://backend:5000}|g\" /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+# Start Nginx with smart URL resolution (reads BACKEND_URL or VITE_API_BASE_URL, strips /api, defaults to http://backend:5000)
+CMD ["/bin/sh", "-c", "TARGET_URL=\"${BACKEND_URL:-${VITE_API_BASE_URL:-http://backend:5000}}\"; TARGET_URL=$(echo \"$TARGET_URL\" | sed -e 's|/api/*$||' -e 's|/*$||'); sed -i \"s|__BACKEND_URL__|$TARGET_URL|g\" /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
