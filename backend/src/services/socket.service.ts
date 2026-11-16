@@ -16,20 +16,27 @@ export interface AuthenticatedSocket extends Socket {
 
 
 export const initSocket = (httpServer: HttpServer): Server => {
-  const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
-  const allowedOrigins = [
-    clientUrl,
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-  ];
+  const configuredOrigins = (process.env.CLIENT_URL || "")
+    .split(",")
+    .map((url) => url.trim())
+    .filter(Boolean);
+
+  const isAllowedOrigin = (origin?: string): boolean => {
+    if (!origin) return true;
+    if (configuredOrigins.includes(origin)) return true;
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+    if (process.env.NODE_ENV === "development") return true;
+    return false;
+  };
 
   io = new Server(httpServer, {
     cors: {
       origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === "development") {
+        if (isAllowedOrigin(origin)) {
           callback(null, true);
         } else {
-          callback(new Error("Not allowed by CORS"));
+          console.warn(`[Socket CORS Blocked] Origin: ${origin}`);
+          callback(new Error(`Not allowed by CORS: ${origin}`));
         }
       },
       credentials: true,

@@ -30,25 +30,37 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // 1. CORS FIRST: Guarantees every response (including 429 errors & preflight OPTIONS) has proper CORS headers
-const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
-const allowedOrigins = [
-  clientUrl,
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-];
+const configuredOrigins = (process.env.CLIENT_URL || "")
+  .split(",")
+  .map((url) => url.trim())
+  .filter(Boolean);
+
+const isAllowedOrigin = (origin?: string): boolean => {
+  if (!origin) return true;
+
+  if (configuredOrigins.includes(origin)) return true;
+
+  // In development, or whenever running locally / in Docker:
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+
+  if (process.env.NODE_ENV === "development") return true;
+
+  return false;
+};
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === "development") {
+      if (isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        console.warn(`[CORS Blocked] Origin: ${origin}`);
+        callback(new Error(`Not allowed by CORS: ${origin}`));
       }
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
   })
 );
 
