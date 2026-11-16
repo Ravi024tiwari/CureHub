@@ -43,5 +43,5 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD wget --quiet --tries=1 --spider http://localhost/nginx-health || exit 1
 
-# Start Nginx with smart URL resolution (reads BACKEND_URL or VITE_API_BASE_URL, strips /api, defaults to http://backend:5000)
-CMD ["/bin/sh", "-c", "TARGET_URL=\"${BACKEND_URL:-${VITE_API_BASE_URL:-http://backend:5000}}\"; TARGET_URL=$(echo \"$TARGET_URL\" | sed -e 's|/api/*$||' -e 's|/*$||'); sed -i \"s|__BACKEND_URL__|$TARGET_URL|g\" /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+# Start Nginx with smart URL and Host resolution (supports Render HTTPS & local Docker Compose)
+CMD ["/bin/sh", "-c", "TARGET_URL=\"${BACKEND_URL:-${VITE_API_BASE_URL:-http://backend:5000}}\"; CLEAN_URL=$(echo \"$TARGET_URL\" | sed -e 's|/api/*$||' -e 's|/*$||'); HOST_NAME=$(echo \"$CLEAN_URL\" | sed -e 's|^https\\?://||' -e 's|:[0-9]\\+||' -e 's|/.*||'); sed -i \"s|__BACKEND_URL__|$CLEAN_URL|g\" /etc/nginx/conf.d/default.conf && sed -i \"s|__BACKEND_HOST__|$HOST_NAME|g\" /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
